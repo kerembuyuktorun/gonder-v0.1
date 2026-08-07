@@ -83,7 +83,10 @@ export function isCreateShipmentStepReady(
     )
   }
   if (step === 4) {
-    return Boolean(draft.providerName && draft.serviceName && draft.priceTry != null)
+    const quoteReady = Boolean(draft.providerName && draft.serviceName && draft.priceTry != null)
+    if (!quoteReady) return false
+    if (draft.operationType === 'courier' && !draft.courierSpeed) return false
+    return true
   }
   return Boolean(draft.paymentMethod)
 }
@@ -92,4 +95,31 @@ export function canSubmitCreateShipment(draft: CreateShipmentDraft): boolean {
   return ([1, 2, 3, 4, 5] as CreateShipmentStep[]).every((step) =>
     isCreateShipmentStepReady(draft, step)
   )
+}
+
+/** Tek sayfa form için eksik alan listesi (özet paneli) */
+export function getCreateShipmentMissingFields(draft: CreateShipmentDraft): string[] {
+  const missing: string[] = []
+  if (!draft.operationType) missing.push('Operasyon tipi')
+  if (!draft.origin?.label?.trim()) missing.push('Gönderici adresi')
+  if (!draft.destination?.label?.trim()) missing.push('Alıcı adresi')
+  if (
+    draft.pieces.length === 0 ||
+    !draft.pieces.every(
+      (piece) =>
+        piece.quantity >= 1 &&
+        piece.widthCm > 0 &&
+        piece.lengthCm > 0 &&
+        piece.heightCm > 0 &&
+        piece.weightKg > 0
+    )
+  ) {
+    missing.push('Paket / yük bilgisi')
+  }
+  if (!draft.providerName?.trim()) missing.push('Taşıyıcı')
+  if (!draft.serviceName?.trim()) missing.push('Servis')
+  if (draft.priceTry == null) missing.push('Fiyat')
+  if (draft.operationType === 'courier' && !draft.courierSpeed) missing.push('Kurye hızı')
+  if (!draft.paymentMethod) missing.push('Ödeme yöntemi')
+  return missing
 }

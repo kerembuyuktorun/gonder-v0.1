@@ -2,9 +2,17 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { dashboardRepository } from '../_data/dashboard-repository'
-import type { DashboardSnapshot } from '../_types/dashboard'
+import type {
+  DashboardInsights,
+  DashboardInsightsRange,
+  DashboardSnapshot,
+  PerformanceSummary,
+  PerformanceSummaryRange,
+} from '../_types/dashboard'
 
 export const DASHBOARD_SNAPSHOT_QUERY_KEY = ['gonder', 'dashboard', 'snapshot'] as const
+export const DASHBOARD_INSIGHTS_QUERY_KEY = ['gonder', 'dashboard', 'insights'] as const
+export const DASHBOARD_PERFORMANCE_QUERY_KEY = ['gonder', 'dashboard', 'performance'] as const
 
 type UseDashboardSnapshotOptions = {
   greetingName?: string
@@ -19,11 +27,26 @@ export function useDashboardSnapshot(options?: UseDashboardSnapshotOptions) {
   })
 }
 
+export function useDashboardInsights(range: DashboardInsightsRange) {
+  return useQuery<DashboardInsights>({
+    queryKey: [...DASHBOARD_INSIGHTS_QUERY_KEY, range],
+    queryFn: () => dashboardRepository.getInsights(range),
+  })
+}
+
+export function useDashboardPerformance(range: PerformanceSummaryRange) {
+  return useQuery<PerformanceSummary>({
+    queryKey: [...DASHBOARD_PERFORMANCE_QUERY_KEY, range],
+    queryFn: () => dashboardRepository.getPerformanceSummary(range),
+  })
+}
+
 export function useInvalidateDashboardSnapshot() {
   const queryClient = useQueryClient()
 
-  return () =>
-    queryClient.invalidateQueries({
-      queryKey: DASHBOARD_SNAPSHOT_QUERY_KEY,
-    })
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: DASHBOARD_SNAPSHOT_QUERY_KEY })
+    void queryClient.invalidateQueries({ queryKey: DASHBOARD_INSIGHTS_QUERY_KEY })
+    void queryClient.invalidateQueries({ queryKey: DASHBOARD_PERFORMANCE_QUERY_KEY })
+  }
 }

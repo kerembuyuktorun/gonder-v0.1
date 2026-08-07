@@ -24,6 +24,7 @@ export type QuoteRequestView =
   | 'all'
   | 'open'
   | 'action_required'
+  | 'ready'
   | 'converted'
   | 'closed'
 
@@ -91,6 +92,7 @@ export const QUOTE_REQUEST_VIEW_STATUSES: Record<QuoteRequestView, QuoteRequestS
   all: null,
   open: ['draft', 'submitted', 'collecting', 'partially_received', 'ready'],
   action_required: ['ready', 'selected', 'payment_pending', 'partially_received'],
+  ready: ['ready', 'selected', 'payment_pending', 'partially_received'],
   converted: ['converted'],
   closed: ['expired', 'cancelled', 'rejected'],
 }

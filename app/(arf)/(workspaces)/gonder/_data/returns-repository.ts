@@ -39,6 +39,7 @@ const seed: GonderReturn[] = [
     carrierRef: null,
     carrier: 'ARF Parcel',
     returnMethod: 'Kapıdan alma',
+    documents: { labelReady: false, hasProofOfDelivery: false, hasPhotos: false },
   },
   {
     id: 'ret-1002',
@@ -50,6 +51,7 @@ const seed: GonderReturn[] = [
     carrierRef: 'RET-88421',
     carrier: 'Hızlı Kurye',
     returnMethod: 'Şubeye bırakma',
+    documents: { labelReady: true, hasProofOfDelivery: false, hasPhotos: true },
   },
   {
     id: 'ret-1003',
@@ -61,6 +63,7 @@ const seed: GonderReturn[] = [
     carrierRef: 'RET-77102',
     carrier: 'ARF Parcel',
     returnMethod: 'Kapıdan alma',
+    documents: { labelReady: true, hasProofOfDelivery: true, hasPhotos: true },
   },
   {
     id: 'ret-1004',
@@ -73,6 +76,7 @@ const seed: GonderReturn[] = [
     carrier: 'Express Lojistik',
     returnMethod: 'Kapıdan alma',
     note: 'Ürün iade koşullarına uymuyor',
+    documents: { labelReady: false, hasProofOfDelivery: false, hasPhotos: false },
   },
   {
     id: 'ret-1005',
@@ -84,6 +88,19 @@ const seed: GonderReturn[] = [
     carrierRef: null,
     carrier: 'ARF Parcel',
     returnMethod: 'Kapıdan alma',
+    documents: { labelReady: false, hasProofOfDelivery: false, hasPhotos: false },
+  },
+  {
+    id: 'ret-1006',
+    orderNumber: 'ORD-10115',
+    customerName: 'İrem Koç',
+    requestedAt: '2026-08-07T11:00:00.000Z',
+    status: 'label_ready',
+    handoverPoint: 'Beşiktaş Şube',
+    carrierRef: 'RET-90211',
+    carrier: 'ARF Parcel',
+    returnMethod: 'Şubeye bırakma',
+    documents: { labelReady: true, hasProofOfDelivery: false, hasPhotos: false },
   },
 ]
 
@@ -167,6 +184,11 @@ export class MockReturnsRepository implements ReturnsRepository {
       carrierRef: payload.carrierRef ?? null,
       carrier: payload.carrier ?? 'ARF Parcel',
       returnMethod: payload.returnMethod ?? 'Kapıdan alma',
+      documents: payload.documents ?? {
+        labelReady: false,
+        hasProofOfDelivery: false,
+        hasPhotos: false,
+      },
       note: payload.note,
     }
     this.items = [created, ...this.items]

@@ -1,6 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type {
   ColumnDef,
   PaginationState,
@@ -15,27 +17,29 @@ import {
   createSelectionColumn,
 } from '@hascanb/arf-ui-kit/datatable-kit'
 import { AppHeader } from '@hascanb/arf-ui-kit/layout-kit'
-import { Eye, MessageSquareWarning, Scale } from 'lucide-react'
+import { Check, Eye, FilePlus2, MessageSquareWarning, Scale, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { ARF_ROUTES } from '../../../../_shared/routes'
+import { RowQuickActions } from '../../_components/data-workspace'
+import {
+  WorkspaceListHeader,
+  WorkspaceListToolbar,
+  WorkspaceViewTabs,
+} from '../../_components/workspace-list'
 import { desiAdjustmentsRepository } from '../../_data/desi-adjustments-repository'
 import { DESI_QUERY_KEY, useDesiAdjustmentsList } from '../../_hooks/use-desi-adjustments'
 import { useWorkspaceListUrlState } from '../../_hooks/use-workspace-list-url-state'
+import { canGonder, GONDER_PERMISSIONS } from '../../_lib/gonder-permissions'
 import {
   DESI_STATUS_LABELS,
   type DesiAdjustmentStatus,
   type DesiAdjustmentView,
   type GonderDesiAdjustment,
 } from '../../_types/desi-adjustments'
-import { canGonder, GONDER_PERMISSIONS } from '../../_lib/gonder-permissions'
-import {
-  WorkspaceListHeader,
-  WorkspaceViewTabs,
-} from '../../_components/workspace-list/workspace-view-tabs'
-import { WorkspaceListToolbar } from '../../_components/workspace-list/workspace-list-toolbar'
 
 const VIEWS = ['all', 'unreviewed', 'in_review', 'charge', 'resolved'] as const
 
@@ -78,6 +82,7 @@ function formatMoney(value: number | null) {
 }
 
 export function DesiControlContent() {
+  const router = useRouter()
   const queryClient = useQueryClient()
   const canManage = canGonder(GONDER_PERMISSIONS.desiManage)
   const canDispute = canGonder(GONDER_PERMISSIONS.desiDispute)
@@ -130,7 +135,12 @@ export function DesiControlContent() {
         header: ({ column }) => <DataTableColumnHeader column={column} title='Gönderi' />,
         cell: ({ row }) => (
           <div>
-            <p className='font-medium'>{row.original.shipmentRef}</p>
+            <Link
+              href={ARF_ROUTES.gonder.desiControl.detail(row.original.id)}
+              className='font-medium hover:underline'
+            >
+              {row.original.shipmentRef}
+            </Link>
             {row.original.orderNumber ? (
               <p className='text-xs text-muted-foreground'>{row.original.orderNumber}</p>
             ) : null}
@@ -191,52 +201,92 @@ export function DesiControlContent() {
         id: 'actions',
         header: '',
         enableSorting: false,
+        enableHiding: false,
+        size: 184,
+        minSize: 176,
+        maxSize: 220,
         cell: ({ row }) => {
           const item = row.original
+          const canNotify = canManage && item.status === 'unreviewed'
+          const canDisputeRow =
+            canDispute && (item.status === 'unreviewed' || item.status === 'acknowledged')
+          const canHandleCharge = canManage && item.status === 'charge_pending'
+
           return (
-            <div className='flex justify-end gap-1'>
-              <Button
-                type='button'
-                variant='ghost'
-                size='icon'
-                className='size-8'
-                aria-label='İncele'
-                onClick={() => toast.message(`${item.shipmentRef} incelenecek`)}
-              >
-                <Eye className='size-3.5' />
-              </Button>
-              {canManage && item.status === 'unreviewed' ? (
-                <Button
-                  type='button'
-                  variant='ghost'
-                  size='icon'
-                  className='size-8'
-                  aria-label='Bilgilendir'
-                  onClick={() =>
-                    void mutateStatus(item.id, 'acknowledged', 'Müşteri bilgilendirildi')
-                  }
-                >
-                  <Scale className='size-3.5' />
-                </Button>
-              ) : null}
-              {canDispute && (item.status === 'unreviewed' || item.status === 'acknowledged') ? (
-                <Button
-                  type='button'
-                  variant='ghost'
-                  size='icon'
-                  className='size-8 text-violet-700'
-                  aria-label='İtiraz et'
-                  onClick={() => void mutateStatus(item.id, 'disputed', 'İtiraz kaydedildi')}
-                >
-                  <MessageSquareWarning className='size-3.5' />
-                </Button>
-              ) : null}
-            </div>
+            <RowQuickActions
+              actions={[
+                ...(canNotify
+                  ? [
+                      {
+                        id: 'accept',
+                        labelKey: 'desi.accept',
+                        icon: Scale,
+                        priority: 'primary' as const,
+                        variant: 'primary' as const,
+                        onClick: () =>
+                          void mutateStatus(item.id, 'acknowledged', 'Müşteri bilgilendirildi'),
+                      },
+                    ]
+                  : []),
+                ...(canHandleCharge
+                  ? [
+                      {
+                        id: 'accept-charge',
+                        labelKey: 'desi.acceptCharge',
+                        shortLabelKey: 'desi.acceptChargeShort',
+                        icon: Check,
+                        priority: 'primary' as const,
+                        variant: 'primary' as const,
+                        onClick: () =>
+                          void mutateStatus(item.id, 'charge_accepted', 'Ücret farkı kabul edildi'),
+                      },
+                      {
+                        id: 'waive-charge',
+                        labelKey: 'desi.waiveCharge',
+                        shortLabelKey: 'desi.waiveChargeShort',
+                        icon: XCircle,
+                        priority: 'overflow' as const,
+                        variant: 'secondary' as const,
+                        onClick: () =>
+                          void mutateStatus(item.id, 'charge_waived', 'Ücret farkından feragat edildi'),
+                      },
+                    ]
+                  : []),
+                {
+                  id: 'view',
+                  labelKey: 'desi.inspect',
+                  icon: Eye,
+                  priority:
+                    canNotify || canHandleCharge ? ('secondary' as const) : ('primary' as const),
+                  variant: 'secondary' as const,
+                  onClick: () => router.push(ARF_ROUTES.gonder.desiControl.detail(item.id)),
+                },
+                ...(canDisputeRow
+                  ? [
+                      {
+                        id: 'dispute',
+                        labelKey: 'desi.dispute',
+                        icon: MessageSquareWarning,
+                        priority: 'overflow' as const,
+                        variant: 'secondary' as const,
+                        onClick: () => void mutateStatus(item.id, 'disputed', 'İtiraz kaydedildi'),
+                      },
+                    ]
+                  : []),
+                {
+                  id: 'attach',
+                  labelKey: 'desi.attachDoc',
+                  icon: FilePlus2,
+                  priority: 'overflow' as const,
+                  onClick: () => toast.message('Belge ekleme yakında'),
+                },
+              ]}
+            />
           )
         },
       },
     ],
-    [canDispute, canManage]
+    [canDispute, canManage, router]
   )
 
   const tabs = VIEWS.map((id) => ({
@@ -244,6 +294,8 @@ export function DesiControlContent() {
     label: VIEW_LABELS[id],
     count: data?.viewCounts[id],
   }))
+
+  const statusFilter = url.status as DesiAdjustmentStatus | null
 
   return (
     <>
@@ -258,6 +310,22 @@ export function DesiControlContent() {
         <WorkspaceListHeader
           title='Desi Kontrol'
           description='Taşıyıcı ölçümü ile beyan edilen desi/ağırlık farklarını yönetin. Beyan değerleri otomatik üzerine yazılmaz.'
+          actions={
+            <Button
+              size='sm'
+              variant='outline'
+              onClick={() => {
+                void desiAdjustmentsRepository
+                  .simulateWebhook({ status: 'unreviewed' })
+                  .then(async () => {
+                    toast.success('Desi farkı webhook’u simüle edildi')
+                    await queryClient.invalidateQueries({ queryKey: DESI_QUERY_KEY })
+                  })
+              }}
+            >
+              Webhook simüle
+            </Button>
+          }
         />
 
         <Card className='gap-0 py-0 shadow-sm'>
@@ -283,6 +351,20 @@ export function DesiControlContent() {
                 setSearchInput('')
                 url.clearFilters()
               }}
+              filterSummary={
+                statusFilter ? (
+                  <Badge variant='secondary' className='gap-1 font-normal'>
+                    Durum: {DESI_STATUS_LABELS[statusFilter]}
+                    <button
+                      type='button'
+                      className='ml-1 hover:underline'
+                      onClick={() => url.setStatus(null)}
+                    >
+                      ×
+                    </button>
+                  </Badge>
+                ) : null
+              }
             />
 
             <DataTable

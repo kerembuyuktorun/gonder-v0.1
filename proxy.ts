@@ -6,6 +6,11 @@ import {
   AUTH_OTP_PENDING_COOKIE,
   AUTH_POST_LOGIN_NEXT_COOKIE,
 } from './app/_shared/auth-cookies'
+import {
+  getDemoSessionPayload,
+  isDemoAccessToken,
+  isDevAuthBypassEnabled,
+} from './app/api/_lib/dev-auth'
 
 const PUBLIC_PATHS = new Set(['/signin', '/forgot-password'])
 const PUBLIC_FILE_REGEX = /\.[^/]+$/
@@ -24,10 +29,6 @@ type SessionCacheEntry = {
 }
 
 const sessionCache = new Map<string, SessionCacheEntry>()
-
-function isDevAuthBypassEnabled(): boolean {
-  return process.env.NODE_ENV !== 'production' && process.env.DEV_AUTH_BYPASS === 'true'
-}
 
 function isSafeInternalPath(path: string): boolean {
   if (!path || !path.startsWith('/')) return false
@@ -60,6 +61,11 @@ function isRouterPrefetch(request: NextRequest): boolean {
 async function fetchSession(request: NextRequest): Promise<SessionPayload | null> {
   const accessToken = request.cookies.get(AUTH_ACCESS_COOKIE)?.value
   if (!accessToken) return null
+
+  // Demo mode: avoid round-trip / IAM; trust demo access token cookie
+  if (isDevAuthBypassEnabled() && isDemoAccessToken(accessToken)) {
+    return getDemoSessionPayload()
+  }
 
   const cached = sessionCache.get(accessToken)
   if (cached && cached.expiresAt > Date.now()) {
@@ -94,11 +100,6 @@ async function fetchSession(request: NextRequest): Promise<SessionPayload | null
 
 export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
-
-  if (isDevAuthBypassEnabled()) {
-    // Dev bypass: keep routes accessible so auth UI flows can be tested locally.
-    return NextResponse.next()
-  }
 
   const hasSessionCookie = Boolean(request.cookies.get(AUTH_ACCESS_COOKIE)?.value)
 

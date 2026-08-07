@@ -63,8 +63,37 @@ export type DashboardRecentUpdate = {
   at: string
 }
 
+export type PerformanceMetricKey = 'shipments' | 'revenue' | 'deliveryRate' | 'avgCost'
+
+export type PerformanceSummaryRange = '7d' | '30d' | '3m'
+
+export type PerformanceSummaryMetric = {
+  key: PerformanceMetricKey
+  value: number
+  formatted: string
+  change: number
+}
+
+export type PerformanceSummaryPoint = {
+  date: string
+  label: string
+  shipments: number
+  revenue: number
+  deliveryRate: number
+  avgCost: number
+}
+
+export type PerformanceSummary = {
+  range: PerformanceSummaryRange
+  metrics: PerformanceSummaryMetric[]
+  series: PerformanceSummaryPoint[]
+  reportsHref: string
+}
+
+/** @deprecated Prefer PerformanceSummary via getPerformanceSummary */
 export type DashboardPerformancePeriod = '7d' | '30d'
 
+/** @deprecated Prefer PerformanceSummaryMetric */
 export type DashboardPerformanceMetric = {
   id: string
   labelKey: string
@@ -73,17 +102,32 @@ export type DashboardPerformanceMetric = {
   deltaTone?: 'up' | 'down' | 'neutral'
 }
 
+/** @deprecated Prefer PerformanceSummaryPoint */
 export type DashboardPerformancePoint = {
   label: string
   shipments: number
   revenueTry: number
 }
 
+/** @deprecated Prefer PerformanceSummary */
 export type DashboardPerformanceStrip = {
   period: DashboardPerformancePeriod
   metrics: DashboardPerformanceMetric[]
   series: DashboardPerformancePoint[]
   reportsHref: string
+}
+
+export type DashboardInsightsRange = '7d' | '30d' | '3m'
+
+export type DashboardInsights = {
+  range: DashboardInsightsRange
+  shipmentSeries: Array<{ date: string; label: string; count: number }>
+  statusBreakdown: Array<{ status: string; label: string; count: number }>
+  newOrdersCount: number
+  newQuotesCount: number
+  reportsHref: string
+  ordersHref: string
+  quotesHref: string
 }
 
 export type DashboardSnapshot = {

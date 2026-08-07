@@ -29,6 +29,12 @@ export type GonderReturn = {
   carrierRef: string | null
   carrier: string
   returnMethod: string
+  /** Etiket / POD / foto belgesi meta */
+  documents: {
+    labelReady: boolean
+    hasProofOfDelivery: boolean
+    hasPhotos: boolean
+  }
   note?: string
 }
 

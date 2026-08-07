@@ -22,12 +22,87 @@ export type OrderView =
   | 'issues'
   | 'completed'
 
-export type OrderChannel = 'shopify' | 'trendyol' | 'excel' | 'api' | 'manual'
+export type OrderChannelType =
+  | 'shopify'
+  | 'woocommerce'
+  | 'trendyol'
+  | 'hepsiburada'
+  | 'amazon'
+  | 'api'
+  | 'excel'
+  | 'manual'
+
+/** @deprecated Use OrderChannelType */
+export type OrderChannel = OrderChannelType
+
+export type OrderChannelConnection = {
+  id: string
+  type: OrderChannelType
+  name: string
+  storeName?: string
+  logoUrl?: string
+  isActive: boolean
+}
+
+export type OrdersLayout = 'table' | 'board'
+
+export type OrderDetailTab =
+  | 'overview'
+  | 'items'
+  | 'customer'
+  | 'integration'
+  | 'history'
+
+export type OrderPaymentStatus = 'unpaid' | 'pending' | 'paid' | 'refunded' | 'failed'
+
+export type OrderPaymentMethod =
+  | 'credit_card'
+  | 'cash_on_delivery'
+  | 'bank_transfer'
+  | 'marketplace'
+  | 'other'
+
+export type OrderAddress = {
+  fullName: string
+  phone?: string
+  line1: string
+  line2?: string
+  district?: string
+  city: string
+  postalCode?: string
+  country: string
+}
+
+export type OrderLineItem = {
+  id: string
+  sku: string
+  name: string
+  quantity: number
+  unitPriceTry: number
+  totalTry: number
+}
+
+export type OrderDataQualityIssue = {
+  id: string
+  severity: 'error' | 'warning' | 'info'
+  field?: string
+  message: string
+}
+
+export type OrderHistoryEvent = {
+  id: string
+  at: string
+  type: string
+  title: string
+  description?: string
+  actor?: string
+}
 
 export type GonderOrder = {
   id: string
   orderNumber: string
-  channel: OrderChannel
+  channel: OrderChannelType
+  channelId: string
   customerName: string
   originCity: string
   destinationCity: string
@@ -37,6 +112,64 @@ export type GonderOrder = {
   pieceCount: number
   createdAt: string
   shipmentId: string | null
+}
+
+/** Detail-only enrichment — list rows remain GonderOrder-shaped. */
+export type GonderOrderDetail = GonderOrder & {
+  customerEmail: string | null
+  customerPhone: string | null
+  shippingAddress: OrderAddress
+  billingAddress: OrderAddress
+  paymentStatus: OrderPaymentStatus
+  paymentMethod: OrderPaymentMethod
+  externalOrderId: string
+  channelMetadata: Record<string, string>
+  lastSyncedAt: string | null
+  dataQualityIssues: OrderDataQualityIssue[]
+  lineItems: OrderLineItem[]
+  history: OrderHistoryEvent[]
+  notes: string | null
+}
+
+export const ORDER_DETAIL_TABS: OrderDetailTab[] = [
+  'overview',
+  'items',
+  'customer',
+  'integration',
+  'history',
+]
+
+export const ORDER_DETAIL_TAB_LABELS: Record<OrderDetailTab, string> = {
+  overview: 'Özet',
+  items: 'Kalemler',
+  customer: 'Müşteri',
+  integration: 'Entegrasyon',
+  history: 'Geçmiş',
+}
+
+export const ORDER_PAYMENT_STATUS_LABELS: Record<OrderPaymentStatus, string> = {
+  unpaid: 'Ödenmedi',
+  pending: 'Ödeme bekliyor',
+  paid: 'Ödendi',
+  refunded: 'İade edildi',
+  failed: 'Ödeme başarısız',
+}
+
+export const ORDER_PAYMENT_METHOD_LABELS: Record<OrderPaymentMethod, string> = {
+  credit_card: 'Kredi kartı',
+  cash_on_delivery: 'Kapıda ödeme',
+  bank_transfer: 'Havale / EFT',
+  marketplace: 'Pazaryeri tahsilatı',
+  other: 'Diğer',
+}
+
+export const ORDER_QUALITY_SEVERITY_LABELS: Record<
+  OrderDataQualityIssue['severity'],
+  string
+> = {
+  error: 'Hata',
+  warning: 'Uyarı',
+  info: 'Bilgi',
 }
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
@@ -55,9 +188,12 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   integration_error: 'Entegrasyon hatası',
 }
 
-export const ORDER_CHANNEL_LABELS: Record<OrderChannel, string> = {
+export const ORDER_CHANNEL_LABELS: Record<OrderChannelType, string> = {
   shopify: 'Shopify',
+  woocommerce: 'WooCommerce',
   trendyol: 'Trendyol',
+  hepsiburada: 'Hepsiburada',
+  amazon: 'Amazon',
   excel: 'Excel',
   api: 'API',
   manual: 'Manuel',
@@ -88,3 +224,16 @@ export const ORDER_STATUS_BADGE: Record<OrderStatus, string> = {
   cancelled: 'border-rose-500/20 bg-rose-500/10 text-rose-700',
   integration_error: 'border-rose-500/20 bg-rose-500/10 text-rose-700',
 }
+
+/** Kanban sütunları — operasyonel pipeline */
+export const ORDER_KANBAN_COLUMNS: OrderStatus[] = [
+  'pending_review',
+  'needs_information',
+  'approved',
+  'ready_for_shipment',
+  'quote_pending',
+  'payment_pending',
+  'processing',
+  'shipment_created',
+  'completed',
+]

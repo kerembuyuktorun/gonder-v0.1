@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { AUTH_ACCESS_COOKIE, AUTH_REFRESH_COOKIE } from '../../../_shared/auth-cookies'
 import { backendRequest } from '../../_lib/auth-backend'
 import { clearSessionCookies } from '../../_lib/auth-cookies'
+import { isDemoAccessToken, isDevAuthBypassEnabled } from '../../_lib/dev-auth'
 
 /**
  * Client → `/api/auth/logout` body is empty on purpose (httpOnly cookies).
@@ -14,7 +15,10 @@ export async function POST() {
   const accessToken = cookieStore.get(AUTH_ACCESS_COOKIE)?.value
   const refreshToken = cookieStore.get(AUTH_REFRESH_COOKIE)?.value
 
-  if (refreshToken || accessToken) {
+  const skipIam =
+    isDevAuthBypassEnabled() && (isDemoAccessToken(accessToken) || !accessToken)
+
+  if (!skipIam && (refreshToken || accessToken)) {
     await backendRequest<unknown>(
       'api/v1/auth/logout',
       {

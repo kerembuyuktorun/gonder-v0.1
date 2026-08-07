@@ -14,3 +14,13 @@ export type GonderPermission = (typeof GONDER_PERMISSIONS)[keyof typeof GONDER_P
 export function canGonder(_permission: GonderPermission): boolean {
   return true
 }
+
+/** Nav / aksiyon metadata — shell filtreleri için */
+export type GonderPermissionGate = {
+  requiredPermission?: GonderPermission
+}
+
+export function isGonderNavVisible(gate?: GonderPermissionGate): boolean {
+  if (!gate?.requiredPermission) return true
+  return canGonder(gate.requiredPermission)
+}

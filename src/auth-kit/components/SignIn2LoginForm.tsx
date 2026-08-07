@@ -235,6 +235,19 @@ export function SignIn2LoginForm({
           </Button>
         </Field>
 
+        {process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === 'true' && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+            <p className="text-sm font-medium">Test girişi aktif</p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-800">
+              API olmadan oturum açılır; OTP atlanır. Örnek:{' '}
+              <code className="rounded bg-amber-100 px-1">superadmin@arfplatform.local</code> /{' '}
+              <code className="rounded bg-amber-100 px-1">Demo123!</code>
+              <br />
+              veya herhangi bir e-posta + şifre.
+            </p>
+          </div>
+        )}
+
         {(canUseGoogle || canUseApple) && (
           <>
             <FieldSeparator>{tOr('signIn.orContinueWith', 'or continue with')}</FieldSeparator>

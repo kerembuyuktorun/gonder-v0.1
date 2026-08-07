@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type {
   ColumnDef,
   PaginationState,
@@ -17,7 +18,7 @@ import {
   createSelectionColumn,
 } from '@hascanb/arf-ui-kit/datatable-kit'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, Printer, Truck } from 'lucide-react'
+import { AlertTriangle, Bike, Eye, MapPinned, Package, Printer, Truck, Warehouse } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -25,24 +26,40 @@ import { ARF_ROUTES } from '../../../../_shared/routes'
 import {
   DataWorkspace,
   RowQuickActions,
+  type ActiveFilterChip,
 } from '../../_components/data-workspace'
 import { shipmentsListRepository } from '../../_data/shipments-list-repository'
 import { useWorkspaceListUrlState } from '../../_hooks/use-workspace-list-url-state'
 import {
+  LOGISTICS_MODE_LABELS,
+  SHIPMENT_OPERATION_BADGE,
+  SHIPMENT_OPERATION_LABELS,
+  SHIPMENT_OPERATION_TAB_LABELS,
+  SHIPMENT_SERVICE_TYPE_LABELS,
   SHIPMENT_STATUS_BADGE,
   SHIPMENT_STATUS_LABELS,
   type GonderShipmentListItem,
   type ShipmentListStatus,
+  type ShipmentOperationTab,
   type ShipmentView,
 } from '../../_types/shipments'
+
+const OPERATION_TABS = ['all', 'parcel', 'courier', 'logistics'] as const
+
+const OPERATION_ICONS = {
+  all: Package,
+  parcel: Package,
+  courier: Bike,
+  logistics: Warehouse,
+} as const
 
 const VIEWS = ['all', 'active', 'delivered', 'returned', 'issues', 'cancelled'] as const
 
 const VIEW_LABELS: Record<ShipmentView, string> = {
-  all: 'Tüm Gönderiler',
+  all: 'Tümü',
   active: 'Aktif',
-  delivered: 'Teslim Edilenler',
-  returned: 'İadeler',
+  delivered: 'Teslim',
+  returned: 'İade',
   issues: 'Sorunlu',
   cancelled: 'İptal',
 }
@@ -70,6 +87,7 @@ function formatDate(value: string) {
 }
 
 export function ShipmentsListContent() {
+  const router = useRouter()
   const queryClient = useQueryClient()
   const url = useWorkspaceListUrlState({
     defaultView: 'active',
@@ -84,10 +102,11 @@ export function ShipmentsListContent() {
     () => ({
       view: url.view,
       status: (url.status as ShipmentListStatus | null) ?? null,
+      operation: url.operation as ShipmentOperationTab,
       search: url.search,
       carrier: url.carrier,
     }),
-    [url.carrier, url.search, url.status, url.view]
+    [url.carrier, url.operation, url.search, url.status, url.view]
   )
 
   const { data, isLoading } = useQuery({
@@ -133,12 +152,39 @@ export function ShipmentsListContent() {
         ),
       },
       {
+        accessorKey: 'operationType',
+        header: ({ column }) => <DataTableColumnHeader column={column} title='Operasyon' />,
+        cell: ({ row }) => (
+          <div className='space-y-1'>
+            <Badge
+              variant='outline'
+              className={SHIPMENT_OPERATION_BADGE[row.original.operationType]}
+            >
+              {SHIPMENT_OPERATION_LABELS[row.original.operationType]}
+            </Badge>
+            {row.original.logisticsMode ? (
+              <div className='text-xs text-muted-foreground'>
+                {LOGISTICS_MODE_LABELS[row.original.logisticsMode]}
+              </div>
+            ) : null}
+          </div>
+        ),
+      },
+      {
         accessorKey: 'carrier',
         header: ({ column }) => <DataTableColumnHeader column={column} title='Taşıyıcı' />,
       },
       {
-        accessorKey: 'serviceType',
+        id: 'service',
         header: ({ column }) => <DataTableColumnHeader column={column} title='Hizmet' />,
+        cell: ({ row }) => (
+          <div className='min-w-0'>
+            <div className='truncate'>{row.original.serviceLabel}</div>
+            <div className='truncate text-xs text-muted-foreground'>
+              {SHIPMENT_SERVICE_TYPE_LABELS[row.original.serviceType]}
+            </div>
+          </div>
+        ),
       },
       {
         accessorKey: 'status',
@@ -172,6 +218,10 @@ export function ShipmentsListContent() {
         id: 'actions',
         header: '',
         enableSorting: false,
+        enableHiding: false,
+        size: 184,
+        minSize: 176,
+        maxSize: 220,
         cell: ({ row }) => {
           const item = row.original
           const canPickup = item.status === 'label_ready'
@@ -179,24 +229,22 @@ export function ShipmentsListContent() {
             <RowQuickActions
               actions={[
                 {
-                  id: 'view',
-                  label: 'İncele',
-                  icon: Eye,
-                  onClick: () => toast.message(`${item.reference} incelenecek`),
-                },
-                {
                   id: 'print',
-                  label: 'Etiket yazdır',
+                  labelKey: 'shipments.printLabel',
+                  shortLabelKey: 'shipments.printLabelShort',
                   icon: Printer,
+                  priority: 'primary',
+                  variant: 'primary',
                   onClick: () => toast.success('Etiket yazdırma kuyruğa alındı'),
                 },
                 ...(canPickup
                   ? [
                       {
                         id: 'pickup',
-                        label: 'Alındı işaretle',
+                        labelKey: 'shipments.markPickedUp',
                         icon: Truck,
-                        tone: 'success' as const,
+                        priority: 'secondary' as const,
+                        variant: 'secondary' as const,
                         onClick: () => {
                           void shipmentsListRepository
                             .updateStatus(item.id, 'picked_up')
@@ -207,15 +255,75 @@ export function ShipmentsListContent() {
                         },
                       },
                     ]
+                  : [
+                      {
+                        id: 'track',
+                        labelKey: 'shipments.track',
+                        icon: Eye,
+                        priority: 'secondary' as const,
+                        variant: 'secondary' as const,
+                        onClick: () =>
+                          router.push(
+                            `${ARF_ROUTES.gonder.shipments.detail(item.id)}?tab=tracking`
+                          ),
+                      },
+                    ]),
+                {
+                  id: 'view',
+                  labelKey: 'shipments.inspect',
+                  icon: Eye,
+                  priority: 'overflow' as const,
+                  variant: 'secondary',
+                  onClick: () => router.push(ARF_ROUTES.gonder.shipments.detail(item.id)),
+                },
+                ...(item.status === 'out_for_delivery'
+                  ? [
+                      {
+                        id: 'deliver',
+                        labelKey: 'shipments.deliver',
+                        icon: Truck,
+                        priority: 'overflow' as const,
+                        onClick: () => {
+                          void shipmentsListRepository
+                            .updateStatus(item.id, 'delivered')
+                            .then(async () => {
+                              toast.success('Teslim edildi olarak işaretlendi')
+                              await queryClient.invalidateQueries({ queryKey: SHIPMENTS_KEY })
+                            })
+                        },
+                      },
+                    ]
                   : []),
+                {
+                  id: 'notify',
+                  labelKey: 'shipments.notify',
+                  icon: MapPinned,
+                  priority: 'overflow' as const,
+                  onClick: () => toast.message('Müşteri bilgilendirme kuyruğa alındı'),
+                },
+                {
+                  id: 'issue',
+                  labelKey: 'shipments.reportIssue',
+                  icon: AlertTriangle,
+                  priority: 'overflow' as const,
+                  variant: 'destructive' as const,
+                  onClick: () => toast.message('Sorun bildirimi açılacak'),
+                },
               ]}
             />
           )
         },
       },
     ],
-    [queryClient]
+    [queryClient, router]
   )
+
+  const primaryTabs = OPERATION_TABS.map((id) => ({
+    id,
+    label: SHIPMENT_OPERATION_TAB_LABELS[id],
+    count: data?.operationCounts[id],
+    icon: OPERATION_ICONS[id],
+  }))
 
   const tabs = VIEWS.map((id) => ({
     id,
@@ -223,16 +331,42 @@ export function ShipmentsListContent() {
     count: data?.viewCounts[id],
   }))
 
+  const filterChips = useMemo(() => {
+    const chips: ActiveFilterChip[] = []
+    if (url.operation !== 'all') {
+      chips.push({
+        id: 'operation',
+        label: `Operasyon: ${SHIPMENT_OPERATION_LABELS[url.operation]}`,
+        onRemove: () => url.setOperation('all'),
+      })
+    }
+    if (url.status) {
+      chips.push({
+        id: 'status',
+        label: `Durum: ${SHIPMENT_STATUS_LABELS[url.status as ShipmentListStatus] ?? url.status}`,
+        onRemove: () => url.setStatus(null),
+      })
+    }
+    return chips
+  }, [url])
+
   return (
     <DataWorkspace
       breadcrumbs={[{ label: 'Gönder' }, { label: 'Gönderiler' }]}
       title='Gönderiler'
-      description='Onaylanmış siparişlerden oluşan operasyonel gönderileri takip edin.'
+      description='Kargo, kurye ve lojistik gönderilerini operasyon tipine göre takip edin.'
       headerActions={
         <Button size='sm' asChild>
           <Link href={ARF_ROUTES.gonder.shipments.create}>Yeni gönderi</Link>
         </Button>
       }
+      primaryTabs={primaryTabs}
+      primaryView={url.operation}
+      onPrimaryViewChange={(operation) => {
+        setPagination((p) => ({ ...p, pageIndex: 0 }))
+        setRowSelection({})
+        url.setOperation(operation)
+      }}
       tabs={tabs}
       view={url.view}
       onViewChange={(view) => {
@@ -247,20 +381,11 @@ export function ShipmentsListContent() {
         url.setSearch(value)
       }}
       searchPlaceholder='Gönderi no, sipariş veya taşıyıcı ara…'
-      filterChips={
-        url.status
-          ? [
-              {
-                id: 'status',
-                label: `Durum: ${SHIPMENT_STATUS_LABELS[url.status as ShipmentListStatus] ?? url.status}`,
-                onRemove: () => url.setStatus(null),
-              },
-            ]
-          : []
-      }
+      filterChips={filterChips}
       onClearFilters={() => {
         setSearchInput('')
         url.clearFilters()
+        url.setOperation('all')
       }}
       toolbarTrailing={table ? <DataTableViewOptions table={table} /> : null}
       selectedCount={selectedIds.length}

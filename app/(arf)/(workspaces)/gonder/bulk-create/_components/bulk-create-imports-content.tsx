@@ -144,13 +144,19 @@ export function BulkCreateImportsContent() {
       {
         id: 'actions',
         header: '',
+        enableHiding: false,
+        size: 184,
+        minSize: 176,
+        maxSize: 220,
         cell: ({ row }) => (
           <RowQuickActions
             actions={[
               {
                 id: 'open',
-                label: 'Aç',
+                labelKey: 'excel.inspect',
                 icon: Eye,
+                priority: 'primary',
+                variant: 'secondary',
                 onClick: () =>
                   router.push(ARF_ROUTES.gonder.bulkCreate.importDetail(row.original.id)),
               },

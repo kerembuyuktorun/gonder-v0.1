@@ -265,6 +265,7 @@ function countViews(items: QuoteRequest[]): Record<QuoteRequestView, number> {
     action_required: items.filter((i) =>
       QUOTE_REQUEST_VIEW_STATUSES.action_required!.includes(i.status)
     ).length,
+    ready: items.filter((i) => QUOTE_REQUEST_VIEW_STATUSES.ready!.includes(i.status)).length,
     converted: items.filter((i) => QUOTE_REQUEST_VIEW_STATUSES.converted!.includes(i.status))
       .length,
     closed: items.filter((i) => QUOTE_REQUEST_VIEW_STATUSES.closed!.includes(i.status)).length,

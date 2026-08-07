@@ -182,29 +182,95 @@ export function BulkCreateJobDetailContent({ jobId }: Props) {
       {
         id: 'actions',
         header: '',
+        enableHiding: false,
+        size: 184,
+        minSize: 176,
+        maxSize: 220,
         cell: ({ row }) => {
           const item = row.original
           const locked = item.status === 'created' || item.status === 'skipped'
+          const canApproveRow =
+            !locked && (item.status === 'valid' || item.status === 'warning')
+          const canSkip = !locked && item.status !== 'failed'
+
+          // Validate is job-level only (`useValidateBulkImportJob` / validateJob).
+          // There is no per-row validate API; editing a row + re-running job validate
+          // refreshes staging status for all rows without changing approve/skip semantics.
           return (
             <RowQuickActions
               actions={[
                 {
                   id: 'edit',
-                  label: 'Düzenle',
+                  labelKey: 'excel.edit',
                   icon: Pencil,
+                  priority: canApproveRow ? ('secondary' as const) : ('primary' as const),
+                  variant: 'secondary',
                   disabled: locked,
                   onClick: () => {
                     setEditingRow(item)
                     setEditPayload({ ...item.payload })
                   },
                 },
+                ...(canApproveRow
+                  ? [
+                      {
+                        id: 'approve',
+                        labelKey: 'excel.approve',
+                        icon: Check,
+                        priority: 'primary' as const,
+                        variant: 'primary' as const,
+                        onClick: () => {
+                          void approveRows
+                            .mutateAsync([item.id])
+                            .then((result) => {
+                              toast.success(
+                                `${result.createdCount} gönderi oluşturuldu` +
+                                  (result.failedCount
+                                    ? `, ${result.failedCount} başarısız`
+                                    : '')
+                              )
+                              void refetchRows()
+                            })
+                            .catch((err: unknown) => {
+                              toast.error(
+                                err instanceof Error ? err.message : 'Onay başarısız'
+                              )
+                            })
+                        },
+                      },
+                    ]
+                  : []),
+                ...(canSkip
+                  ? [
+                      {
+                        id: 'skip',
+                        labelKey: 'excel.skip',
+                        shortLabelKey: 'excel.skipShort',
+                        icon: SkipForward,
+                        priority: 'overflow' as const,
+                        onClick: () => {
+                          void skipRows
+                            .mutateAsync([item.id])
+                            .then(() => {
+                              toast.message('Satır atlandı')
+                              void refetchRows()
+                            })
+                            .catch((err: unknown) => {
+                              toast.error(
+                                err instanceof Error ? err.message : 'Atlama başarısız'
+                              )
+                            })
+                        },
+                      },
+                    ]
+                  : []),
               ]}
             />
           )
         },
       },
     ],
-    []
+    [approveRows, refetchRows, skipRows]
   )
 
   const handleSaveMapping = async () => {

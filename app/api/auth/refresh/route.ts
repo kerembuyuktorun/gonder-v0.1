@@ -6,6 +6,7 @@ import {
   parseSessionInfo,
 } from '../../_lib/auth-backend'
 import { setSessionCookies } from '../../_lib/auth-cookies'
+import { getDevDemoAuthConfig, isDevAuthBypassEnabled } from '../../_lib/dev-auth'
 
 export async function POST() {
   const cookieStore = await cookies()
@@ -16,6 +17,24 @@ export async function POST() {
       { success: false, error: 'Yenileme oturumu bulunamadı.' },
       { status: 401 }
     )
+  }
+
+  if (isDevAuthBypassEnabled()) {
+    const demo = getDevDemoAuthConfig()
+    if (refreshToken !== demo.refreshToken) {
+      return NextResponse.json(
+        { success: false, error: 'Yenileme oturumu bulunamadı.' },
+        { status: 401 }
+      )
+    }
+
+    const response = NextResponse.json({ success: true })
+    setSessionCookies(response, {
+      accessToken: demo.accessToken,
+      refreshToken: demo.refreshToken,
+      rememberMe: true,
+    })
+    return response
   }
 
   const upstream = await backendRequest<unknown>('api/v1/auth/refresh', {

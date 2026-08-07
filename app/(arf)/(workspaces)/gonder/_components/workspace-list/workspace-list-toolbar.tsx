@@ -12,7 +12,9 @@ type Props = {
   searchPlaceholder?: string
   activeFilterCount?: number
   onClearFilters?: () => void
+  /** Aktif filtre chip / özet satırı */
   filterSummary?: ReactNode
+  onOpenFilters?: () => void
   trailing?: ReactNode
 }
 
@@ -23,6 +25,7 @@ export function WorkspaceListToolbar({
   activeFilterCount = 0,
   onClearFilters,
   filterSummary,
+  onOpenFilters,
   trailing,
 }: Props) {
   return (
@@ -38,9 +41,18 @@ export function WorkspaceListToolbar({
           />
         </div>
         <div className='flex items-center gap-1.5'>
-          <Button type='button' variant='outline' size='icon' className='size-9' aria-label='Filtreler'>
-            <Filter className='size-4' />
-          </Button>
+          {onOpenFilters ? (
+            <Button
+              type='button'
+              variant='outline'
+              size='icon'
+              className='size-9'
+              aria-label='Filtreler'
+              onClick={onOpenFilters}
+            >
+              <Filter className='size-4' />
+            </Button>
+          ) : null}
           {trailing}
         </div>
       </div>

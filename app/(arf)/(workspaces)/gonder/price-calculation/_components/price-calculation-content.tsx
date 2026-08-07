@@ -33,9 +33,9 @@ import {
   type LogisticsSubtype,
   type OperationType,
 } from '../../_types/price-calculation'
-import { PartyAddressCard } from '../../_components/party-address-card'
 import { PieceListEditor } from '../../_components/piece-list-editor'
 import { PriceDraftSummaryPanel } from '../../_components/price-draft-summary-panel'
+import { PriceRouteLocations } from '../../_components/price-route-locations'
 import { SelectionTile } from '../../_components/selection-tile'
 import { quoteRequestsRepository } from '../../_data/quote-requests-repository'
 
@@ -70,6 +70,7 @@ export function PriceCalculationContent() {
     setOperationType,
     setOrigin,
     setDestination,
+    swapLocations,
     setLogisticsSubtype,
     setVehicleType,
     setBodyType,
@@ -136,24 +137,15 @@ export function PriceCalculationContent() {
               ) : null}
             </Card>
 
-            <div className='grid gap-2 md:grid-cols-2'>
-              <PartyAddressCard
-                title='Gönderici'
-                customerLabel='Gönderici müşteri'
-                pinLabel='Sabitle'
-                value={draft.origin}
-                onChange={setOrigin}
-                invalid={attempted && !draft.origin}
-              />
-              <PartyAddressCard
-                title='Alıcı'
-                customerLabel='Alıcı müşteri'
-                pinLabel='Sabitle'
-                value={draft.destination}
-                onChange={setDestination}
-                invalid={attempted && !draft.destination}
-              />
-            </div>
+            <PriceRouteLocations
+              origin={draft.origin}
+              destination={draft.destination}
+              onOriginChange={setOrigin}
+              onDestinationChange={setDestination}
+              onSwap={swapLocations}
+              originInvalid={attempted && !draft.origin}
+              destinationInvalid={attempted && !draft.destination}
+            />
 
             {draft.operationType === 'logistics' ? (
               <Card className='gap-0 py-0 shadow-sm'>

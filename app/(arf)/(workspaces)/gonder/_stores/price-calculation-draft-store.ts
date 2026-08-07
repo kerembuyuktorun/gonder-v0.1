@@ -4,20 +4,22 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import {
   EMPTY_PRICE_DRAFT,
-  type AddressDraft,
+  normalizePriceLocation,
   type CourierSpeed,
   type DraftMode,
   type DraftPiece,
   type LogisticsSubtype,
   type OperationType,
   type PriceCalculationDraft,
+  type PriceCalculationLocation,
 } from '../_types/price-calculation'
 
 type PriceDraftStore = {
   draft: PriceCalculationDraft
   setOperationType: (value: OperationType) => void
-  setOrigin: (value: AddressDraft | null) => void
-  setDestination: (value: AddressDraft | null) => void
+  setOrigin: (value: PriceCalculationLocation | null) => void
+  setDestination: (value: PriceCalculationLocation | null) => void
+  swapLocations: () => void
   setLogisticsSubtype: (value: LogisticsSubtype) => void
   setVehicleType: (value: string | null) => void
   setBodyType: (value: string | null) => void
@@ -37,6 +39,8 @@ function normalizeDraft(draft: Partial<PriceCalculationDraft> | undefined): Pric
   return {
     ...EMPTY_PRICE_DRAFT,
     ...draft,
+    origin: normalizePriceLocation(draft?.origin),
+    destination: normalizePriceLocation(draft?.destination),
     pieces: Array.isArray(draft?.pieces) ? draft.pieces : [],
   }
 }
@@ -56,9 +60,20 @@ export const usePriceDraftStore = create<PriceDraftStore>()(
               operationType === 'courier' ? state.draft.courierSpeed ?? 'express' : null,
           },
         })),
-      setOrigin: (origin) => set((state) => ({ draft: { ...state.draft, origin } })),
+      setOrigin: (origin) =>
+        set((state) => ({ draft: { ...state.draft, origin: normalizePriceLocation(origin) } })),
       setDestination: (destination) =>
-        set((state) => ({ draft: { ...state.draft, destination } })),
+        set((state) => ({
+          draft: { ...state.draft, destination: normalizePriceLocation(destination) },
+        })),
+      swapLocations: () =>
+        set((state) => ({
+          draft: {
+            ...state.draft,
+            origin: state.draft.destination,
+            destination: state.draft.origin,
+          },
+        })),
       setLogisticsSubtype: (logisticsSubtype) =>
         set((state) => ({ draft: { ...state.draft, logisticsSubtype } })),
       setVehicleType: (vehicleType) =>
@@ -81,11 +96,17 @@ export const usePriceDraftStore = create<PriceDraftStore>()(
       setSelectedQuoteId: (selectedQuoteId) =>
         set((state) => ({ draft: { ...state.draft, selectedQuoteId } })),
       setMode: (mode) => set((state) => ({ draft: { ...state.draft, mode } })),
-      patchDraft: (patch) => set((state) => ({ draft: { ...state.draft, ...patch } })),
+      patchDraft: (patch) =>
+        set((state) => ({
+          draft: normalizeDraft({
+            ...state.draft,
+            ...patch,
+          }),
+        })),
       resetDraft: () => set({ draft: EMPTY_PRICE_DRAFT }),
     }),
     {
-      name: 'gonder-price-calculation-draft-v2',
+      name: 'gonder-price-calculation-draft-v3',
       partialize: (state) => ({ draft: state.draft }),
       merge: (persisted, current) => {
         const persistedState = persisted as { draft?: Partial<PriceCalculationDraft> } | undefined
@@ -100,8 +121,8 @@ export const usePriceDraftStore = create<PriceDraftStore>()(
 
 export function isPriceDraftReady(draft: PriceCalculationDraft): boolean {
   if (!draft.operationType) return false
-  if (!draft.origin?.label?.trim()) return false
-  if (!draft.destination?.label?.trim()) return false
+  if (!draft.origin?.label?.trim() || !draft.origin.city?.trim()) return false
+  if (!draft.destination?.label?.trim() || !draft.destination.city?.trim()) return false
 
   if (draft.operationType === 'logistics') {
     if (!draft.logisticsSubtype) return false

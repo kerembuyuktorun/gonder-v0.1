@@ -13,6 +13,18 @@ export type AddressDraft = {
   placeId?: string
 }
 
+/** Lightweight origin/destination for price calculation (no customer/party). */
+export type PriceCalculationLocation = {
+  label: string
+  city: string
+  district?: string
+  country: string
+  placeId?: string
+  lat?: number
+  lng?: number
+  savedAddressId?: string
+}
+
 export type DraftPiece = {
   id: string
   type: string
@@ -27,8 +39,8 @@ export type DraftPiece = {
 export type PriceCalculationDraft = {
   mode: DraftMode
   operationType: OperationType | null
-  origin: AddressDraft | null
-  destination: AddressDraft | null
+  origin: PriceCalculationLocation | null
+  destination: PriceCalculationLocation | null
   logisticsSubtype: LogisticsSubtype | null
   vehicleType: string | null
   bodyType: string | null
@@ -49,6 +61,75 @@ export type AddressSuggestion = {
   lat?: number
   lng?: number
   placeId?: string
+}
+
+export type LocationSuggestionGroup = 'recent' | 'saved' | 'search'
+
+export type LocationSuggestion = {
+  id: string
+  label: string
+  city: string
+  district?: string
+  country: string
+  placeId?: string
+  lat?: number
+  lng?: number
+  savedAddressId?: string
+  /** Short tag like Depo, Şube, Merkez when from a saved address */
+  savedTag?: string
+  customerName?: string
+  group: LocationSuggestionGroup
+}
+
+export type LocationSuggestResult = {
+  recent: LocationSuggestion[]
+  saved: LocationSuggestion[]
+  search: LocationSuggestion[]
+}
+
+export function toAddressDraftFromLocation(
+  location: PriceCalculationLocation
+): AddressDraft {
+  return {
+    label: location.label,
+    line1: location.label,
+    district: location.district,
+    city: location.city,
+    lat: location.lat,
+    lng: location.lng,
+    placeId: location.placeId,
+  }
+}
+
+export function normalizePriceLocation(
+  value: Partial<PriceCalculationLocation> | Partial<AddressDraft> | null | undefined
+): PriceCalculationLocation | null {
+  if (!value) return null
+  const label = typeof value.label === 'string' ? value.label.trim() : ''
+  if (!label) return null
+
+  const city =
+    typeof value.city === 'string' && value.city.trim()
+      ? value.city.trim()
+      : label.split(',').at(-1)?.trim() || label
+
+  return {
+    label,
+    city,
+    district: typeof value.district === 'string' ? value.district : undefined,
+    country:
+      typeof (value as PriceCalculationLocation).country === 'string' &&
+      (value as PriceCalculationLocation).country.trim()
+        ? (value as PriceCalculationLocation).country
+        : 'TR',
+    placeId: typeof value.placeId === 'string' ? value.placeId : undefined,
+    lat: typeof value.lat === 'number' ? value.lat : undefined,
+    lng: typeof value.lng === 'number' ? value.lng : undefined,
+    savedAddressId:
+      typeof (value as PriceCalculationLocation).savedAddressId === 'string'
+        ? (value as PriceCalculationLocation).savedAddressId
+        : undefined,
+  }
 }
 
 export type QuotePriceState = 'ready' | 'preparing'

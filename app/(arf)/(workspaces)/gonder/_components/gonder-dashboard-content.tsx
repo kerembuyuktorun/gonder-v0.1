@@ -4,16 +4,24 @@ import { useEffect, useState } from 'react'
 import { AppHeader } from '@hascanb/arf-ui-kit/layout-kit'
 import { getSession } from '../../../(auth)/_api/auth-client'
 import { getDisplayNameFromUser } from '../../../_shared/auth-me-user'
-import { useDashboardSnapshot } from '../_hooks/use-dashboard-snapshot'
-import { DashboardActiveShipments } from './dashboard-active-shipments'
-import { DashboardBottomStrip } from './dashboard-bottom-strip'
+import {
+  useDashboardInsights,
+  useDashboardPerformance,
+  useDashboardSnapshot,
+} from '../_hooks/use-dashboard-snapshot'
+import type { DashboardInsightsRange, PerformanceSummaryRange } from '../_types/dashboard'
+import { DashboardActionSummaries } from './dashboard-action-summaries'
+import { DashboardInsightsPanel } from './dashboard-insights-panel'
 import { DashboardPerformanceStrip } from './dashboard-performance-strip'
 import { DashboardQuickActions } from './dashboard-quick-actions'
-import { DashboardStatusSummary } from './dashboard-status-summary'
 
 export function GonderDashboardContent() {
   const [greetingName, setGreetingName] = useState<string | undefined>(undefined)
+  const [insightsRange, setInsightsRange] = useState<DashboardInsightsRange>('30d')
+  const [performanceRange, setPerformanceRange] = useState<PerformanceSummaryRange>('30d')
   const { data, isLoading, isError } = useDashboardSnapshot({ greetingName })
+  const insightsQuery = useDashboardInsights(insightsRange)
+  const performanceQuery = useDashboardPerformance(performanceRange)
 
   useEffect(() => {
     let cancelled = false
@@ -52,17 +60,40 @@ export function GonderDashboardContent() {
         ) : (
           <>
             <DashboardQuickActions actions={data.quickActions} />
-            <DashboardPerformanceStrip performance={data.performance} />
+            {performanceQuery.data ? (
+              <DashboardPerformanceStrip
+                summary={performanceQuery.data}
+                range={performanceRange}
+                onRangeChange={setPerformanceRange}
+              />
+            ) : (
+              <div className='rounded-xl border border-border bg-card p-3 text-sm text-muted-foreground'>
+                Performans özeti yükleniyor…
+              </div>
+            )}
 
-            <div className='grid gap-2.5 xl:grid-cols-[minmax(0,1.7fr)_minmax(260px,0.9fr)]'>
-              <DashboardActiveShipments shipments={data.activeShipments} />
-              <DashboardStatusSummary items={data.statusSummary} />
+            <div className='grid gap-2.5 xl:grid-cols-[minmax(0,2fr)_minmax(220px,1fr)]'>
+              {insightsQuery.data ? (
+                <DashboardInsightsPanel
+                  insights={insightsQuery.data}
+                  range={insightsRange}
+                  onRangeChange={setInsightsRange}
+                />
+              ) : (
+                <div className='rounded-xl border border-border bg-card p-3 text-sm text-muted-foreground'>
+                  Analitik yükleniyor…
+                </div>
+              )}
+
+              {insightsQuery.data ? (
+                <DashboardActionSummaries
+                  newOrdersCount={insightsQuery.data.newOrdersCount}
+                  newQuotesCount={insightsQuery.data.newQuotesCount}
+                  ordersHref={insightsQuery.data.ordersHref}
+                  quotesHref={insightsQuery.data.quotesHref}
+                />
+              ) : null}
             </div>
-
-            <DashboardBottomStrip
-              pendingOrders={data.pendingOrders}
-              integrations={data.integrations}
-            />
           </>
         )}
       </div>

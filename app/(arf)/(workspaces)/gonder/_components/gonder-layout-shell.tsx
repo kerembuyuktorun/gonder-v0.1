@@ -36,6 +36,7 @@ import { GonderQueryProvider } from "./gonder-query-provider"
 import { useReturnsActiveCount } from "../_hooks/use-returns"
 import { useDesiUnreviewedCount } from "../_hooks/use-desi-adjustments"
 import { useQuoteActionRequiredCount } from "../_hooks/use-quote-requests"
+import { useUpcomingDueCount } from "../_hooks/use-finance"
 
 function hasDemoAuthSession(): boolean {
   if (typeof document === "undefined") return false
@@ -51,6 +52,7 @@ function GonderSidebarShell({ children }: { children: React.ReactNode }) {
   const returnsActiveCount = useReturnsActiveCount()
   const desiUnreviewedCount = useDesiUnreviewedCount()
   const quotesActionCount = useQuoteActionRequiredCount()
+  const upcomingPaymentsCount = useUpcomingDueCount()
 
   const navGroups = useMemo(
     () =>
@@ -58,8 +60,14 @@ function GonderSidebarShell({ children }: { children: React.ReactNode }) {
         returnsActiveCount: returnsActiveCount.data,
         desiUnreviewedCount: desiUnreviewedCount.data,
         quotesActionCount: quotesActionCount.data,
+        upcomingPaymentsCount: upcomingPaymentsCount.data,
       }),
-    [desiUnreviewedCount.data, quotesActionCount.data, returnsActiveCount.data]
+    [
+      desiUnreviewedCount.data,
+      quotesActionCount.data,
+      returnsActiveCount.data,
+      upcomingPaymentsCount.data,
+    ]
   )
 
   useEffect(() => {

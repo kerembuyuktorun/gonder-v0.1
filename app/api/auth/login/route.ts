@@ -6,7 +6,11 @@ import {
   validateLoginPayload,
 } from '../../_lib/auth-backend'
 import { clearOtpPendingCookies, setOtpPendingCookies, setSessionCookies } from '../../_lib/auth-cookies'
-import { getDevDemoAuthConfig, isDevAuthBypassEnabled } from '../../_lib/dev-auth'
+import {
+  getDevDemoAuthConfig,
+  isDevAuthBypassEnabled,
+  isValidDemoLogin,
+} from '../../_lib/dev-auth'
 import { enforceRateLimit } from '../../_lib/rate-limit'
 
 function isMissingEnvError(error: unknown): boolean {
@@ -24,12 +28,11 @@ export async function POST(request: Request) {
     const body = await request.json()
     const payload = validateLoginPayload(body)
 
+    // Demo / test mode: skip IAM + OTP and open a session immediately
     if (isDevAuthBypassEnabled()) {
       const demo = getDevDemoAuthConfig()
-      const sameEmail = payload.email.trim().toLowerCase() === demo.email.trim().toLowerCase()
-      const samePassword = payload.password === demo.password
 
-      if (!sameEmail || !samePassword) {
+      if (!isValidDemoLogin(payload.email, payload.password)) {
         return NextResponse.json(
           { success: false, error: 'Invalid credentials' },
           { status: 401 }
@@ -38,19 +41,25 @@ export async function POST(request: Request) {
 
       const response = NextResponse.json({
         success: true,
-        requiresOtp: true,
-        redirectTo: '/otp',
+        requiresOtp: false,
+        redirectTo: '/',
         data: {
-          requiresOtp: true,
+          requiresOtp: false,
           user: {
             name: 'Demo User',
             username: 'demo-user',
-            email: demo.email,
+            email: payload.email.trim() || demo.email,
           },
+          token: '__cookie_managed_session__',
         },
       })
 
-      setOtpPendingCookies(response, demo.loginSessionId)
+      setSessionCookies(response, {
+        accessToken: demo.accessToken,
+        refreshToken: demo.refreshToken,
+        rememberMe: body?.rememberMe === true,
+      })
+      clearOtpPendingCookies(response)
       return response
     }
 

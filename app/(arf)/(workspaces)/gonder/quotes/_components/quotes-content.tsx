@@ -16,7 +16,8 @@ import {
   DataTableViewOptions,
   createSelectionColumn,
 } from '@hascanb/arf-ui-kit/datatable-kit'
-import { Eye } from 'lucide-react'
+import { Eye, RefreshCw, XCircle } from 'lucide-react'
+import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ARF_ROUTES } from '../../../../_shared/routes'
@@ -32,12 +33,13 @@ import {
   type QuoteRequestView,
 } from '../../_types/quotes'
 
-const VIEWS = ['all', 'open', 'action_required', 'converted', 'closed'] as const
+const VIEWS = ['all', 'open', 'action_required', 'ready', 'converted', 'closed'] as const
 
 const VIEW_LABELS: Record<QuoteRequestView, string> = {
   all: 'Tümü',
   open: 'Açık',
   action_required: 'Aksiyon bekleyen',
+  ready: 'Hazır / yanıt bekleyen',
   converted: 'Dönüşenler',
   closed: 'Kapalı',
 }
@@ -162,20 +164,75 @@ export function QuotesContent() {
         id: 'actions',
         header: '',
         enableSorting: false,
-        cell: ({ row }) => (
-          <RowQuickActions
-            actions={[
-              {
-                id: 'view',
-                label: 'Detay',
-                icon: Eye,
-                onClick: () => {
-                  window.location.href = ARF_ROUTES.gonder.quotes.detail(row.original.id)
+        enableHiding: false,
+        size: 184,
+        minSize: 176,
+        maxSize: 220,
+        cell: ({ row }) => {
+          const item = row.original
+          const canCancel =
+            item.status === 'draft' ||
+            item.status === 'submitted' ||
+            item.status === 'collecting' ||
+            item.status === 'partially_received' ||
+            item.status === 'ready'
+          const canRerequest =
+            item.status === 'expired' ||
+            item.status === 'cancelled' ||
+            item.status === 'rejected'
+
+          return (
+            <RowQuickActions
+              actions={[
+                {
+                  id: 'view',
+                  labelKey: 'quotes.viewOffers',
+                  shortLabelKey: 'quotes.viewOffersShort',
+                  icon: Eye,
+                  priority: 'primary',
+                  variant: 'secondary',
+                  onClick: () => {
+                    window.location.href = ARF_ROUTES.gonder.quotes.detail(item.id)
+                  },
                 },
-              },
-            ]}
-          />
-        ),
+                ...(canCancel
+                  ? [
+                      {
+                        id: 'cancel',
+                        labelKey: 'quotes.cancelRequest',
+                        icon: XCircle,
+                        priority: 'overflow' as const,
+                        variant: 'destructive' as const,
+                        requiresConfirmation: true,
+                        confirmation: {
+                          titleKey: 'quotes.cancelConfirmTitle',
+                          descriptionKey: 'quotes.cancelConfirmDescription',
+                          confirmLabelKey: 'quotes.cancelConfirmAction',
+                        },
+                        onClick: () => toast.message('Talep iptali kaydedilecek'),
+                      },
+                    ]
+                  : []),
+                ...(canRerequest
+                  ? [
+                      {
+                        id: 'rerequest',
+                        labelKey: 'quotes.rerequest',
+                        shortLabelKey: 'quotes.rerequestShort',
+                        icon: RefreshCw,
+                        priority: 'secondary' as const,
+                        variant: 'secondary' as const,
+                        onClick: () => {
+                          toast.message('Yeniden talep için fiyat hesaplamaya yönlendiriliyor')
+                          window.location.href = ARF_ROUTES.gonder.priceCalculation
+                        },
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          )
+        },
       },
     ],
     []

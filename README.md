@@ -43,8 +43,10 @@ Uygulama varsayılan olarak [http://localhost:3000](http://localhost:3000) adres
 IAM_BASE_URL=
 BFF_GRAPHQL_URL=
 
-# Yerel geliştirme yardımcıları (production'da açık olmayın)
+# Yerel / test auth (IAM yokken). OTP atlanır, girişte oturum açılır.
+# Gerçek IAM bağlanınca false yapın.
 DEV_AUTH_BYPASS=false
+NEXT_PUBLIC_DEV_AUTH_BYPASS=false
 DEV_DEMO_EMAIL=
 DEV_DEMO_PASSWORD=
 DEV_DEMO_OTP=

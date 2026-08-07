@@ -4,55 +4,31 @@ import { AUTH_ACCESS_COOKIE } from '../../../_shared/auth-cookies'
 import {
   authMeToSessionUser,
   backendRequest,
-  type ModuleCode,
   modulesToAllowedRoutePrefixes,
   parseAuthMeUser,
   parseModuleCodes,
   parseSessionInfo,
 } from '../../_lib/auth-backend'
-
-function isDevAuthBypassEnabled(): boolean {
-  return process.env.NODE_ENV !== 'production' && process.env.DEV_AUTH_BYPASS === 'true'
-}
+import {
+  getDemoSessionPayload,
+  isDemoAccessToken,
+  isDevAuthBypassEnabled,
+} from '../../_lib/dev-auth'
 
 export async function GET() {
-  if (isDevAuthBypassEnabled()) {
-    const modules: ModuleCode[] = [
-      'CARGO',
-      'LAST_MILE',
-      'GONDER',
-      'FLEET',
-      'DELIVERY',
-      'LOGISTIC',
-      'TESTHUB',
-    ]
-    const allowedRoutes = modulesToAllowedRoutePrefixes(modules)
-
-    return NextResponse.json({
-      authenticated: true,
-      success: true,
-      data: {
-        user: {
-          id: 'dev-user',
-          firstName: 'Dev',
-          lastName: 'User',
-          name: 'Dev User',
-          email: 'dev@local.test',
-          userType: 'Developer',
-          role: 'Developer',
-          profileImage: null,
-          avatar: null,
-        },
-        modules,
-        allowedRoutes,
-      },
-    })
-  }
-
   const cookieStore = await cookies()
   const accessToken = cookieStore.get(AUTH_ACCESS_COOKIE)?.value
 
+  if (isDevAuthBypassEnabled() && isDemoAccessToken(accessToken)) {
+    return NextResponse.json(getDemoSessionPayload())
+  }
+
   if (!accessToken) {
+    return NextResponse.json({ authenticated: false, success: false }, { status: 401 })
+  }
+
+  // Demo bypass without matching token: still reject (login must set demo cookies)
+  if (isDevAuthBypassEnabled()) {
     return NextResponse.json({ authenticated: false, success: false }, { status: 401 })
   }
 

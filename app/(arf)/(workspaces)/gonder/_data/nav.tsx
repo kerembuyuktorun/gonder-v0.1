@@ -8,8 +8,10 @@ import { Switch } from '@/components/ui/switch'
 import {
   BarChart3,
   Calculator,
+  CalendarClock,
   ClipboardList,
   FileSpreadsheet,
+  FileText,
   History,
   LayoutDashboard,
   Link2,
@@ -17,12 +19,14 @@ import {
   PackagePlus,
   Palette,
   Quote,
+  Receipt,
   Route,
   Scale,
   Send,
   Truck,
   Undo2,
   UserRound,
+  Wallet,
   Warehouse,
   Boxes,
   Wrench,
@@ -264,6 +268,7 @@ export type GonderNavBadges = {
   returnsActiveCount?: number
   desiUnreviewedCount?: number
   quotesActionCount?: number
+  upcomingPaymentsCount?: number
 }
 
 export function createGonderNavGroups(badges: GonderNavBadges = {}): NavGroup[] {
@@ -279,7 +284,7 @@ export function createGonderNavGroups(badges: GonderNavBadges = {}): NavGroup[] 
       ],
     },
     {
-      label: 'Operasyon',
+      label: 'Kargo / Gönderi',
       items: [
         {
           title: 'Siparişler',
@@ -349,6 +354,40 @@ export function createGonderNavGroups(badges: GonderNavBadges = {}): NavGroup[] 
           title: 'Raporlar',
           url: R.reports.root,
           icon: BarChart3,
+        },
+      ],
+    },
+    {
+      label: 'Finans',
+      items: [
+        {
+          title: 'Özet',
+          url: R.finance.root,
+          icon: Receipt,
+        },
+        {
+          title: 'Hareketler',
+          url: R.finance.transactions.list,
+          icon: History,
+        },
+        {
+          title: 'Yaklaşan ödemeler',
+          url: R.finance.upcoming.list,
+          icon: CalendarClock,
+          badge:
+            typeof badges.upcomingPaymentsCount === 'number' && badges.upcomingPaymentsCount > 0
+              ? String(badges.upcomingPaymentsCount)
+              : undefined,
+        },
+        {
+          title: 'Faturalar',
+          url: R.finance.invoices.list,
+          icon: FileText,
+        },
+        {
+          title: 'Cüzdan',
+          url: R.finance.wallet.root,
+          icon: Wallet,
         },
       ],
     },

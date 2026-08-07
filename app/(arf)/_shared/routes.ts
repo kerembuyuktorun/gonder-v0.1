@@ -74,6 +74,29 @@ export const ARF_ROUTES = {
       /** Excel içe aktarım workspace — bulk-create */
       excel: `${GONDER_BASE}/bulk-create`,
     },
+    finance: {
+      root: `${GONDER_BASE}/finance`,
+      transactions: {
+        list: `${GONDER_BASE}/finance/transactions`,
+        detail: (transactionId: string) =>
+          `${GONDER_BASE}/finance/transactions/${transactionId}`,
+      },
+      upcoming: {
+        list: `${GONDER_BASE}/finance/upcoming`,
+        detail: (paymentId: string) => `${GONDER_BASE}/finance/upcoming/${paymentId}`,
+      },
+      invoices: {
+        list: `${GONDER_BASE}/finance/invoices`,
+        detail: (invoiceId: string) => `${GONDER_BASE}/finance/invoices/${invoiceId}`,
+      },
+      wallet: {
+        root: `${GONDER_BASE}/finance/wallet`,
+        topUp: `${GONDER_BASE}/finance/wallet/top-up`,
+        history: `${GONDER_BASE}/finance/wallet/history`,
+        historyDetail: (entryId: string) =>
+          `${GONDER_BASE}/finance/wallet/history/${entryId}`,
+      },
+    },
   },
 
   lastmile: {

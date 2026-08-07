@@ -1,6 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type {
   ColumnDef,
   PaginationState,
@@ -15,27 +17,29 @@ import {
   createSelectionColumn,
 } from '@hascanb/arf-ui-kit/datatable-kit'
 import { AppHeader } from '@hascanb/arf-ui-kit/layout-kit'
-import { Check, Eye, X } from 'lucide-react'
+import { Check, Eye, FileText, MapPin, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { ARF_ROUTES } from '../../../../_shared/routes'
+import { RowQuickActions } from '../../_components/data-workspace'
+import {
+  WorkspaceListHeader,
+  WorkspaceListToolbar,
+  WorkspaceViewTabs,
+} from '../../_components/workspace-list'
 import { returnsRepository } from '../../_data/returns-repository'
 import { RETURNS_QUERY_KEY, useReturnsList } from '../../_hooks/use-returns'
 import { useWorkspaceListUrlState } from '../../_hooks/use-workspace-list-url-state'
+import { canGonder, GONDER_PERMISSIONS } from '../../_lib/gonder-permissions'
 import {
   RETURN_STATUS_LABELS,
   type GonderReturn,
   type ReturnStatus,
   type ReturnView,
 } from '../../_types/returns'
-import { canGonder, GONDER_PERMISSIONS } from '../../_lib/gonder-permissions'
-import {
-  WorkspaceListHeader,
-  WorkspaceViewTabs,
-} from '../../_components/workspace-list/workspace-view-tabs'
-import { WorkspaceListToolbar } from '../../_components/workspace-list/workspace-list-toolbar'
 
 const VIEWS = ['all', 'in_progress', 'returned', 'completed', 'rejected_cancelled'] as const
 
@@ -74,6 +78,7 @@ function formatDate(value: string) {
 }
 
 export function ReturnsContent() {
+  const router = useRouter()
   const queryClient = useQueryClient()
   const canManage = canGonder(GONDER_PERMISSIONS.returnsManage)
   const url = useWorkspaceListUrlState({
@@ -119,7 +124,14 @@ export function ReturnsContent() {
       {
         accessorKey: 'orderNumber',
         header: ({ column }) => <DataTableColumnHeader column={column} title='Sipariş No' />,
-        cell: ({ row }) => <span className='font-medium'>{row.original.orderNumber}</span>,
+        cell: ({ row }) => (
+          <Link
+            href={ARF_ROUTES.gonder.returns.detail(row.original.id)}
+            className='font-medium hover:underline'
+          >
+            {row.original.orderNumber}
+          </Link>
+        ),
       },
       {
         accessorKey: 'customerName',
@@ -162,54 +174,127 @@ export function ReturnsContent() {
         header: ({ column }) => <DataTableColumnHeader column={column} title='İade Metodu' />,
       },
       {
+        id: 'documents',
+        header: ({ column }) => <DataTableColumnHeader column={column} title='Belgeler' />,
+        cell: ({ row }) => {
+          const docs = row.original.documents
+          const bits = [
+            docs.labelReady ? 'Etiket' : null,
+            docs.hasProofOfDelivery ? 'POD' : null,
+            docs.hasPhotos ? 'Foto' : null,
+          ].filter(Boolean)
+          return bits.length ? (
+            <span className='text-xs text-muted-foreground'>{bits.join(' · ')}</span>
+          ) : (
+            '—'
+          )
+        },
+      },
+      {
         id: 'actions',
         header: '',
         enableSorting: false,
+        enableHiding: false,
+        size: 184,
+        minSize: 176,
+        maxSize: 220,
         cell: ({ row }) => {
           const item = row.original
           const canApprove = canManage && item.status === 'awaiting_approval'
+          const canComplete = canManage && item.status === 'delivered'
+          const canSetHandover =
+            canManage &&
+            (item.status === 'approved' ||
+              item.status === 'label_ready' ||
+              item.status === 'awaiting_handover')
+
           return (
-            <div className='flex justify-end gap-1'>
-              <Button
-                type='button'
-                variant='ghost'
-                size='icon'
-                className='size-8'
-                aria-label='İncele'
-                onClick={() => toast.message(`${item.orderNumber} incelenecek`)}
-              >
-                <Eye className='size-3.5' />
-              </Button>
-              {canApprove ? (
-                <>
-                  <Button
-                    type='button'
-                    variant='ghost'
-                    size='icon'
-                    className='size-8 text-emerald-700'
-                    aria-label='Onayla'
-                    onClick={() => void mutateStatus(item.id, 'approved', 'İade onaylandı')}
-                  >
-                    <Check className='size-3.5' />
-                  </Button>
-                  <Button
-                    type='button'
-                    variant='ghost'
-                    size='icon'
-                    className='size-8 text-rose-700'
-                    aria-label='Reddet'
-                    onClick={() => void mutateStatus(item.id, 'rejected', 'İade reddedildi')}
-                  >
-                    <X className='size-3.5' />
-                  </Button>
-                </>
-              ) : null}
-            </div>
+            <RowQuickActions
+              actions={[
+                ...(canApprove
+                  ? [
+                      {
+                        id: 'approve',
+                        labelKey: 'returns.approve',
+                        icon: Check,
+                        priority: 'primary' as const,
+                        variant: 'primary' as const,
+                        onClick: () => void mutateStatus(item.id, 'approved', 'İade onaylandı'),
+                      },
+                      {
+                        id: 'reject',
+                        labelKey: 'returns.reject',
+                        icon: X,
+                        priority: 'overflow' as const,
+                        variant: 'destructive' as const,
+                        requiresConfirmation: true,
+                        confirmation: {
+                          titleKey: 'returns.rejectConfirmTitle',
+                          descriptionKey: 'returns.rejectConfirmDescription',
+                          confirmLabelKey: 'returns.rejectConfirmAction',
+                        },
+                        onClick: () => void mutateStatus(item.id, 'rejected', 'İade reddedildi'),
+                      },
+                    ]
+                  : []),
+                ...(canComplete
+                  ? [
+                      {
+                        id: 'complete',
+                        labelKey: 'returns.complete',
+                        shortLabelKey: 'returns.completeShort',
+                        icon: Check,
+                        priority: 'primary' as const,
+                        variant: 'primary' as const,
+                        onClick: () =>
+                          void mutateStatus(item.id, 'completed', 'İade tamamlandı'),
+                      },
+                    ]
+                  : []),
+                {
+                  id: 'view',
+                  labelKey: 'returns.inspect',
+                  icon: Eye,
+                  priority: canApprove || canComplete ? ('secondary' as const) : ('primary' as const),
+                  variant: 'secondary' as const,
+                  onClick: () => router.push(ARF_ROUTES.gonder.returns.detail(item.id)),
+                },
+                ...(canSetHandover
+                  ? [
+                      {
+                        id: 'handover',
+                        labelKey: 'returns.handover',
+                        shortLabelKey: 'returns.handoverShort',
+                        icon: MapPin,
+                        priority: 'overflow' as const,
+                        onClick: () =>
+                          void mutateStatus(
+                            item.id,
+                            'awaiting_handover',
+                            'Teslim noktası bekleniyor'
+                          ),
+                      },
+                    ]
+                  : []),
+                ...(item.documents.labelReady
+                  ? [
+                      {
+                        id: 'docs',
+                        labelKey: 'returns.printLabel',
+                        shortLabelKey: 'returns.printLabelShort',
+                        icon: FileText,
+                        priority: 'overflow' as const,
+                        onClick: () => toast.success('İade etiketi yazdırma kuyruğa alındı'),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
           )
         },
       },
     ],
-    [canManage]
+    [canManage, router]
   )
 
   const tabs = VIEWS.map((id) => ({
@@ -217,6 +302,8 @@ export function ReturnsContent() {
     label: VIEW_LABELS[id],
     count: data?.viewCounts[id],
   }))
+
+  const statusFilter = url.status as ReturnStatus | null
 
   return (
     <>
@@ -231,14 +318,34 @@ export function ReturnsContent() {
         <WorkspaceListHeader
           title='İadeler'
           description='Taşıyıcıdan gelen veya başlattığınız iadeleri yönetin.'
+          actions={
+            <Button
+              size='sm'
+              variant='outline'
+              onClick={() => {
+                void returnsRepository
+                  .simulateWebhook({ status: 'requested' })
+                  .then(async () => {
+                    toast.success('Yeni iade webhook’u simüle edildi')
+                    await queryClient.invalidateQueries({ queryKey: RETURNS_QUERY_KEY })
+                  })
+              }}
+            >
+              Webhook simüle
+            </Button>
+          }
         />
 
         <Card className='gap-0 py-0 shadow-sm'>
           <CardContent className='space-y-3 p-3'>
-            <WorkspaceViewTabs tabs={tabs} value={url.view} onChange={(v) => {
-              setPagination((p) => ({ ...p, pageIndex: 0 }))
-              url.setView(v)
-            }} />
+            <WorkspaceViewTabs
+              tabs={tabs}
+              value={url.view}
+              onChange={(v) => {
+                setPagination((p) => ({ ...p, pageIndex: 0 }))
+                url.setView(v)
+              }}
+            />
             <WorkspaceListToolbar
               search={searchInput}
               onSearchChange={(value) => {
@@ -252,6 +359,20 @@ export function ReturnsContent() {
                 setSearchInput('')
                 url.clearFilters()
               }}
+              filterSummary={
+                statusFilter ? (
+                  <Badge variant='secondary' className='gap-1 font-normal'>
+                    Durum: {RETURN_STATUS_LABELS[statusFilter]}
+                    <button
+                      type='button'
+                      className='ml-1 hover:underline'
+                      onClick={() => url.setStatus(null)}
+                    >
+                      ×
+                    </button>
+                  </Badge>
+                ) : null
+              }
             />
 
             <DataTable
