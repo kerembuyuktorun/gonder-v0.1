@@ -71,6 +71,14 @@ export const ORDER_CREATE_STEP_META: {
   },
   {
     id: 4,
+    label: 'Ücret & Ödeme',
+    title: 'Ücret ve Ödeme',
+    description:
+      'Müşteri fiyat listesine göre ücreti hesaplayın; peşin/vadeli tercihini belirleyin.',
+    sectionId: 'order-pricing',
+  },
+  {
+    id: 5,
     label: 'Atama ve Güvenlik',
     title: 'Atama ve Güvenlik',
     description:
@@ -78,7 +86,7 @@ export const ORDER_CREATE_STEP_META: {
     sectionId: 'order-assignment',
   },
   {
-    id: 5,
+    id: 6,
     label: 'Meta Veri',
     title: 'Gelişmiş Meta Veri',
     description: 'Raporlama ve entegrasyonlarda kullanılacak opsiyonel anahtar–değer çiftlerini ekleyin.',
@@ -137,9 +145,17 @@ const FIELD_STEP_MAP: Partial<Record<keyof OrderCreateFormState, OrderCreateStep
   varis_telefon: 2,
   varis_adres_baslik: 2,
   paketler: 3,
-  aktif_rota_id: 4,
-  aninda_sahaya_ilet: 4,
-  yakin_kuryelere_dagit: 4,
+  ucret_origin_city_id: 4,
+  ucret_origin_district_id: 4,
+  ucret_dest_city_id: 4,
+  ucret_dest_district_id: 4,
+  ucret_distance_km: 4,
+  ucret_settlement_type: 4,
+  ucret_credit_days: 4,
+  ucret_manual_subtotal: 4,
+  aktif_rota_id: 5,
+  aninda_sahaya_ilet: 5,
+  yakin_kuryelere_dagit: 5,
 }
 
 export function getOrderTypeFieldConfig(type: CreateOrderType | ''): OrderTypeFieldConfig {

@@ -54,4 +54,9 @@ export type CustomerDetail = LastmileCustomer & {
   orders: CustomerDetailOrder[]
 }
 
-export type CustomerDetailTab = 'overview' | 'facilities' | 'orders' | 'integrations'
+export type CustomerDetailTab =
+  | 'overview'
+  | 'facilities'
+  | 'orders'
+  | 'pricing'
+  | 'integrations'

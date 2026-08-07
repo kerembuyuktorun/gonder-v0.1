@@ -97,7 +97,7 @@ export function StepPackages({
                   {index + 1}
                 </span>
 
-                <div className='grid min-w-0 flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'>
+                <div className='grid min-w-0 flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-5'>
                   <Field
                     label='Paket Boyutu'
                     required
@@ -183,6 +183,24 @@ export function StepPackages({
                       placeholder='Örn. 4.5'
                       aria-invalid={Boolean(itemError)}
                       className={itemError ? 'border-rose-300' : undefined}
+                    />
+                  </Field>
+
+                  <Field
+                    label='Desi'
+                    htmlFor={`package-desi-${item.id}`}
+                    hint='Boşsa ağırlık/hacimden türetilir.'
+                  >
+                    <Input
+                      id={`package-desi-${item.id}`}
+                      type='number'
+                      min={0}
+                      step='0.1'
+                      value={item.desi ?? ''}
+                      onChange={(event) =>
+                        updatePackage(item.id, { desi: event.target.value })
+                      }
+                      placeholder='Opsiyonel'
                     />
                   </Field>
                 </div>

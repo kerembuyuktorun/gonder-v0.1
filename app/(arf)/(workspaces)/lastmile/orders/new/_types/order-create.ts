@@ -6,7 +6,7 @@ export type CreateOrderType = OrderType
 /** Serbest adres (contact) tarafında muhatap tipi */
 export type AddressContactKind = 'bireysel' | 'kurumsal'
 
-export type OrderCreateStep = 1 | 2 | 3 | 4 | 5
+export type OrderCreateStep = 1 | 2 | 3 | 4 | 5 | 6
 
 export type MetaField = {
   id: string
@@ -21,6 +21,8 @@ export type OrderPackageItem = {
   /** Birim hacim, opsiyonel */
   hacim: string
   agirlik_kg: string
+  /** Opsiyonel manuel desi; boşsa ağırlık/hacimden türetilir */
+  desi?: string
 }
 
 export type OrderCreateFormState = {
@@ -77,6 +79,17 @@ export type OrderCreateFormState = {
   varis_adres_baslik: string
   // Paket
   paketler: OrderPackageItem[]
+  // Ücret & ödeme (local; BE'ye gönderilmez)
+  ucret_origin_city_id: string
+  ucret_origin_district_id: string
+  ucret_dest_city_id: string
+  ucret_dest_district_id: string
+  ucret_distance_km: string
+  ucret_settlement_type: 'pesin' | 'vadeli'
+  ucret_credit_days: string
+  ucret_include_kdv: boolean
+  ucret_manual_override: boolean
+  ucret_manual_subtotal: string
   // Atama & güvenlik
   teslimat_kaniti_zorunlu: boolean
   bildirim_sms: boolean

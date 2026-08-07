@@ -20,6 +20,7 @@ import {
   LayoutDashboard,
   Link2,
   Map,
+  MapPinned,
   Package,
   PackagePlus,
   Palette,
@@ -28,10 +29,12 @@ import {
   Settings,
   ShieldCheck,
   Send,
+  Tags,
   Truck,
   UserRound,
   Users,
   UsersRound,
+  Wallet,
   Warehouse,
   Wrench,
 } from 'lucide-react'
@@ -138,6 +141,34 @@ export const createLastmileHeaderSearchCommands: SearchCommandFactory = (push) =
     group: 'Gezinme',
     keywords: ['rota', 'planlama', 'liste'],
     onSelect: () => push(R.planning.routes),
+  },
+  {
+    id: 'go-finance',
+    label: 'Finans Özeti',
+    group: 'Finans',
+    keywords: ['finans', 'ücret', 'fiyat', 'tahsilat'],
+    onSelect: () => push(R.finance.root),
+  },
+  {
+    id: 'go-price-lists',
+    label: 'Fiyat Listeleri',
+    group: 'Finans',
+    keywords: ['fiyat', 'liste', 'tarife', 'ücretlendirme'],
+    onSelect: () => push(R.finance.priceLists.list),
+  },
+  {
+    id: 'go-price-zones',
+    label: 'Fiyat Bölgeleri',
+    group: 'Finans',
+    keywords: ['bölge', 'zone', 'fiyat', 'ilçe'],
+    onSelect: () => push(R.finance.zones.list),
+  },
+  {
+    id: 'go-collections',
+    label: 'Tahsilatlar',
+    group: 'Finans',
+    keywords: ['tahsilat', 'ödeme', 'vade', 'cari'],
+    onSelect: () => push(R.finance.collections.list),
   },
 ]
 
@@ -305,6 +336,35 @@ export const navGroups = [
         icon: UsersRound,
         items: [{ title: 'Kullanıcı Listesi', url: R.users.list, icon: Contact }],
       },
+    ],
+  },
+  {
+    label: 'Finans',
+    items: [
+      {
+        title: 'Finans Özeti',
+        url: R.finance.root,
+        icon: Wallet,
+      },
+      {
+        title: 'Fiyat Listeleri',
+        url: R.finance.priceLists.list,
+        icon: Tags,
+      },
+      {
+        title: 'Fiyat Bölgeleri',
+        url: R.finance.zones.list,
+        icon: MapPinned,
+      },
+      {
+        title: 'Tahsilatlar',
+        url: R.finance.collections.list,
+        icon: Wallet,
+      },
+    ],
+  },
+  {
+    items: [
       {
         title: 'Raporlar',
         url: R.reports.root,

@@ -162,6 +162,33 @@ export const ARF_ROUTES = {
     reports: {
       root: `${LASTMILE_BASE}/reports`,
     },
+    finance: {
+      root: `${LASTMILE_BASE}/finance`,
+      priceLists: {
+        list: `${LASTMILE_BASE}/finance/price-lists`,
+        create: `${LASTMILE_BASE}/finance/price-lists/new`,
+        detail: (priceListId: string) => `${LASTMILE_BASE}/finance/price-lists/${priceListId}`,
+      },
+      zones: {
+        list: `${LASTMILE_BASE}/finance/zones`,
+      },
+      collections: {
+        list: `${LASTMILE_BASE}/finance/collections`,
+        customer: (customerId: string) =>
+          `${LASTMILE_BASE}/finance/collections?customer=${encodeURIComponent(customerId)}`,
+      },
+      courierCostLists: {
+        list: `${LASTMILE_BASE}/finance/courier-cost-lists`,
+        create: `${LASTMILE_BASE}/finance/courier-cost-lists/new`,
+        detail: (costListId: string) =>
+          `${LASTMILE_BASE}/finance/courier-cost-lists/${costListId}`,
+      },
+      courierPayouts: {
+        list: `${LASTMILE_BASE}/finance/courier-payouts`,
+        courier: (courierId: string) =>
+          `${LASTMILE_BASE}/finance/courier-payouts?courier=${encodeURIComponent(courierId)}`,
+      },
+    },
     settings: {
       roles: {
         list: `${LASTMILE_BASE}/settings/roles`,

@@ -21,12 +21,14 @@ import { CustomerDetailHeader } from './_components/customer-detail-header'
 import { TabFacilities } from './_components/tab-facilities'
 import { TabIntegrations } from './_components/tab-integrations'
 import { TabOverview } from './_components/tab-overview'
+import { TabPricingPayment } from './_components/tab-pricing-payment'
 import type { CustomerDetail, CustomerDetailTab } from './_types/customer-detail'
 
 const TAB_ITEMS: Array<{ id: CustomerDetailTab; label: string }> = [
   { id: 'overview', label: 'Genel Bakış' },
   { id: 'facilities', label: 'Adresler Ve Operasyon Bölgeleri' },
   { id: 'orders', label: 'Siparişler' },
+  { id: 'pricing', label: 'Fiyat & Ödeme' },
   { id: 'integrations', label: 'Entegrasyon Bilgileri' },
 ]
 
@@ -240,6 +242,12 @@ export default function CustomerDetailPageContent({
                         : previous
                     )
                   }
+                />
+              </TabsContent>
+              <TabsContent value='pricing' className='mt-0'>
+                <TabPricingPayment
+                  customerId={customer.id}
+                  customerName={customer.marka_kisa_ad}
                 />
               </TabsContent>
               <TabsContent value='integrations' className='mt-0'>

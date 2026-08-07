@@ -27,6 +27,7 @@ import { MetadataSection } from './_components/metadata-section'
 import { LiveMapPanel } from './_components/live-map-panel'
 import { TimelineSection } from './_components/timeline-section'
 import { AuditLogSection } from './_components/audit-log-section'
+import { OrderFinanceSection } from './_components/order-finance-section'
 import { enrichTimelineActors } from './_lib/order-detail-helpers'
 
 type PageContentProps = {
@@ -259,6 +260,7 @@ export default function OrderDetailPageContent({ params }: PageContentProps) {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="mb-5 flex h-auto w-full flex-wrap justify-start gap-1 rounded-xl border border-slate-200/70 bg-slate-100/70 p-1">
                 <TabsTrigger value="packages">Paket Bilgileri</TabsTrigger>
+                <TabsTrigger value="finance">Ücret & Tahsilat</TabsTrigger>
                 <TabsTrigger value="map">Harita Bilgisi</TabsTrigger>
                 <TabsTrigger value="timeline">Çizelge</TabsTrigger>
                 <TabsTrigger value="notes">Notlar</TabsTrigger>
@@ -268,6 +270,14 @@ export default function OrderDetailPageContent({ params }: PageContentProps) {
 
               <TabsContent value="packages" className="mt-0">
                 <PackagesSection paketler={order.paketler} />
+              </TabsContent>
+
+              <TabsContent value="finance" className="mt-0">
+                <OrderFinanceSection
+                  orderId={order.id}
+                  customerId={order.musteri_id ?? undefined}
+                  customerName={order.musteri_detay?.unvan || order.musteri}
+                />
               </TabsContent>
 
               <TabsContent value="map" className="mt-0">

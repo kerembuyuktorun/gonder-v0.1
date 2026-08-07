@@ -34,8 +34,15 @@ import { StepBasics } from './_components/step-basics'
 import { useOrderSkillCatalog } from './_hooks/use-order-skill-catalog'
 import { StepLocations } from './_components/step-locations'
 import { StepPackages } from './_components/step-packages'
+import { StepPricing } from './_components/step-pricing'
 import { StepAssignment } from './_components/step-assignment'
 import { StepMetadata } from './_components/step-metadata'
+import {
+  buildOrderPaymentFromQuote,
+  saveOrderPricing,
+} from '../../finance/_api/pricing-api'
+import type { OrderPricingSnapshot, QuoteResult } from '../../finance/_types'
+import { todayIso } from '../../finance/_lib/format'
 
 function showFormFieldErrorToast(count: number) {
   toast.error(`${count} Form Giriş Alanı Eksik Veya Hatalı`, {
@@ -82,6 +89,7 @@ export default function OrderCreatePage() {
   const [summaryOpen, setSummaryOpen] = useState(false)
   const [customers, setCustomers] = useState<CustomerOption[]>([])
   const [customerFacilities, setCustomerFacilities] = useState<FacilityOption[]>([])
+  const [latestQuote, setLatestQuote] = useState<QuoteResult | null>(null)
   const { skills: orderSkillCatalog, isLoading: isOrderSkillCatalogLoading } =
     useOrderSkillCatalog()
 
@@ -149,7 +157,7 @@ export default function OrderCreatePage() {
       showFormFieldErrorToast(messages.length)
       return
     }
-    if (currentStep < 5) {
+    if (currentStep < 6) {
       setCurrentStep((currentStep + 1) as OrderCreateStep)
     }
   }
@@ -215,6 +223,39 @@ export default function OrderCreatePage() {
       }
 
       const orderId = typeof result.data.id === 'string' ? result.data.id : undefined
+
+      if (orderId && latestQuote?.ok) {
+        const snapshot: OrderPricingSnapshot = {
+          priceListId: latestQuote.priceListId,
+          priceListName: latestQuote.priceListName,
+          matchedRuleId: latestQuote.matchedRuleId,
+          matchedRuleLabel: latestQuote.matchedRuleLabel,
+          pricingMode: latestQuote.pricingMode,
+          inputs: {
+            distanceKm: latestQuote.inputs.distanceKm,
+            desi: latestQuote.inputs.desi,
+            originDistrict: latestQuote.inputs.originDistrictId,
+            destDistrict: latestQuote.inputs.destDistrictId,
+            zoneName: latestQuote.inputs.zoneName,
+          },
+          breakdown: latestQuote.breakdown,
+          currency: 'TRY',
+          calculatedAt: latestQuote.calculatedAt,
+          manualOverride: form.ucret_manual_override,
+        }
+        const customerLabel =
+          customers.find((c) => c.id === form.musteriId)?.label ?? form.musteriId
+        const payment = buildOrderPaymentFromQuote({
+          orderId,
+          customerId: form.musteriId,
+          customerName: customerLabel,
+          settlementType: form.ucret_settlement_type,
+          creditDays: Number(form.ucret_credit_days) || 0,
+          orderDate: form.alim_tarih || todayIso(),
+          amountDue: latestQuote.breakdown.total,
+        })
+        await saveOrderPricing(orderId, { snapshot, payment })
+      }
 
       const trackingNo =
         [result.data.trackingCode, result.data.trackingNo, result.data.takip_no, result.data.code].find(
@@ -298,9 +339,17 @@ export default function OrderCreatePage() {
                 />
               )}
               {currentStep === 4 && (
+                <StepPricing
+                  form={form}
+                  setForm={setForm}
+                  fieldError={fieldError}
+                  onQuoteChange={setLatestQuote}
+                />
+              )}
+              {currentStep === 5 && (
                 <StepAssignment form={form} setForm={setForm} fieldError={fieldError} />
               )}
-              {currentStep === 5 && <StepMetadata form={form} setForm={setForm} />}
+              {currentStep === 6 && <StepMetadata form={form} setForm={setForm} />}
             </CardContent>
           </Card>
         </div>
@@ -327,7 +376,7 @@ export default function OrderCreatePage() {
                 Geri
               </Button>
             ) : null}
-            {currentStep < 5 ? (
+            {currentStep < 6 ? (
               <Button type='button' className={FOOTER_BUTTON_CLASS} onClick={goNext}>
                 Devam et
               </Button>
