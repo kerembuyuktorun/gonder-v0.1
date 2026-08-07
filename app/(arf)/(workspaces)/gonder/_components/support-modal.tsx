@@ -20,8 +20,8 @@ interface SupportModalProps {
 export function SupportModal({ open, onOpenChange }: SupportModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='overflow-hidden p-0 sm:max-w-3xl'>
-        <div className='border-b bg-linear-to-br from-lime-200/80 via-background to-background px-6 py-5'>
+      <DialogContent className='max-h-[min(90vh,720px)] overflow-y-auto p-0 sm:max-w-3xl'>
+        <div className='border-b bg-linear-to-br from-lime-200/80 via-background to-background px-4 py-5 sm:px-6'>
           <DialogHeader className='text-left'>
             <div className='mb-2 flex flex-wrap items-center gap-2'>
               <Badge className='bg-lime-300 text-black hover:bg-lime-300'>Yardım Merkezi</Badge>
@@ -36,7 +36,7 @@ export function SupportModal({ open, onOpenChange }: SupportModalProps) {
           </DialogHeader>
         </div>
 
-        <div className='space-y-3 px-6 py-5'>
+        <div className='space-y-3 px-4 py-5 sm:px-6'>
           <section className='grid gap-3 md:grid-cols-2'>
             <a
               href='mailto:destek@kargosistemi.com?subject=ARF%20Gonder%20Destek%20Talebi'

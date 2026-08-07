@@ -74,15 +74,15 @@ export function OrdersChannelFilterSheet({
 
   return (
     <Sheet open={open} onOpenChange={syncDraft}>
-      <SheetContent side='right' className='flex w-full flex-col sm:max-w-md'>
-        <SheetHeader>
+      <SheetContent side='right' className='flex w-full flex-col overflow-hidden sm:max-w-md'>
+        <SheetHeader className='shrink-0'>
           <SheetTitle>Kanal filtreleri</SheetTitle>
           <SheetDescription>
             Entegrasyon kanalına veya bağlı mağazaya göre siparişleri daraltın.
           </SheetDescription>
         </SheetHeader>
 
-        <div className='flex-1 space-y-6 overflow-y-auto px-4 pb-4'>
+        <div className='min-h-0 flex-1 space-y-6 overflow-y-auto px-4 pb-4'>
           <section className='space-y-3'>
             <div className='flex items-center justify-between'>
               <h3 className='text-sm font-medium'>Kanal tipi</h3>
@@ -159,7 +159,7 @@ export function OrdersChannelFilterSheet({
           </section>
         </div>
 
-        <SheetFooter className='gap-2 border-t sm:flex-row'>
+        <SheetFooter className='shrink-0 gap-2 border-t sm:flex-row'>
           <Button
             type='button'
             variant='outline'

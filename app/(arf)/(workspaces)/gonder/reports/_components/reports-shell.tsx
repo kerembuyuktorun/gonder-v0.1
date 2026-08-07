@@ -35,6 +35,7 @@ export function ReportsShell({
     label: REPORT_GROUP_LABELS[group],
     items: REPORT_CATALOG.filter((item) => item.group === group),
   }))
+  const allItems = REPORT_CATALOG
 
   return (
     <>
@@ -49,9 +50,40 @@ export function ReportsShell({
         notificationsLabel='Bildirimler'
       />
 
-      <div className='flex flex-1 flex-col gap-3 p-3 sm:p-4 lg:flex-row lg:items-start'>
+      <div className='flex min-w-0 flex-1 flex-col gap-3 p-3 sm:p-4 lg:flex-row lg:items-start'>
         <aside className='w-full shrink-0 space-y-3 lg:sticky lg:top-3 lg:w-56'>
-          <Card className='gap-0 py-0 shadow-sm'>
+          {/* Mobile: compact horizontal catalog so content isn't pushed far down */}
+          <div className='-mx-1 overflow-x-auto overscroll-x-contain lg:hidden'>
+            <nav
+              className='flex w-max gap-1.5 px-1 pb-0.5'
+              aria-label='Raporlar'
+            >
+              {allItems.map((item) => {
+                const active = pathname === item.href || slug === item.slug
+                return (
+                  <Link
+                    key={item.slug}
+                    href={item.href}
+                    className={cn(
+                      'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors',
+                      active
+                        ? 'border-primary/40 bg-primary/10 font-medium text-foreground'
+                        : 'border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                    )}
+                  >
+                    <span className='max-w-[10rem] truncate'>{item.title}</span>
+                    {item.maturity === 'planned' ? (
+                      <Badge variant='secondary' className='text-[9px]'>
+                        Plan
+                      </Badge>
+                    ) : null}
+                  </Link>
+                )
+              })}
+            </nav>
+          </div>
+
+          <Card className='hidden gap-0 py-0 shadow-sm lg:block'>
             <CardContent className='space-y-3 p-3'>
               <div>
                 <p className='text-sm font-semibold'>Raporlar</p>
@@ -93,9 +125,11 @@ export function ReportsShell({
         </aside>
 
         <div className='min-w-0 flex-1 space-y-3'>
-          <div className='flex flex-wrap items-start justify-between gap-3'>
+          <div className='flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between'>
             <div className='min-w-0 space-y-1'>
-              <h1 className='text-2xl font-semibold tracking-tight'>{title}</h1>
+              <h1 className='truncate text-xl font-semibold tracking-tight sm:text-2xl'>
+                {title}
+              </h1>
               {description ? (
                 <p className='text-sm text-muted-foreground'>{description}</p>
               ) : null}

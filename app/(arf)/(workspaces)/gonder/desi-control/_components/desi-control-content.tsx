@@ -328,8 +328,8 @@ export function DesiControlContent() {
           }
         />
 
-        <Card className='gap-0 py-0 shadow-sm'>
-          <CardContent className='space-y-3 p-3'>
+        <Card className='min-w-0 gap-0 py-0 shadow-sm'>
+          <CardContent className='min-w-0 space-y-3 p-3 sm:p-4'>
             <WorkspaceViewTabs
               tabs={tabs}
               value={url.view}

@@ -67,19 +67,21 @@ export function DataWorkspace<TView extends string, TPrimary extends string = st
         notificationsLabel='Bildirimler'
       />
 
-      <div className='flex flex-1 flex-col gap-3 p-3 sm:p-4'>
+      <div className='flex min-w-0 flex-1 flex-col gap-3 p-3 sm:p-4'>
         <WorkspaceHeader title={title} description={description} actions={headerActions} />
 
-        <Card className='gap-0 py-0 shadow-sm'>
-          <CardContent className='space-y-3 p-3'>
-            {primaryTabs && primaryView != null && onPrimaryViewChange ? (
-              <WorkspaceTabs
-                tabs={primaryTabs}
-                value={primaryView}
-                onChange={onPrimaryViewChange}
-              />
-            ) : null}
-            <WorkspaceTabs tabs={tabs} value={view} onChange={onViewChange} />
+        <Card className='min-w-0 gap-0 py-0 shadow-sm'>
+          <CardContent className='min-w-0 space-y-3 p-3 sm:p-4'>
+            <div className='space-y-1'>
+              {primaryTabs && primaryView != null && onPrimaryViewChange ? (
+                <WorkspaceTabs
+                  tabs={primaryTabs}
+                  value={primaryView}
+                  onChange={onPrimaryViewChange}
+                />
+              ) : null}
+              <WorkspaceTabs tabs={tabs} value={view} onChange={onViewChange} />
+            </div>
             <WorkspaceToolbar
               search={search}
               onSearchChange={onSearchChange}
@@ -94,7 +96,7 @@ export function DataWorkspace<TView extends string, TPrimary extends string = st
                 {bulkActions}
               </BulkActionBar>
             ) : null}
-            {children}
+            <div className='min-w-0'>{children}</div>
           </CardContent>
         </Card>
       </div>

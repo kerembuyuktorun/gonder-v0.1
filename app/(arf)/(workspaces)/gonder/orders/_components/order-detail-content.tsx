@@ -256,11 +256,11 @@ export function OrderDetailContent({ orderId }: Props) {
           <>
             <Card className='gap-0 py-0 shadow-sm'>
               <CardHeader className='space-y-3 px-3 pt-3 pb-3'>
-                <div className='flex flex-wrap items-start justify-between gap-3'>
+                <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
                   <div className='min-w-0 space-y-1.5'>
-                    <CardTitle className='text-lg'>{data.orderNumber}</CardTitle>
+                    <CardTitle className='truncate text-lg'>{data.orderNumber}</CardTitle>
                     <div className='flex flex-wrap items-center gap-2'>
-                      <Badge variant='secondary'>
+                      <Badge variant='secondary' className='max-w-full truncate'>
                         {ORDER_CHANNEL_LABELS[data.channel]}
                         {channel?.storeName ? ` · ${channel.storeName}` : ''}
                       </Badge>
@@ -269,11 +269,13 @@ export function OrderDetailContent({ orderId }: Props) {
                       </Badge>
                     </div>
                     <p className='text-sm text-muted-foreground'>
-                      {data.customerName} · {data.originCity} → {data.destinationCity}
+                      <span className='break-words'>
+                        {data.customerName} · {data.originCity} → {data.destinationCity}
+                      </span>
                     </p>
                   </div>
 
-                  <div className='flex flex-wrap gap-1.5'>
+                  <div className='flex w-full flex-wrap gap-1.5 sm:w-auto sm:justify-end'>
                     {canApproveOrder(data.status) ? (
                       <>
                         <Button
@@ -305,7 +307,12 @@ export function OrderDetailContent({ orderId }: Props) {
                         onClick={createShipment}
                       >
                         <PackagePlus className='size-3.5' />
-                        {tRowAction('orders.createShipment')}
+                        <span className='sm:hidden'>
+                          {tRowAction('orders.createShipmentShort')}
+                        </span>
+                        <span className='hidden sm:inline'>
+                          {tRowAction('orders.createShipment')}
+                        </span>
                       </Button>
                     ) : null}
                     {data.shipmentId ? (
@@ -322,13 +329,19 @@ export function OrderDetailContent({ orderId }: Props) {
             </Card>
 
             <Tabs value={tab} onValueChange={setTab} className='gap-3'>
-              <TabsList className='grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-5'>
-                {ORDER_DETAIL_TABS.map((id) => (
-                  <TabsTrigger key={id} value={id} className='text-xs sm:text-sm'>
-                    {ORDER_DETAIL_TAB_LABELS[id]}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+              <div className='-mx-1 overflow-x-auto overscroll-x-contain'>
+                <TabsList className='inline-flex h-auto w-max min-w-full justify-start gap-1 rounded-xl border border-border bg-muted/60 p-1'>
+                  {ORDER_DETAIL_TABS.map((id) => (
+                    <TabsTrigger
+                      key={id}
+                      value={id}
+                      className='shrink-0 rounded-lg px-3 py-1.5 text-xs sm:text-sm'
+                    >
+                      {ORDER_DETAIL_TAB_LABELS[id]}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
 
               <TabsContent value='overview' className='space-y-3'>
                 <div className='grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4'>

@@ -109,13 +109,13 @@ export function PriceCalculationContent() {
         notificationsLabel='Bildirimler'
       />
 
-      <div className='flex flex-1 flex-col gap-2 p-3 sm:p-4'>
-        <div>
-          <h1 className='text-xl font-semibold tracking-tight'>Fiyat Hesaplama</h1>
+      <div className='flex min-w-0 flex-1 flex-col gap-2 p-3 sm:p-4'>
+        <div className='min-w-0'>
+          <h1 className='truncate text-xl font-semibold tracking-tight'>Fiyat Hesaplama</h1>
         </div>
 
         <div className='grid gap-2 xl:grid-cols-[minmax(0,1.7fr)_minmax(280px,0.9fr)]'>
-          <div className='space-y-2'>
+          <div className='min-w-0 space-y-2 pb-16 sm:pb-0'>
             <Card className='gap-0 py-0 shadow-sm'>
               <CardHeader className='space-y-0 px-3 pt-3 pb-1.5'>
                 <CardTitle className='text-sm font-semibold'>Operasyon tipi</CardTitle>

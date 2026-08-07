@@ -70,7 +70,7 @@ export function DashboardActionSummaries({
   ]
 
   return (
-    <div className={cn('grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1', className)}>
+    <div className={cn('grid gap-2.5 sm:grid-cols-2 lg:grid-cols-1', className)}>
       {cards.map((card) => {
         const Icon = card.icon
         const styles = toneStyles[card.tone]

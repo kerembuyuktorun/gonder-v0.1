@@ -95,11 +95,13 @@ export function QuotesContent() {
       createSelectionColumn<QuoteRequest>(),
       {
         accessorKey: 'reference',
+        size: 148,
+        minSize: 132,
         header: ({ column }) => <DataTableColumnHeader column={column} title='Talep No' />,
         cell: ({ row }) => (
           <Link
             href={ARF_ROUTES.gonder.quotes.detail(row.original.id)}
-            className='font-medium hover:underline'
+            className='block truncate font-medium hover:underline'
           >
             {row.original.reference}
           </Link>

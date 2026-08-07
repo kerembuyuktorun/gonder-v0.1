@@ -31,7 +31,7 @@ export function PriceRouteLocations({
         <CardTitle className='text-sm font-semibold'>Rota</CardTitle>
       </CardHeader>
       <CardContent className='px-3 pb-3 pt-0'>
-        <div className='grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-start'>
+        <div className='grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-start'>
           <PriceLocationField
             label='Nereden?'
             value={origin}

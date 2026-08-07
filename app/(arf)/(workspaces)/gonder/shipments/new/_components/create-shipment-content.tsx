@@ -322,8 +322,8 @@ export function CreateShipmentContent() {
 
       <div className='flex flex-1 flex-col gap-3 p-3 sm:p-4'>
         <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
-          <div>
-            <h1 className='text-xl font-semibold tracking-tight'>Yeni gönderi</h1>
+          <div className='min-w-0'>
+            <h1 className='truncate text-xl font-semibold tracking-tight'>Yeni gönderi</h1>
             <p className='mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground'>
               <span>Kaynak: {sourceLabel(draft.source)}</span>
               <Badge
@@ -338,7 +338,7 @@ export function CreateShipmentContent() {
               </Badge>
             </p>
           </div>
-          <div className='flex gap-2'>
+          <div className='flex shrink-0 flex-wrap gap-2'>
             <Button variant='outline' size='sm' asChild>
               <Link href={ARF_ROUTES.gonder.shipments.list}>Listeye dön</Link>
             </Button>

@@ -185,7 +185,8 @@ export function RowQuickActions({
     <TooltipProvider delayDuration={200}>
       <div
         className={cn(
-          'flex w-full min-w-[7.5rem] items-center justify-end gap-1.5 whitespace-nowrap',
+          // w-auto keeps kanban/card rows from stretching; table sticky cells size the column.
+          'flex w-auto min-w-[7.5rem] max-w-full items-center justify-end gap-1.5 whitespace-nowrap',
           className
         )}
       >

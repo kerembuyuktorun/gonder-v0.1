@@ -74,7 +74,7 @@ export function OrdersKanbanBoard({
 
   return (
     <ScrollArea className='w-full whitespace-nowrap'>
-      <div className='flex min-h-[420px] gap-3 pb-3'>
+      <div className='flex min-h-[min(420px,70vh)] gap-3 pb-3'>
         {ORDER_KANBAN_COLUMNS.map((status) => {
           const columnItems = columns[status] ?? []
           const isOver = overColumn === status
@@ -82,7 +82,7 @@ export function OrdersKanbanBoard({
             <div
               key={status}
               className={cn(
-                'flex w-[280px] shrink-0 flex-col rounded-xl border bg-muted/20',
+                'flex w-[min(280px,82vw)] min-w-[240px] shrink-0 flex-col rounded-xl border bg-muted/20',
                 isOver && 'border-primary/50 bg-primary/5'
               )}
               onDragOver={(event) => {
@@ -99,12 +99,12 @@ export function OrdersKanbanBoard({
                   <p className='truncate text-sm font-medium'>{ORDER_STATUS_LABELS[status]}</p>
                   <p className='text-xs text-muted-foreground'>{columnItems.length} sipariş</p>
                 </div>
-                <Badge variant='secondary' className='tabular-nums'>
+                <Badge variant='secondary' className='shrink-0 tabular-nums'>
                   {columnItems.length}
                 </Badge>
               </div>
 
-              <div className='flex flex-1 flex-col gap-2 p-2'>
+              <div className='flex flex-1 flex-col gap-2 overflow-x-hidden p-2'>
                 {columnItems.length === 0 ? (
                   <div className='rounded-lg border border-dashed px-3 py-6 text-center text-xs text-muted-foreground'>
                     Kart yok
@@ -259,9 +259,14 @@ function KanbanCard({
         {order.originCity} → {order.destinationCity}
       </p>
 
-      <div className='flex items-center justify-between gap-2'>
-        <span className='text-sm font-medium tabular-nums'>{formatMoney(order.amountTry)}</span>
-        <div onPointerDown={(event) => event.stopPropagation()}>
+      <div className='flex min-w-0 items-center justify-between gap-2'>
+        <span className='min-w-0 truncate text-sm font-medium tabular-nums'>
+          {formatMoney(order.amountTry)}
+        </span>
+        <div
+          className='shrink-0'
+          onPointerDown={(event) => event.stopPropagation()}
+        >
           <RowQuickActions actions={actions} maxVisible={1} />
         </div>
       </div>

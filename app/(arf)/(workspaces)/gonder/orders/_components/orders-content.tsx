@@ -172,11 +172,13 @@ export function OrdersContent() {
       createSelectionColumn<GonderOrder>(),
       {
         accessorKey: 'orderNumber',
+        size: 148,
+        minSize: 132,
         header: ({ column }) => <DataTableColumnHeader column={column} title='Sipariş No' />,
         cell: ({ row }) => (
           <Link
             href={ARF_ROUTES.gonder.orders.detail(row.original.id)}
-            className='font-medium hover:underline'
+            className='block truncate font-medium hover:underline'
           >
             {row.original.orderNumber}
           </Link>

@@ -48,7 +48,7 @@ export function GonderDashboardContent() {
         notificationsLabel='Bildirimler'
       />
 
-      <div className='flex flex-1 flex-col gap-2.5 p-3 sm:p-4'>
+      <div className='flex min-w-0 flex-1 flex-col gap-2.5 p-3 sm:p-4'>
         {isLoading ? (
           <div className='rounded-xl border border-border bg-card p-3 text-sm text-muted-foreground'>
             Dashboard yükleniyor…
@@ -72,7 +72,7 @@ export function GonderDashboardContent() {
               </div>
             )}
 
-            <div className='grid gap-2.5 xl:grid-cols-[minmax(0,2fr)_minmax(220px,1fr)]'>
+            <div className='grid min-w-0 gap-2.5 lg:grid-cols-[minmax(0,2fr)_minmax(220px,1fr)]'>
               {insightsQuery.data ? (
                 <DashboardInsightsPanel
                   insights={insightsQuery.data}

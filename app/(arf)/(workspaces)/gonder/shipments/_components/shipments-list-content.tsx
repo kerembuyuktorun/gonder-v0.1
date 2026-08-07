@@ -127,11 +127,13 @@ export function ShipmentsListContent() {
       createSelectionColumn<GonderShipmentListItem>(),
       {
         accessorKey: 'reference',
+        size: 148,
+        minSize: 132,
         header: ({ column }) => <DataTableColumnHeader column={column} title='Gönderi No' />,
         cell: ({ row }) => (
           <Link
             href={ARF_ROUTES.gonder.shipments.detail(row.original.id)}
-            className='font-medium hover:underline'
+            className='block truncate font-medium hover:underline'
           >
             {row.original.reference}
           </Link>

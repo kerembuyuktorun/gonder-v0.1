@@ -305,7 +305,8 @@ export function DataTable<TData>({
                   ...(stickyRightOffset !== null ? { right: `${stickyRightOffset}px` } : {}),
                 }}
                 className={cn(
-                  'overflow-hidden',
+                  // Sticky action columns need overflow visible so primary+overflow controls aren't clipped.
+                  stickyRightOffset !== null ? 'overflow-visible' : 'overflow-hidden',
                   stickyLeftOffset !== null
                     ? 'z-20 bg-background'
                     : stickyRightOffset !== null
@@ -368,7 +369,7 @@ export function DataTable<TData>({
                       ...(stickyRightOffset !== null ? { right: `${stickyRightOffset}px` } : {}),
                     }}
                     className={cn(
-                      'overflow-hidden',
+                      stickyRightOffset !== null ? 'overflow-visible' : 'overflow-hidden',
                       stickyLeftOffset !== null
                         ? 'z-30 bg-slate-50'
                         : stickyRightOffset !== null

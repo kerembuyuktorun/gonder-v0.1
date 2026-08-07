@@ -38,18 +38,19 @@ function DataTablePaginationComponent<TData>({
   const endRow = Math.min(currentPage * pageSize, resolvedTotalRows)
 
   return (
-    <div className="flex items-center justify-between px-2 py-4">
+    <div className="flex flex-col gap-3 px-2 py-4 sm:flex-row sm:items-center sm:justify-between">
       {/* Left: Page info & size selector */}
-      <div className="flex items-center space-x-6">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {showPageInfo && (
-          <div className="flex-1 text-sm text-muted-foreground">
+          <div className="text-sm text-muted-foreground">
             {startRow} - {endRow} / {resolvedTotalRows} satır
           </div>
         )}
-        
+
         {showPageSizeSelector && (
-          <div className="flex items-center space-x-2">
-            <p className="text-sm font-medium">Sayfa başına satır</p>
+          <div className="flex items-center gap-2">
+            <p className="hidden text-sm font-medium sm:block">Sayfa başına satır</p>
+            <p className="text-sm font-medium sm:hidden">Satır</p>
             <Select
               value={`${pageSize}`}
               onValueChange={(value: string) => {
@@ -72,11 +73,11 @@ function DataTablePaginationComponent<TData>({
       </div>
 
       {/* Right: Navigation buttons */}
-      <div className="flex items-center space-x-2">
-        <div className="flex items-center justify-center text-sm font-medium">
+      <div className="flex items-center justify-between gap-2 sm:justify-end">
+        <div className="text-sm font-medium tabular-nums">
           Sayfa {currentPage} / {totalPages}
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-1.5">
           <Button
             variant="outline"
             className="hidden h-8 w-8 p-0 lg:flex"

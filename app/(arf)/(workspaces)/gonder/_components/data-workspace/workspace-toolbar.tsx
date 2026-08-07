@@ -33,13 +33,13 @@ export function WorkspaceToolbar({
           onChange={onSearchChange}
           placeholder={searchPlaceholder}
         />
-        <div className='flex items-center gap-1.5'>
+        <div className='flex shrink-0 flex-wrap items-center gap-1.5'>
           {onOpenFilters ? (
             <Button
               type='button'
               variant='outline'
               size='icon'
-              className='size-9'
+              className='size-9 shrink-0'
               aria-label='Filtreler'
               onClick={onOpenFilters}
             >

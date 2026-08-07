@@ -219,17 +219,19 @@ export function ShipmentDetailContent() {
             ) : null}
 
             <Tabs value={tab} onValueChange={setTab} className='space-y-3'>
-              <TabsList className='flex h-auto w-full flex-wrap justify-start gap-1 rounded-xl border border-border bg-muted/60 p-1'>
-                {SHIPMENT_DETAIL_TABS.map((key) => (
-                  <TabsTrigger
-                    key={key}
-                    value={key}
-                    className='rounded-lg px-3 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm'
-                  >
-                    {SHIPMENT_DETAIL_TAB_LABELS[key]}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+              <div className='-mx-1 overflow-x-auto overscroll-x-contain'>
+                <TabsList className='inline-flex h-auto w-max min-w-full justify-start gap-1 rounded-xl border border-border bg-muted/60 p-1'>
+                  {SHIPMENT_DETAIL_TABS.map((key) => (
+                    <TabsTrigger
+                      key={key}
+                      value={key}
+                      className='shrink-0 rounded-lg px-3 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm'
+                    >
+                      {SHIPMENT_DETAIL_TAB_LABELS[key]}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
 
               <TabsContent value='overview' className='mt-0 space-y-3'>
                 <OverviewTab data={data} />
@@ -271,10 +273,10 @@ function DetailHeader({
   return (
     <Card className='gap-0 py-0 shadow-sm'>
       <CardHeader className='space-y-3 px-3 pt-3 pb-3'>
-        <div className='flex flex-wrap items-start justify-between gap-3'>
+        <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
           <div className='min-w-0'>
-            <CardTitle className='text-lg'>{data.reference}</CardTitle>
-            <p className='mt-1 text-sm text-muted-foreground'>
+            <CardTitle className='truncate text-lg'>{data.reference}</CardTitle>
+            <p className='mt-1 break-words text-sm text-muted-foreground'>
               {data.originCity} → {data.destinationCity}
               <span className='mx-1.5 text-border'>·</span>
               Takip: {data.trackingNumber}
@@ -290,7 +292,7 @@ function DetailHeader({
           </div>
         </div>
 
-        <div className='flex flex-wrap gap-2'>
+        <div className='flex w-full flex-wrap gap-2 sm:w-auto'>
           <Button size='sm' variant='outline' className='gap-1.5' onClick={onPrintLabel}>
             <Printer className='size-3.5' />
             Etiket yazdır

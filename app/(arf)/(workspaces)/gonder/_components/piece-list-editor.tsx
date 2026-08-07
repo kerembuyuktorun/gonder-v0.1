@@ -108,8 +108,8 @@ export function PieceListEditor({
       </CardHeader>
       <CardContent className='space-y-2 px-3 pb-3 pt-0'>
         <div className='rounded-xl border bg-muted/10 p-2'>
-          <div className='grid gap-1.5 lg:grid-cols-[minmax(0,1.1fr)_repeat(6,minmax(0,0.7fr))_auto]'>
-            <div className='space-y-1'>
+          <div className='grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-[minmax(0,1.1fr)_repeat(6,minmax(0,0.7fr))_auto]'>
+            <div className='col-span-2 space-y-1 sm:col-span-1 lg:col-span-1'>
               <Label className='text-[11px] text-muted-foreground'>Parça tipi</Label>
               <Select value={form.type} onValueChange={(value) => updateField('type', value)}>
                 <SelectTrigger className='h-9'>
@@ -135,7 +135,7 @@ export function PieceListEditor({
                 ['weightKg', 'Kg'],
               ] as const
             ).map(([key, label]) => (
-              <div key={key} className='space-y-1'>
+              <div key={key} className='min-w-0 space-y-1'>
                 <Label className='text-[11px] text-muted-foreground'>{label}</Label>
                 <Input
                   type='number'
@@ -148,7 +148,7 @@ export function PieceListEditor({
               </div>
             ))}
 
-            <div className='flex items-end'>
+            <div className='col-span-2 flex items-end sm:col-span-3 lg:col-span-1'>
               <Button type='button' className='h-9 w-full gap-1 px-3' onClick={handleAdd}>
                 <Plus className='size-3.5' />
                 Ekle

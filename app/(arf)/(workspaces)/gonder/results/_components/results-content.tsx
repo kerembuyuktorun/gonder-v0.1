@@ -247,11 +247,11 @@ export function ResultsContent() {
                 Filtreler
               </Button>
             </SheetTrigger>
-            <SheetContent side='right' className='w-full sm:max-w-md'>
-              <SheetHeader>
+            <SheetContent side='right' className='flex w-full flex-col overflow-hidden sm:max-w-md'>
+              <SheetHeader className='shrink-0'>
                 <SheetTitle>Filtreler</SheetTitle>
               </SheetHeader>
-              <div className='mt-3'>
+              <div className='min-h-0 flex-1 overflow-y-auto px-4 pb-4'>
                 <ResultsFiltersPanel
                   value={filters}
                   onChange={setFilters}
