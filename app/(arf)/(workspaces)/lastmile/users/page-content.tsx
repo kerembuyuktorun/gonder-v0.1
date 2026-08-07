@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import type {
   ColumnFiltersState,
   PaginationState,
@@ -58,6 +59,12 @@ import {
   buildPersonnelProfileInput,
   buildUpdateUserInput,
 } from './_lib/map-user'
+import {
+  USERS_MOCK,
+  computeUserKpi,
+  computeUserStatusCounts,
+} from './_mock/users-mock-data'
+import { isLastmileDemoForced } from '../_lib/lastmile-demo-mode'
 import type {
   LastmileUser,
   UserKind,
@@ -76,6 +83,8 @@ function formatUsersLoadError(error: string): string {
 }
 
 export default function UsersListPage() {
+  const searchParams = useSearchParams()
+  const forceDemo = isLastmileDemoForced(searchParams)
   const [table, setTable] = useState<TanStackTable<LastmileUser> | null>(null)
   const [data, setData] = useState<LastmileUser[]>([])
   const [totalRows, setTotalRows] = useState(0)
@@ -257,8 +266,9 @@ export default function UsersListPage() {
         onEdit: handleEdit,
         onSendPasswordReset: handleSendPasswordReset,
         onToggleAccess: handleToggleAccess,
+        demo: forceDemo,
       }),
-    [handleEdit, handleSendPasswordReset, handleToggleAccess]
+    [handleEdit, handleSendPasswordReset, handleToggleAccess, forceDemo]
   )
 
   useEffect(() => {
@@ -275,6 +285,31 @@ export default function UsersListPage() {
     const load = async () => {
       setIsLoading(true)
       setLoadError(null)
+
+      if (forceDemo) {
+        if (cancelled) return
+        let rows = [...USERS_MOCK]
+        if (statusScope !== 'all') {
+          rows = rows.filter((u) => u.durum === statusScope)
+        }
+        const needle = globalFilter.trim().toLocaleLowerCase('tr-TR')
+        if (needle) {
+          rows = rows.filter((u) => {
+            const hay = [u.ad_soyad, u.email, u.telefon, u.bagli_kurum]
+              .filter(Boolean)
+              .join(' ')
+              .toLocaleLowerCase('tr-TR')
+            return hay.includes(needle)
+          })
+        }
+        const start = pagination.pageIndex * pagination.pageSize
+        setData(rows.slice(start, start + pagination.pageSize))
+        setTotalRows(rows.length)
+        setKpi(computeUserKpi(USERS_MOCK))
+        setStatusCounts(computeUserStatusCounts(USERS_MOCK))
+        setIsLoading(false)
+        return
+      }
 
       const result = await fetchUsersList({
         page: pagination.pageIndex + 1,
@@ -305,6 +340,7 @@ export default function UsersListPage() {
       cancelled = true
     }
   }, [
+    forceDemo,
     globalFilter,
     pagination.pageIndex,
     pagination.pageSize,
@@ -356,7 +392,14 @@ export default function UsersListPage() {
 
       <div className='flex flex-1 flex-col gap-6 p-6'>
         <div className='flex flex-wrap items-center justify-between gap-4'>
-          <h1 className='text-2xl font-semibold tracking-tight'>Kullanıcı Listesi</h1>
+          <div className='flex min-w-0 items-center gap-3'>
+            <h1 className='truncate text-2xl font-semibold tracking-tight'>
+              {forceDemo ? 'Kullanıcı Listesi (Demo)' : 'Kullanıcı Listesi'}
+            </h1>
+            {forceDemo ? (
+              <Badge className='bg-amber-100 text-amber-900 hover:bg-amber-100'>Demo veri</Badge>
+            ) : null}
+          </div>
           <div className='flex shrink-0 flex-wrap items-center gap-2'>
             <Button
               type='button'

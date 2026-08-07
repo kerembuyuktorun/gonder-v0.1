@@ -54,6 +54,8 @@ export default function PriceListDetailPageContent() {
         name: values.name,
         isDefault: values.isDefault,
         distanceStructure: values.distanceStructure,
+        returnFeePercent: values.returnFeePercent,
+        returnFeeMin: values.returnFeeMin,
         status: list?.status ?? 'active',
         rules: values.rules,
       })
@@ -134,6 +136,8 @@ export default function PriceListDetailPageContent() {
                     name: list.name,
                     isDefault: list.isDefault,
                     distanceStructure: list.distanceStructure,
+                    returnFeePercent: list.returnFeePercent,
+                    returnFeeMin: list.returnFeeMin,
                     rules: list.rules,
                   }}
                   zones={zones}

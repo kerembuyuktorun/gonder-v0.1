@@ -1,4 +1,9 @@
 import { mockOrderList } from '../../_mock/orders-mock-data'
+import {
+  getExtraOrdersSync,
+  getOverlaySync,
+  mergeOrdersWithOps,
+} from '../../_mock/order-ops-store'
 import type { LastmileOrder } from '../../_types/order'
 import { buildDefaultTimeline } from '../_lib/order-detail-helpers'
 import type {
@@ -281,11 +286,51 @@ const enrichments: Record<string, Enrichment> = {
 }
 
 export function getOrderDetailMock(id: string): OrderDetail | null {
-  const base = mockOrderList.find((order) => order.id === id)
-  if (!base) return null
+  const fromList = mockOrderList.find((order) => order.id === id)
+  const fromExtra =
+    typeof window !== 'undefined'
+      ? getExtraOrdersSync().find((order) => order.id === id)
+      : undefined
+  const baseRow = fromList ?? fromExtra
+  if (!baseRow) return null
 
+  const [merged] = mergeOrdersWithOps([baseRow])
+  const base = merged ?? baseRow
   const extra = enrichments[id]
-  return mergeDetail(base, extra)
+  const detail = mergeDetail(base, extra)
+
+  // Overlay rota koparma / durum
+  if (typeof window !== 'undefined') {
+    const overlay = getOverlaySync()
+    const meta = overlay.metaByOrderId[id]
+    if (meta?.rota_atandi === false) {
+      detail.rota_atandi = false
+      detail.atanan_kurye = meta.atanan_kurye ?? null
+      detail.atanan_arac = meta.atanan_arac ?? null
+      detail.eta = meta.eta ?? '—'
+      if (meta.alim_zaman_penceresi) {
+        detail.alim_zaman_penceresi = meta.alim_zaman_penceresi
+        detail.alis = { ...detail.alis, zaman_penceresi: meta.alim_zaman_penceresi }
+      }
+      if (meta.teslim_zaman_penceresi) {
+        detail.teslim_zaman_penceresi = meta.teslim_zaman_penceresi
+        detail.varis = { ...detail.varis, zaman_penceresi: meta.teslim_zaman_penceresi }
+      }
+      detail.rota = {
+        ...detail.rota,
+        rota_id: null,
+        rota_adi: null,
+        kurye_id: null,
+        kurye_adi: null,
+        arac: null,
+        eta: meta.eta ?? '—',
+        kurye_lat: null,
+        kurye_lng: null,
+      }
+    }
+  }
+
+  return detail
 }
 
 function mergeDetail(base: LastmileOrder, extra?: Enrichment): OrderDetail {

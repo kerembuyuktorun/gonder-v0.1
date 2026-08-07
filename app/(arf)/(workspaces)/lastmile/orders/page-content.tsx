@@ -29,6 +29,7 @@ import {
   Ban,
   ChevronDown,
   ChevronUp,
+  FileText,
   Filter,
   PackagePlus,
   Printer,
@@ -48,6 +49,14 @@ import {
   countOrdersByTypeScope,
   queryOrders,
 } from './_lib/query-orders'
+import { mockOrderList } from './_mock/orders-mock-data'
+import {
+  applyInstantCancel,
+  createCancelRequest,
+  mergeOrdersWithOps,
+} from './_mock/order-ops-store'
+import { canInstantCancel, canRequestCancel } from './_lib/order-ops-policy'
+import { isLastmileDemoForced } from '../_lib/lastmile-demo-mode'
 import type { LastmileOrder, OrderStatusScope, OrderTypeScope } from './_types/order'
 
 const resolveUpdater = <T,>(updater: Updater<T>, previous: T): T =>
@@ -81,12 +90,17 @@ function matchesCustomerFilter(
 export default function OrdersListPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const forceDemo = isLastmileDemoForced(searchParams)
+  const [demoFallback, setDemoFallback] = useState(false)
+  const useDemo = forceDemo || demoFallback
   const customerIdFilter = searchParams.get('customer')?.trim() || null
   const customerNameFilter = searchParams.get('customerName')?.trim() || null
   const customerScoped = Boolean(customerIdFilter || customerNameFilter)
   const pageTitle = customerNameFilter
     ? `${customerNameFilter} Sipariş Listesi`
-    : 'Sipariş Listesi'
+    : useDemo
+      ? 'Sipariş Listesi (Demo)'
+      : 'Sipariş Listesi'
   const customerDetailHref = customerIdFilter
     ? ARF_ROUTES.lastmile.customers.detail(customerIdFilter)
     : null
@@ -108,6 +122,26 @@ export default function OrdersListPage() {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'olusturulma_zamani', desc: true }])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+
+  const loadDemoOrders = useCallback((search: string) => {
+    const needle = search.trim().toLocaleLowerCase('tr-TR')
+    const pool = mergeOrdersWithOps(mockOrderList)
+    if (!needle) return pool
+    return pool.filter((order) => {
+      const hay = [
+        order.takip_no,
+        order.referans_no,
+        order.musteri,
+        order.atanan_kurye,
+        order.alis_noktasi,
+        order.varis_noktasi,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase('tr-TR')
+      return hay.includes(needle)
+    })
+  }, [])
 
   const customerScopedOrders = useMemo(
     () =>
@@ -141,7 +175,36 @@ export default function OrdersListPage() {
     ]
   }, [allOrders])
 
-  const columns = useMemo(() => createOrderColumns(), [])
+  const columns = useMemo(
+    () =>
+      createOrderColumns({
+        demo: useDemo,
+        onCancelOrder: (order) => {
+          void (async () => {
+            if (order.durum === 'iptal_edildi') return
+            if (canInstantCancel(order.durum, order.rota_atandi)) {
+              await applyInstantCancel(order.id)
+              setAllOrders((prev) => mergeOrdersWithOps(prev))
+              toast.success(`${order.takip_no} iptal edildi`)
+              return
+            }
+            if (canRequestCancel(order.durum)) {
+              await createCancelRequest({
+                orderId: order.id,
+                orderTakipNo: order.takip_no,
+                customerName: order.musteri,
+                reasonCode: 'r-5',
+                reasonLabel: 'Müşteri iptal etti',
+              })
+              toast.success('İptal talebi oluşturuldu')
+              return
+            }
+            toast.message('Bu durumda iptal mümkün değil')
+          })()
+        },
+      }),
+    [useDemo]
+  )
 
   const selectedOrders = useMemo(() => {
     const selectedIds = Object.keys(rowSelection).filter((rowId) => rowSelection[rowId])
@@ -171,6 +234,14 @@ export default function OrdersListPage() {
     const load = async () => {
       setIsLoading(true)
 
+      if (forceDemo) {
+        if (cancelled) return
+        setDemoFallback(false)
+        setAllOrders(loadDemoOrders(globalFilter))
+        setIsLoading(false)
+        return
+      }
+
       const result = await fetchOrdersPool({
         search: globalFilter,
         orderOwner: customerIdFilter ?? undefined,
@@ -179,14 +250,15 @@ export default function OrdersListPage() {
       if (cancelled) return
 
       if (!result.success) {
-        setAllOrders([])
-        setData([])
-        setTotalRows(0)
+        // API yok / hata → demo siparişler
+        setDemoFallback(true)
+        setAllOrders(loadDemoOrders(globalFilter))
         setIsLoading(false)
-        toast.error(result.error || 'Sipariş listesi yüklenemedi.')
+        toast.message('API erişilemedi · demo siparişler gösteriliyor')
         return
       }
 
+      setDemoFallback(false)
       setAllOrders(result.data.orders)
       setIsLoading(false)
     }
@@ -196,7 +268,7 @@ export default function OrdersListPage() {
     return () => {
       cancelled = true
     }
-  }, [globalFilter, refreshKey, customerIdFilter])
+  }, [globalFilter, refreshKey, customerIdFilter, forceDemo, loadDemoOrders])
 
   // Sekme / sayfa / kolon filtresi — istemci tarafı (ek istek yok)
   useEffect(() => {
@@ -271,19 +343,84 @@ export default function OrdersListPage() {
   }
 
   const handleBulkCancel = (selected: LastmileOrder[]) => {
-    const selectedIds = new Set(selected.map((order) => order.id))
-    const patch = (order: LastmileOrder): LastmileOrder =>
-      selectedIds.has(order.id) && order.durum !== 'iptal_edildi'
-        ? { ...order, durum: 'iptal_edildi', atanan_kurye: null, atanan_arac: null }
-        : order
-
-    setAllOrders((previous) => previous.map(patch))
-    setRowSelection({})
-    toast.success(`${selected.length} sipariş iptal edildi`)
+    void (async () => {
+      let instant = 0
+      let requests = 0
+      for (const order of selected) {
+        if (order.durum === 'iptal_edildi') continue
+        if (canInstantCancel(order.durum, order.rota_atandi)) {
+          await applyInstantCancel(order.id)
+          instant += 1
+        } else if (canRequestCancel(order.durum)) {
+          await createCancelRequest({
+            orderId: order.id,
+            orderTakipNo: order.takip_no,
+            customerName: order.musteri,
+            reasonCode: 'r-5',
+            reasonLabel: 'Müşteri iptal etti',
+          })
+          requests += 1
+        }
+      }
+      setAllOrders((previous) => mergeOrdersWithOps(previous))
+      setRowSelection({})
+      if (instant || requests) {
+        toast.success(
+          [
+            instant ? `${instant} anında iptal` : null,
+            requests ? `${requests} iptal talebi` : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')
+        )
+      } else {
+        toast.message('Seçimde iptal edilebilir sipariş yok')
+      }
+    })()
   }
 
   const handleBulkPrint = (selected: LastmileOrder[]) => {
     toast.message(`${selected.length} sipariş için etiket yazdırma kuyruğa alındı`)
+  }
+
+  const handleBulkInvoice = (selected: LastmileOrder[]) => {
+    const eligible = selected.filter((order) => order.durum !== 'iptal_edildi')
+    if (eligible.length === 0) {
+      toast.error('Faturalamak için iptal edilmemiş sipariş seçin')
+      return
+    }
+    const customerIds = Array.from(
+      new Set(
+        eligible
+          .map((order) => order.musteri_id)
+          .filter((id): id is string => Boolean(id))
+      )
+    )
+    const resolvedCustomerId =
+      customerIds.length === 1
+        ? customerIds[0]
+        : customerIds.length === 0 && customerIdFilter
+          ? customerIdFilter
+          : null
+
+    if (!resolvedCustomerId) {
+      if (customerIds.length > 1) {
+        toast.error('Faturalama için seçilen siparişler aynı müşteriye ait olmalı')
+      } else {
+        toast.error('Seçilen siparişlerde müşteri bilgisi yok')
+      }
+      return
+    }
+    if (customerIds.length > 1) {
+      toast.error('Faturalama için seçilen siparişler aynı müşteriye ait olmalı')
+      return
+    }
+    const params = new URLSearchParams({
+      mode: 'orders',
+      customerId: resolvedCustomerId,
+      orderIds: eligible.map((order) => order.id).join(','),
+    })
+    router.push(`${ARF_ROUTES.lastmile.finance.invoices.create}?${params.toString()}`)
   }
 
   const pageCount = Math.max(1, Math.ceil(totalRows / pagination.pageSize))
@@ -332,6 +469,9 @@ export default function OrdersListPage() {
             <h1 className='truncate text-2xl font-semibold tracking-tight'>{pageTitle}</h1>
           </div>
           <div className='flex shrink-0 items-center gap-2'>
+            {useDemo ? (
+              <Badge className='bg-amber-100 text-amber-900 hover:bg-amber-100'>Demo veri</Badge>
+            ) : null}
             <Button
               type='button'
               variant='outline'
@@ -345,6 +485,12 @@ export default function OrdersListPage() {
                 <ChevronDown className='mr-2 size-4' />
               )}
               {showTabs ? 'Sekmeleri Gizle' : 'Sekmeleri Göster'}
+            </Button>
+            <Button size='sm' variant='outline' asChild>
+              <Link href={ARF_ROUTES.lastmile.orders.cancelRequests}>
+                <Ban className='mr-2 size-4' />
+                İptal Talepleri
+              </Link>
             </Button>
             <Button size='sm' asChild>
               <Link href={ARF_ROUTES.lastmile.orders.create}>
@@ -534,6 +680,16 @@ export default function OrdersListPage() {
                             >
                               <Ban className='mr-2 size-4' />
                               {isSingle ? 'İptal' : 'Toplu İptal'}
+                            </Button>
+                            <Button
+                              type='button'
+                              variant='outline'
+                              size='sm'
+                              className='h-8'
+                              onClick={() => handleBulkInvoice(selectedOrders)}
+                            >
+                              <FileText className='mr-2 size-4' />
+                              Faturalamaya gönder
                             </Button>
                           </div>
                           <div className='flex items-center gap-2'>

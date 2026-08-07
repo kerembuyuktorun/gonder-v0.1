@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ARF_ROUTES } from '../../../../_shared/routes'
+import { withLastmileDemo } from '../../_lib/lastmile-demo-mode'
 import {
   ChevronDown,
   Eye,
@@ -46,13 +47,18 @@ type ColumnActions = {
   onEdit: (user: LastmileUser) => void
   onSendPasswordReset: (user: LastmileUser) => void
   onToggleAccess: (user: LastmileUser) => void
+  demo?: boolean
 }
 
 export function createUserColumns({
   onEdit,
   onSendPasswordReset,
   onToggleAccess,
+  demo = false,
 }: ColumnActions): ColumnDef<LastmileUser>[] {
+  const detailHref = (id: string) =>
+    withLastmileDemo(ARF_ROUTES.lastmile.users.detail(id), demo)
+
   return [
     {
       accessorKey: 'ad_soyad',
@@ -68,7 +74,7 @@ export function createUserColumns({
 
         return (
           <Link
-            href={ARF_ROUTES.lastmile.users.detail(user.id)}
+            href={detailHref(user.id)}
             className='flex items-center gap-2.5'
           >
             {user.profil_url ? (
@@ -148,7 +154,10 @@ export function createUserColumns({
         if (user.musteri_id) {
           return (
             <Link
-              href={ARF_ROUTES.lastmile.customers.detail(user.musteri_id)}
+              href={withLastmileDemo(
+                ARF_ROUTES.lastmile.customers.detail(user.musteri_id),
+                demo
+              )}
               className='line-clamp-2 text-sm font-medium text-secondary underline decoration-secondary/40 underline-offset-4 transition-all hover:text-primary hover:decoration-primary/60'
               title={user.bagli_kurum}
             >
@@ -254,7 +263,7 @@ export function createUserColumns({
                 <DropdownMenuLabel>{user.ad_soyad}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href={ARF_ROUTES.lastmile.users.detail(user.id)}>
+                  <Link href={detailHref(user.id)}>
                     <Eye className='mr-2 size-4' />
                     Detay Gör
                   </Link>

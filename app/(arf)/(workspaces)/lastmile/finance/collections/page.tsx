@@ -1,10 +1,7 @@
-import { Suspense } from 'react'
-import CollectionsPageContent from './page-content'
+import { redirect } from 'next/navigation'
+import { ARF_ROUTES } from '../../../../_shared/routes'
 
-export default function CollectionsPage() {
-  return (
-    <Suspense fallback={<div className='p-6 text-sm text-slate-500'>Yükleniyor…</div>}>
-      <CollectionsPageContent />
-    </Suspense>
-  )
+/** Legacy collections URL — Faz 2’de gelir/gidere taşınacak. */
+export default function CollectionsRedirectPage() {
+  redirect(ARF_ROUTES.lastmile.finance.income.list)
 }

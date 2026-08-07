@@ -1,9 +1,9 @@
 /**
  * localStorage persistence helpers for Last Mile pricing/finance mock data.
- * Keys: arf:lastmile:pricing:v2:*
+ * Keys: arf:lastmile:pricing:v4:*
  */
 
-const PREFIX = 'arf:lastmile:pricing:v2:'
+const PREFIX = 'arf:lastmile:pricing:v4:'
 
 export const STORAGE_KEYS = {
   priceLists: `${PREFIX}price-lists`,

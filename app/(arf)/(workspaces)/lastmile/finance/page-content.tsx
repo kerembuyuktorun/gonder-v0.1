@@ -2,39 +2,41 @@
 
 import Link from 'next/link'
 import { AppHeader } from '@hascanb/arf-ui-kit/layout-kit'
-import { ArrowRight, Bike, Handshake, MapPinned, Tags, Wallet } from 'lucide-react'
+import { ArrowRight, Building2, Handshake, Users, Wallet } from 'lucide-react'
 import { ARF_ROUTES } from '../../../_shared/routes'
 
 const LINKS = [
   {
-    title: 'Fiyat Listeleri',
-    description: 'Genel ve müşteriye özel last mile ücretlendirmelerini yönetin.',
-    href: ARF_ROUTES.lastmile.finance.priceLists.list,
-    icon: Tags,
+    title: 'Müşteriler',
+    description: 'Cari bakiyeli müşteri listesi; detayda fiyat & ödeme ayarları.',
+    href: ARF_ROUTES.lastmile.finance.customers.list,
+    icon: Users,
   },
   {
-    title: 'Fiyat Bölgeleri',
-    description: 'İlçe paketleri tanımlayın; bölge bazlı sabit ücret kurallarında kullanın.',
-    href: ARF_ROUTES.lastmile.finance.zones.list,
-    icon: MapPinned,
+    title: 'Tedarikçiler',
+    description: 'Kurye ve diğer tedarikçilerin birleşik cari listesi.',
+    href: ARF_ROUTES.lastmile.finance.suppliers.list,
+    icon: Building2,
   },
   {
-    title: 'Tahsilatlar',
-    description: 'Peşin / vadeli sipariş tahsilatlarını ve açık bakiyeleri takip edin.',
-    href: ARF_ROUTES.lastmile.finance.collections.list,
-    icon: Wallet,
-  },
-  {
-    title: 'Kurye Ücret Listeleri',
-    description: 'Tarife, maaş + prim ve hibrit modellerle kurye/tedarikçi maliyetlerini yönetin.',
-    href: ARF_ROUTES.lastmile.finance.courierCostLists.list,
-    icon: Bike,
-  },
-  {
-    title: 'Kurye Ödemeleri / Hakediş',
-    description: 'Kurye hakedişlerini takip edin; haftalık / aylık ödemeleri kaydedin.',
-    href: ARF_ROUTES.lastmile.finance.courierPayouts.list,
+    title: 'Hakedişler',
+    description: 'Sözleşme bazlı kurye / tedarikçi hakediş ve ödeme takibi.',
+    href: ARF_ROUTES.lastmile.finance.payouts.list,
     icon: Handshake,
+  },
+  {
+    title: 'Gelirler',
+    description: 'Yakında — tahsilat hareketleri.',
+    href: ARF_ROUTES.lastmile.finance.income.list,
+    icon: Wallet,
+    soon: true,
+  },
+  {
+    title: 'Giderler',
+    description: 'Yakında — ödeme / gider hareketleri.',
+    href: ARF_ROUTES.lastmile.finance.expenses.list,
+    icon: Wallet,
+    soon: true,
   },
 ] as const
 
@@ -44,15 +46,17 @@ export default function FinanceHubPageContent() {
       <AppHeader
         breadcrumbs={[
           { label: 'Last Mile', href: ARF_ROUTES.lastmile.root },
-          { label: 'Finans' },
+          { label: 'Finans & Muhasebe' },
         ]}
       />
       <div className='flex flex-1 flex-col gap-6 p-6'>
         <div>
-          <h1 className='text-2xl font-semibold tracking-tight text-slate-900'>Finans</h1>
+          <h1 className='text-2xl font-semibold tracking-tight text-slate-900'>
+            Finans & Muhasebe
+          </h1>
           <p className='mt-1 text-sm text-slate-500'>
-            Müşteri fiyatlandırması, kurye maliyetleri, bölgeler ve tahsilat / hakediş işlemlerine
-            buradan geçin.
+            Müşteri ve tedarikçi carileri ile hakediş takibine buradan geçin. Fiyatlandırmalar
+            ayrı menüdedir.
           </p>
         </div>
 
@@ -68,7 +72,12 @@ export default function FinanceHubPageContent() {
                 <span className='flex size-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition-colors group-hover:bg-lime-200 group-hover:text-black'>
                   <Icon className='size-5' />
                 </span>
-                <h2 className='mt-4 text-base font-semibold text-slate-900'>{item.title}</h2>
+                <h2 className='mt-4 text-base font-semibold text-slate-900'>
+                  {item.title}
+                  {'soon' in item && item.soon ? (
+                    <span className='ml-2 text-xs font-medium text-slate-400'>Yakında</span>
+                  ) : null}
+                </h2>
                 <p className='mt-1.5 flex-1 text-sm text-slate-500'>{item.description}</p>
                 <span className='mt-4 inline-flex items-center gap-1 text-sm font-medium text-slate-700 group-hover:text-black'>
                   Sayfaya git
@@ -78,6 +87,17 @@ export default function FinanceHubPageContent() {
             )
           })}
         </div>
+
+        <p className='text-sm text-slate-500'>
+          Fiyat listeleri ve bölgeler için{' '}
+          <Link
+            href={ARF_ROUTES.lastmile.settings.pricing.priceLists.list}
+            className='font-medium text-slate-800 underline-offset-2 hover:underline'
+          >
+            Fiyatlandırma
+          </Link>{' '}
+          menüsünü kullanın.
+        </p>
       </div>
     </>
   )

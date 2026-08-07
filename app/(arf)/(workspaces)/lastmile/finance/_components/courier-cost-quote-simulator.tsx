@@ -8,10 +8,7 @@ import { quoteCourierCostApi } from '../_api/courier-cost-api'
 import { SEED_GEO } from '../_data/seed'
 import { formatCurrency } from '../_lib/format'
 import type { CourierCostQuoteResult } from '../_types'
-import {
-  COMPENSATION_MODEL_LABELS,
-  COURIER_COST_MODE_LABELS,
-} from '../_types'
+import { COMPENSATION_MODEL_LABELS, DISTANCE_STRUCTURE_LABELS } from '../_types'
 
 type Props = {
   costListId?: string
@@ -25,8 +22,6 @@ export function CourierCostQuoteSimulator({ costListId, courierId }: Props) {
   const [destDistrictId, setDestDistrictId] = useState<string>(SEED_GEO.tuzla.districtId)
   const [desi, setDesi] = useState('3')
   const [distanceKm, setDistanceKm] = useState('18')
-  const [packageCount, setPackageCount] = useState('2')
-  const [workedHours, setWorkedHours] = useState('4')
   const [result, setResult] = useState<CourierCostQuoteResult | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -40,8 +35,6 @@ export function CourierCostQuoteSimulator({ costListId, courierId }: Props) {
         destination: { cityId: destCityId, districtId: destDistrictId || undefined },
         desi: Number(desi) || 0,
         distanceKm: distanceKm === '' ? undefined : Number(distanceKm),
-        packageCount: packageCount === '' ? undefined : Number(packageCount),
-        workedHours: workedHours === '' ? undefined : Number(workedHours),
       })
       setResult(quote)
     } finally {
@@ -54,11 +47,11 @@ export function CourierCostQuoteSimulator({ costListId, courierId }: Props) {
       <div>
         <h3 className='text-sm font-semibold text-slate-900'>Maliyet Dene</h3>
         <p className='text-xs text-slate-500'>
-          Çıkış / varış / desi / km / paket / saat ile eşleşen kuralı önizleyin.
+          Çıkış / varış / desi / km ile eşleşen kuralı önizleyin.
         </p>
       </div>
 
-      <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-4'>
+      <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
         <div className='space-y-1.5'>
           <Label>Çıkış il ID</Label>
           <Input value={originCityId} onChange={(e) => setOriginCityId(e.target.value)} />
@@ -83,22 +76,6 @@ export function CourierCostQuoteSimulator({ costListId, courierId }: Props) {
           <Label>Mesafe (km)</Label>
           <Input type='number' value={distanceKm} onChange={(e) => setDistanceKm(e.target.value)} />
         </div>
-        <div className='space-y-1.5'>
-          <Label>Paket adedi</Label>
-          <Input
-            type='number'
-            value={packageCount}
-            onChange={(e) => setPackageCount(e.target.value)}
-          />
-        </div>
-        <div className='space-y-1.5'>
-          <Label>Çalışma saati</Label>
-          <Input
-            type='number'
-            value={workedHours}
-            onChange={(e) => setWorkedHours(e.target.value)}
-          />
-        </div>
       </div>
 
       <div className='flex justify-end'>
@@ -121,14 +98,12 @@ export function CourierCostQuoteSimulator({ costListId, courierId }: Props) {
               <p>
                 <span className='text-slate-500'>Liste:</span> {result.costListName}{' '}
                 <span className='text-xs text-slate-400'>
-                  ({COMPENSATION_MODEL_LABELS[result.compensationModel]})
+                  ({COMPENSATION_MODEL_LABELS[result.compensationModel]} ·{' '}
+                  {DISTANCE_STRUCTURE_LABELS[result.distanceStructure]})
                 </span>
               </p>
               <p>
-                <span className='text-slate-500'>Kural:</span> {result.matchedRuleLabel}{' '}
-                <span className='text-xs text-slate-400'>
-                  ({COURIER_COST_MODE_LABELS[result.pricingMode]})
-                </span>
+                <span className='text-slate-500'>Kural:</span> {result.matchedRuleLabel}
               </p>
               {result.inputs.fixedSalaryMonthly != null ? (
                 <p className='text-xs text-slate-500'>
@@ -139,10 +114,10 @@ export function CourierCostQuoteSimulator({ costListId, courierId }: Props) {
                 <p>Başlangıç: {formatCurrency(result.breakdown.baseFee)}</p>
                 <p>Km: {formatCurrency(result.breakdown.distanceFee)}</p>
                 <p>Desi: {formatCurrency(result.breakdown.desiFee)}</p>
-                <p>Paket: {formatCurrency(result.breakdown.packageFee)}</p>
-                <p>Saatlik: {formatCurrency(result.breakdown.hourlyFee)}</p>
                 <p>Sabit: {formatCurrency(result.breakdown.flatFee)}</p>
-                <p>Prim: {formatCurrency(result.breakdown.bonusPortion)}</p>
+                {result.breakdown.bonusPortion > 0 ? (
+                  <p>Prim: {formatCurrency(result.breakdown.bonusPortion)}</p>
+                ) : null}
                 <p>Ara toplam: {formatCurrency(result.breakdown.subtotal)}</p>
               </div>
               <p className='text-base font-semibold text-slate-900'>

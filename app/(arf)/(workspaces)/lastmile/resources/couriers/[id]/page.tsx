@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import CourierDetailPageContent from './page-content'
 
 export default function CourierDetailPage({
@@ -5,5 +6,9 @@ export default function CourierDetailPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  return <CourierDetailPageContent params={params} />
+  return (
+    <Suspense fallback={null}>
+      <CourierDetailPageContent params={params} />
+    </Suspense>
+  )
 }

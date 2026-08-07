@@ -184,6 +184,64 @@ export function quotePrice(ctx: QuoteEngineContext, input: QuoteInput): QuoteRes
     }
   }
 
+  // İade: gönderi bedelinin yüzdesi
+  if (input.purpose === 'return') {
+    const percent = list.returnFeePercent ?? 50
+    const original = input.originalSubtotal ?? 0
+    if (!(original > 0)) {
+      return {
+        ok: false,
+        error: 'İade ücreti için orijinal gönderi tutarı gerekli.',
+        priceListId: list.id,
+        priceListName: list.name,
+      }
+    }
+    let subtotal = roundMoney((original * percent) / 100)
+    const adjustments: QuoteBreakdown['adjustments'] = [
+      { label: `İade ücreti (%${percent})`, amount: subtotal },
+    ]
+    if (list.returnFeeMin != null && subtotal < list.returnFeeMin) {
+      adjustments.push({
+        label: 'İade minimum ücret',
+        amount: roundMoney(list.returnFeeMin - subtotal),
+      })
+      subtotal = roundMoney(list.returnFeeMin)
+    }
+    const includeKdv = input.includeKdv !== false
+    const kdvRate = includeKdv ? (input.kdvRate ?? 20) : 0
+    const kdvAmount = includeKdv ? roundMoney(subtotal * (kdvRate / 100)) : 0
+    return {
+      ok: true,
+      priceListId: list.id,
+      priceListName: list.name,
+      matchedRuleId: 'return_fee',
+      matchedRuleLabel: `İade · %${percent}`,
+      pricingMode: list.rules[0]?.pricingMode ?? 'od_district',
+      distanceStructure: list.distanceStructure,
+      inputs: {
+        desi: input.desi,
+        distanceKm: input.distanceKm,
+        originCityId: input.origin.cityId,
+        originDistrictId: input.origin.districtId,
+        destCityId: input.destination.cityId,
+        destDistrictId: input.destination.districtId,
+      },
+      breakdown: {
+        baseFee: 0,
+        distanceFee: 0,
+        desiFee: 0,
+        flatFee: subtotal,
+        adjustments,
+        subtotal,
+        kdvRate: includeKdv ? kdvRate : undefined,
+        kdvAmount: includeKdv ? kdvAmount : undefined,
+        total: roundMoney(subtotal + kdvAmount),
+      },
+      currency: 'TRY',
+      calculatedAt: new Date().toISOString(),
+    }
+  }
+
   const zonesById = new Map(ctx.zones.map((z) => [z.id, z]))
   const sorted = [...list.rules].sort((a, b) => b.priority - a.priority)
 
@@ -238,4 +296,17 @@ export function quotePrice(ctx: QuoteEngineContext, input: QuoteInput): QuoteRes
     priceListId: list.id,
     priceListName: list.name,
   }
+}
+
+/** İade ücreti hesapla (liste kuralı). */
+export function computeReturnFee(
+  list: Pick<PriceList, 'returnFeePercent' | 'returnFeeMin'>,
+  originalSubtotal: number
+): { fee: number; percent: number } {
+  const percent = list.returnFeePercent ?? 50
+  let fee = roundMoney((originalSubtotal * percent) / 100)
+  if (list.returnFeeMin != null && fee < list.returnFeeMin) {
+    fee = roundMoney(list.returnFeeMin)
+  }
+  return { fee, percent }
 }

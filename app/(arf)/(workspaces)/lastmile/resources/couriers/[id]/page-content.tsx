@@ -2,13 +2,19 @@
 
 import { use, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { AppHeader } from '@hascanb/arf-ui-kit/layout-kit'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import { ARF_ROUTES } from '../../../../../_shared/routes'
+import { isLastmileDemoForced } from '../../../_lib/lastmile-demo-mode'
+import {
+  getCourierActivityMock,
+  getCourierAssignmentsMock,
+  getCourierDetailMock,
+} from '../_mock/couriers-mock-data'
 import { getVehicleAssignmentConflict } from '../../_lib/assignment-validation'
 import {
   activateDriver,
@@ -56,6 +62,8 @@ export default function CourierDetailPageContent({
 }) {
   const { id } = use(params)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const forceDemo = isLastmileDemoForced(searchParams)
   const [courier, setCourier] = useState<LastmileCourier | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [assignments, setAssignments] = useState<CourierVehicleAssignment[]>([])
@@ -76,6 +84,26 @@ export default function CourierDetailPageContent({
   const loadDetail = useCallback(async () => {
     setIsLoading(true)
 
+    if (forceDemo) {
+      const mock = getCourierDetailMock(id)
+      setIsLoading(false)
+      if (!mock) {
+        setCourier(null)
+        toast.error('Demo kurye bulunamadı')
+        return
+      }
+      setCourier(mock)
+      const assignments = getCourierAssignmentsMock(id)
+      const activities = getCourierActivityMock(id)
+      setAssignments(assignments)
+      setAssignmentTotal(assignments.length)
+      setAssignmentPage(1)
+      setActivities(activities)
+      setActivityTotal(activities.length)
+      setActivityPage(1)
+      return
+    }
+
     const [detailResult, historyResult, activityResult] = await Promise.all([
       fetchDriverDetail(id),
       fetchDriverAssignmentHistory(id),
@@ -85,6 +113,19 @@ export default function CourierDetailPageContent({
     setIsLoading(false)
 
     if (!detailResult.success) {
+      const mock = getCourierDetailMock(id)
+      if (mock) {
+        setCourier(mock)
+        const assignments = getCourierAssignmentsMock(id)
+        const activities = getCourierActivityMock(id)
+        setAssignments(assignments)
+        setAssignmentTotal(assignments.length)
+        setAssignmentPage(1)
+        setActivities(activities)
+        setActivityTotal(activities.length)
+        setActivityPage(1)
+        return
+      }
       setCourier(null)
       toast.error(detailResult.error)
       return
@@ -97,7 +138,7 @@ export default function CourierDetailPageContent({
     setActivities(activityResult.success ? activityResult.data.items : [])
     setActivityTotal(activityResult.success ? activityResult.data.total : 0)
     setActivityPage(activityResult.success ? activityResult.data.page : 1)
-  }, [id])
+  }, [id, forceDemo])
 
   const handleLoadMoreAssignments = useCallback(async () => {
     if (loadingMoreAssignments || assignments.length >= assignmentTotal) return

@@ -1,11 +1,7 @@
-import { LastmilePlaceholderPage } from './_components/lastmile-placeholder-page'
+import { getLastmileDashboardData } from './_mock/dashboard-mock-data'
+import LastmileDashboardContent from './page-content'
 
 export default function LastmileWorkspacePage() {
-  return (
-    <LastmilePlaceholderPage
-      breadcrumbs={['Last Mile', 'Dashboard', 'KPI Metrikler']}
-      title='Dashboard'
-      description='KPI metrikler ve canlı izleme panelleri bu alanda yer alacaktır.'
-    />
-  )
+  const data = getLastmileDashboardData()
+  return <LastmileDashboardContent data={data} />
 }

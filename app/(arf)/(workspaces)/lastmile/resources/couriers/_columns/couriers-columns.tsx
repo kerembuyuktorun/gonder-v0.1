@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ARF_ROUTES } from '../../../../../_shared/routes'
+import { withLastmileDemo } from '../../../_lib/lastmile-demo-mode'
 import {
   ChevronDown,
   Eye,
@@ -84,6 +85,7 @@ type ColumnActions = {
     canPassive: boolean
     canChangeVehicle: boolean
   }
+  demo?: boolean
 }
 
 export function createCourierColumns({
@@ -100,7 +102,11 @@ export function createCourierColumns({
     canPassive: true,
     canChangeVehicle: true,
   },
+  demo = false,
 }: ColumnActions): ColumnDef<LastmileCourier>[] {
+  const detailHref = (id: string) =>
+    withLastmileDemo(ARF_ROUTES.lastmile.resources.couriers.detail(id), demo)
+
   return [
     {
       accessorKey: 'ad_soyad',
@@ -112,7 +118,7 @@ export function createCourierColumns({
       header: ({ column }) => <DataTableColumnHeader column={column} title='Ad Soyad' />,
       cell: ({ row }) => (
         <Link
-          href={ARF_ROUTES.lastmile.resources.couriers.detail(row.original.id)}
+          href={detailHref(row.original.id)}
           className='text-sm font-semibold text-secondary underline decoration-secondary/40 underline-offset-4 transition-all hover:text-primary hover:decoration-primary/60'
         >
           {row.original.ad_soyad}
@@ -311,7 +317,7 @@ export function createCourierColumns({
                 <DropdownMenuLabel>{courier.ad_soyad}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href={ARF_ROUTES.lastmile.resources.couriers.detail(courier.id)}>
+                  <Link href={detailHref(courier.id)}>
                     <Eye className='mr-2 size-4' />
                     Detay Gör
                   </Link>

@@ -33,6 +33,8 @@ export type PriceListEditorValues = {
   name: string
   isDefault: boolean
   distanceStructure: DistanceStructure
+  returnFeePercent?: number
+  returnFeeMin?: number
   rules: PriceRule[]
 }
 
@@ -115,6 +117,12 @@ export function PriceListEditor({
   const [distanceStructure, setDistanceStructure] = useState<DistanceStructure>(
     initial.distanceStructure
   )
+  const [returnFeePercent, setReturnFeePercent] = useState(
+    String(initial.returnFeePercent ?? 50)
+  )
+  const [returnFeeMin, setReturnFeeMin] = useState(
+    initial.returnFeeMin != null ? String(initial.returnFeeMin) : ''
+  )
   const [rules, setRules] = useState<PriceRule[]>(initial.rules)
 
   const structureOptions = useMemo(
@@ -149,6 +157,7 @@ export function PriceListEditor({
             flatFee: r.flatFee ?? 100,
             baseFee: undefined,
             perDesi: undefined,
+            minFee: undefined,
           }
         }
         return {
@@ -157,6 +166,7 @@ export function PriceListEditor({
           baseFee: r.baseFee ?? 50,
           perDesi: r.perDesi ?? 10,
           flatFee: undefined,
+          minFee: r.minFee ?? undefined,
         }
       })
     )
@@ -218,6 +228,8 @@ export function PriceListEditor({
       name: name.trim(),
       isDefault,
       distanceStructure,
+      returnFeePercent: Number(returnFeePercent) || 50,
+      returnFeeMin: returnFeeMin === '' ? undefined : Number(returnFeeMin),
       rules: normalized,
     })
   }
@@ -227,7 +239,7 @@ export function PriceListEditor({
       className={
         layout === 'embedded'
           ? 'flex w-full flex-col gap-6'
-          : 'mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-6'
+          : 'mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-6'
       }
     >
       <div className='flex flex-wrap items-start justify-between gap-4'>
@@ -300,6 +312,32 @@ export function PriceListEditor({
             ))}
           </div>
         </div>
+
+        <div className='grid gap-4 sm:grid-cols-2'>
+          <div className='space-y-1.5'>
+            <Label>İade ücreti (% gönderi bedeli)</Label>
+            <Input
+              type='number'
+              min={0}
+              max={100}
+              value={returnFeePercent}
+              onChange={(e) => setReturnFeePercent(e.target.value)}
+              placeholder='50'
+            />
+            <p className='text-xs text-slate-500'>
+              İade alt-siparişlerinde orijinal gönderi tutarının bu yüzdesi alınır.
+            </p>
+          </div>
+          <div className='space-y-1.5'>
+            <Label>İade minimum ücret (₺)</Label>
+            <Input
+              type='number'
+              value={returnFeeMin}
+              onChange={(e) => setReturnFeeMin(e.target.value)}
+              placeholder='Opsiyonel'
+            />
+          </div>
+        </div>
       </section>
 
       <section className='space-y-3'>
@@ -342,10 +380,10 @@ export function PriceListEditor({
                   </Button>
                 </div>
 
-                <div className='grid gap-2 lg:grid-cols-12'>
+                <div className='flex items-end gap-2 overflow-x-auto pb-0.5'>
                   {distanceStructure === 'od' ? (
                     <>
-                      <div className='space-y-1 lg:col-span-3'>
+                      <div className='w-[132px] shrink-0 space-y-1'>
                         <Label className='text-xs'>Çıkış ilçe</Label>
                         <Select
                           value={districtKey(
@@ -365,7 +403,7 @@ export function PriceListEditor({
                             })
                           }}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className='w-full'>
                             <SelectValue placeholder='Çıkış' />
                           </SelectTrigger>
                           <SelectContent>
@@ -380,7 +418,7 @@ export function PriceListEditor({
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className='space-y-1 lg:col-span-3'>
+                      <div className='w-[132px] shrink-0 space-y-1'>
                         <Label className='text-xs'>Varış ilçe</Label>
                         <Select
                           value={districtKey(
@@ -400,7 +438,7 @@ export function PriceListEditor({
                             })
                           }}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className='w-full'>
                             <SelectValue placeholder='Varış' />
                           </SelectTrigger>
                           <SelectContent>
@@ -419,13 +457,13 @@ export function PriceListEditor({
                   ) : null}
 
                   {distanceStructure === 'zone' ? (
-                    <div className='space-y-1 lg:col-span-3'>
+                    <div className='w-[148px] shrink-0 space-y-1'>
                       <Label className='text-xs'>Bölge</Label>
                       <Select
                         value={rule.zoneId ?? ''}
                         onValueChange={(value) => updateRule(rule.id, { zoneId: value })}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className='w-full'>
                           <SelectValue placeholder='Bölge seçin' />
                         </SelectTrigger>
                         <SelectContent>
@@ -439,8 +477,8 @@ export function PriceListEditor({
                     </div>
                   ) : null}
 
-                  <div className='space-y-1 lg:col-span-2'>
-                    <Label className='text-xs'>Desi başlangıç</Label>
+                  <div className='w-[88px] shrink-0 space-y-1'>
+                    <Label className='text-xs'>Desi baş.</Label>
                     <Input
                       type='number'
                       value={rule.desiStart}
@@ -449,7 +487,7 @@ export function PriceListEditor({
                       }
                     />
                   </div>
-                  <div className='space-y-1 lg:col-span-2'>
+                  <div className='w-[88px] shrink-0 space-y-1'>
                     <Label className='text-xs'>Desi bitiş</Label>
                     <Input
                       type='number'
@@ -459,13 +497,13 @@ export function PriceListEditor({
                       }
                     />
                   </div>
-                  <div className='space-y-1 lg:col-span-2'>
+                  <div className='w-[158px] shrink-0 space-y-1'>
                     <Label className='text-xs'>Desi tipi</Label>
                     <Select
                       value={rule.desiPricing}
                       onValueChange={(v) => setDesiPricing(rule.id, v as DesiPricingType)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className='w-full'>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -479,7 +517,7 @@ export function PriceListEditor({
                   </div>
 
                   {rule.desiPricing === 'fixed' ? (
-                    <div className='space-y-1 lg:col-span-2'>
+                    <div className='w-[112px] shrink-0 space-y-1'>
                       <Label className='text-xs'>Sabit ücret (₺)</Label>
                       <Input
                         type='number'
@@ -493,7 +531,7 @@ export function PriceListEditor({
                     </div>
                   ) : (
                     <>
-                      <div className='space-y-1 lg:col-span-2'>
+                      <div className='w-[100px] shrink-0 space-y-1'>
                         <Label className='text-xs'>Başlangıç (₺)</Label>
                         <Input
                           type='number'
@@ -505,7 +543,7 @@ export function PriceListEditor({
                           }
                         />
                       </div>
-                      <div className='space-y-1 lg:col-span-2'>
+                      <div className='w-[100px] shrink-0 space-y-1'>
                         <Label className='text-xs'>Desi birim (₺)</Label>
                         <Input
                           type='number'
@@ -517,11 +555,24 @@ export function PriceListEditor({
                           }
                         />
                       </div>
+                      <div className='w-[112px] shrink-0 space-y-1'>
+                        <Label className='text-xs'>Minimum ücret (₺)</Label>
+                        <Input
+                          type='number'
+                          value={rule.minFee ?? ''}
+                          onChange={(e) =>
+                            updateRule(rule.id, {
+                              minFee: e.target.value === '' ? undefined : Number(e.target.value),
+                            })
+                          }
+                          placeholder='Opsiyonel'
+                        />
+                      </div>
                     </>
                   )}
 
                   {distanceStructure === 'km' ? (
-                    <div className='space-y-1 lg:col-span-2'>
+                    <div className='w-[100px] shrink-0 space-y-1'>
                       <Label className='text-xs'>Km başına (₺)</Label>
                       <Input
                         type='number'

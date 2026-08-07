@@ -155,6 +155,8 @@ export type UpsertPriceListInput = {
   isDefault?: boolean
   status?: PriceListStatus
   distanceStructure: DistanceStructure
+  returnFeePercent?: number
+  returnFeeMin?: number
   validFrom?: string
   validTo?: string
   rules?: PriceRule[]
@@ -191,6 +193,8 @@ export async function createPriceList(input: UpsertPriceListInput): Promise<Pric
     status: input.status ?? 'active',
     currency: 'TRY',
     distanceStructure: input.distanceStructure,
+    returnFeePercent: input.returnFeePercent ?? 50,
+    returnFeeMin: input.returnFeeMin,
     validFrom: input.validFrom,
     validTo: input.validTo,
     createdAt: stamp,
@@ -223,6 +227,8 @@ export async function updatePriceList(
     isDefault: input.isDefault ?? prev.isDefault,
     status: input.status ?? prev.status,
     distanceStructure: input.distanceStructure,
+    returnFeePercent: input.returnFeePercent ?? prev.returnFeePercent ?? 50,
+    returnFeeMin: input.returnFeeMin !== undefined ? input.returnFeeMin : prev.returnFeeMin,
     validFrom: input.validFrom,
     validTo: input.validTo,
     updatedAt: nowIso(),

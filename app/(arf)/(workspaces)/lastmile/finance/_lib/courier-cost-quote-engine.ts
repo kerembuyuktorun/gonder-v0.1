@@ -1,9 +1,7 @@
-import type { PriceZone } from '../_types/pricing'
+import type { DistanceStructure, PriceZone } from '../_types/pricing'
 import type {
-  CompensationModel,
   CourierCostBreakdown,
   CourierCostList,
-  CourierCostPricingMode,
   CourierCostQuoteInput,
   CourierCostQuoteResult,
   CourierCostRule,
@@ -30,133 +28,74 @@ function isDestInZone(zone: PriceZone, dest: { cityId: string; districtId?: stri
   })
 }
 
-function isBonusMode(mode: CourierCostPricingMode): boolean {
-  return mode === 'salary_bonus_package' || mode === 'salary_bonus_km'
+function desiInRange(rule: CourierCostRule, desi: number): boolean {
+  const start = rule.desiStart ?? 0
+  const end = rule.desiEnd ?? Number.POSITIVE_INFINITY
+  return desi >= start && desi <= end
 }
 
-function isTariffMode(mode: CourierCostPricingMode): boolean {
-  return (
-    mode === 'base_plus_km' ||
-    mode === 'od_district' ||
-    mode === 'zone_flat' ||
-    mode === 'desi_band_fixed' ||
-    mode === 'desi_dynamic' ||
-    mode === 'package_fee' ||
-    mode === 'hourly_shift'
-  )
-}
-
-function modeAllowedForCompensation(
-  model: CompensationModel,
-  mode: CourierCostPricingMode
-): boolean {
-  if (model === 'tariff') return isTariffMode(mode)
-  if (model === 'salary_plus_bonus') return isBonusMode(mode)
-  // hybrid: tariff + bonus
-  return isTariffMode(mode) || isBonusMode(mode)
-}
-
-function ruleMatches(
+function distanceMatches(
+  structure: DistanceStructure,
   rule: CourierCostRule,
   input: CourierCostQuoteInput,
   zonesById: Map<string, PriceZone>
 ): { match: boolean; zoneName?: string } {
-  if (rule.status !== 'active') return { match: false }
-
-  switch (rule.pricingMode) {
-    case 'od_district':
+  switch (structure) {
+    case 'od':
       return {
         match:
           geoMatches(rule.origin, input.origin) &&
           geoMatches(rule.destination, input.destination),
       }
-    case 'zone_flat': {
+    case 'zone': {
       if (!rule.zoneId) return { match: false }
       const zone = zonesById.get(rule.zoneId)
       if (!zone) return { match: false }
       const match = isDestInZone(zone, input.destination)
       return { match, zoneName: match ? zone.name : undefined }
     }
-    case 'base_plus_km':
-    case 'salary_bonus_km':
+    case 'km':
       return { match: typeof input.distanceKm === 'number' && input.distanceKm >= 0 }
-    case 'desi_band_fixed': {
-      const start = rule.desiStart ?? 0
-      const end = rule.desiEnd ?? Number.POSITIVE_INFINITY
-      return { match: input.desi >= start && input.desi <= end }
-    }
-    case 'desi_dynamic': {
-      if (rule.desiStart != null || rule.desiEnd != null) {
-        const start = rule.desiStart ?? 0
-        const end = rule.desiEnd ?? Number.POSITIVE_INFINITY
-        return { match: input.desi >= start && input.desi <= end }
-      }
-      return { match: input.desi >= 0 }
-    }
-    case 'package_fee':
-    case 'salary_bonus_package':
-      return { match: (input.packageCount ?? 0) >= 0 }
-    case 'hourly_shift':
-      return { match: typeof input.workedHours === 'number' && input.workedHours >= 0 }
-    default:
-      return { match: false }
   }
 }
 
-type FeeParts = {
-  baseFee: number
-  distanceFee: number
-  desiFee: number
-  packageFee: number
-  hourlyFee: number
-  flatFee: number
-  bonusPortion: number
+function ruleMatches(
+  list: CourierCostList,
+  rule: CourierCostRule,
+  input: CourierCostQuoteInput,
+  zonesById: Map<string, PriceZone>
+): { match: boolean; zoneName?: string } {
+  if (rule.status !== 'active') return { match: false }
+  if (!desiInRange(rule, input.desi)) return { match: false }
+  return distanceMatches(list.distanceStructure, rule, input, zonesById)
 }
 
-function computeFees(rule: CourierCostRule, input: CourierCostQuoteInput): FeeParts {
-  const empty: FeeParts = {
-    baseFee: 0,
-    distanceFee: 0,
-    desiFee: 0,
-    packageFee: 0,
-    hourlyFee: 0,
+/**
+ * fixed  → flatFee (+ km: perKm × distance)
+ * dynamic → baseFee + perDesi × desi (+ km: perKm × distance)
+ */
+function computeFees(
+  list: CourierCostList,
+  rule: CourierCostRule,
+  input: CourierCostQuoteInput
+): Pick<CourierCostBreakdown, 'baseFee' | 'distanceFee' | 'desiFee' | 'flatFee'> {
+  const distanceFee =
+    list.distanceStructure === 'km' ? (rule.perKm ?? 0) * (input.distanceKm ?? 0) : 0
+
+  if (rule.desiPricing === 'fixed') {
+    return {
+      baseFee: 0,
+      distanceFee,
+      desiFee: 0,
+      flatFee: rule.flatFee ?? 0,
+    }
+  }
+
+  return {
+    baseFee: rule.baseFee ?? 0,
+    distanceFee,
+    desiFee: (rule.perDesi ?? 0) * input.desi,
     flatFee: 0,
-    bonusPortion: 0,
-  }
-
-  switch (rule.pricingMode) {
-    case 'base_plus_km': {
-      const baseFee = rule.baseFee ?? 0
-      const distanceFee = (rule.perKm ?? 0) * (input.distanceKm ?? 0)
-      return { ...empty, baseFee, distanceFee }
-    }
-    case 'od_district':
-    case 'zone_flat':
-    case 'desi_band_fixed':
-      return { ...empty, flatFee: rule.flatFee ?? 0 }
-    case 'desi_dynamic': {
-      const baseFee = rule.baseFee ?? 0
-      const desiFee = (rule.perDesi ?? 0) * input.desi
-      return { ...empty, baseFee, desiFee }
-    }
-    case 'package_fee': {
-      const packageFee = (rule.perPackage ?? rule.flatFee ?? 0) * (input.packageCount ?? 1)
-      return { ...empty, packageFee }
-    }
-    case 'hourly_shift': {
-      const hourlyFee = (rule.perHour ?? 0) * (input.workedHours ?? 0)
-      return { ...empty, hourlyFee }
-    }
-    case 'salary_bonus_package': {
-      const bonusPortion = (rule.perPackage ?? 0) * (input.packageCount ?? 1)
-      return { ...empty, bonusPortion, packageFee: bonusPortion }
-    }
-    case 'salary_bonus_km': {
-      const bonusPortion = (rule.perKm ?? 0) * (input.distanceKm ?? 0)
-      return { ...empty, bonusPortion, distanceFee: bonusPortion }
-    }
-    default:
-      return empty
   }
 }
 
@@ -208,8 +147,6 @@ function emptyBreakdown(
     baseFee: 0,
     distanceFee: 0,
     desiFee: 0,
-    packageFee: 0,
-    hourlyFee: 0,
     flatFee: 0,
     salaryPortion: 0,
     bonusPortion: 0,
@@ -241,12 +178,11 @@ export function quoteCourierCost(
       compensationModel: list.compensationModel,
       matchedRuleId: 'manual_override',
       matchedRuleLabel: 'Manuel tutar',
-      pricingMode: 'package_fee',
+      pricingMode: list.rules[0]?.pricingMode ?? 'od_district',
+      distanceStructure: list.distanceStructure,
       inputs: {
         desi: input.desi,
         distanceKm: input.distanceKm,
-        packageCount: input.packageCount,
-        workedHours: input.workedHours,
         originCityId: input.origin.cityId,
         originDistrictId: input.origin.districtId,
         destCityId: input.destination.cityId,
@@ -265,34 +201,17 @@ export function quoteCourierCost(
   }
 
   const zonesById = new Map(ctx.zones.map((z) => [z.id, z]))
-  const sorted = [...list.rules]
-    .filter((r) => modeAllowedForCompensation(list.compensationModel, r.pricingMode))
-    .sort((a, b) => b.priority - a.priority)
+  const sorted = [...list.rules].sort((a, b) => b.priority - a.priority)
 
-  // salary_plus_bonus: sipariş quote'unda salaryPortion=0 (dönemsel); yalnız bonus kuralları
-  // hybrid/tariff: eşleşen kuralın ücretleri
   for (const rule of sorted) {
-    const { match, zoneName } = ruleMatches(rule, input, zonesById)
+    const { match, zoneName } = ruleMatches(list, rule, input, zonesById)
     if (!match) continue
 
-    const fees = computeFees(rule, input)
-    const raw =
-      fees.baseFee +
-      fees.distanceFee +
-      fees.desiFee +
-      fees.packageFee +
-      fees.hourlyFee +
-      fees.flatFee
-    // bonusPortion already counted in packageFee/distanceFee for bonus modes; avoid double count
-    const rawTotal = isBonusMode(rule.pricingMode)
-      ? fees.bonusPortion
-      : raw
-
-    const { value: subtotal, adjustments } = applyMinMax(rawTotal, rule)
-    const salaryPortion = 0 // dönemsel maaş sipariş quote'unda ayrı gösterilir
-    const bonusPortion = isBonusMode(rule.pricingMode)
-      ? subtotal
-      : roundMoney(fees.bonusPortion)
+    const fees = computeFees(list, rule, input)
+    const raw = fees.baseFee + fees.distanceFee + fees.desiFee + fees.flatFee
+    const { value: subtotal, adjustments } = applyMinMax(raw, rule)
+    const isBonus =
+      list.compensationModel === 'salary_plus_bonus' || list.compensationModel === 'hybrid'
 
     return {
       ok: true,
@@ -300,13 +219,12 @@ export function quoteCourierCost(
       costListName: list.name,
       compensationModel: list.compensationModel,
       matchedRuleId: rule.id,
-      matchedRuleLabel: rule.name || rule.pricingMode,
+      matchedRuleLabel: rule.name || `${rule.desiStart}–${rule.desiEnd} desi`,
       pricingMode: rule.pricingMode,
+      distanceStructure: list.distanceStructure,
       inputs: {
         desi: input.desi,
         distanceKm: input.distanceKm,
-        packageCount: input.packageCount,
-        workedHours: input.workedHours,
         originCityId: input.origin.cityId,
         originDistrictId: input.origin.districtId,
         destCityId: input.destination.cityId,
@@ -316,13 +234,11 @@ export function quoteCourierCost(
       },
       breakdown: {
         baseFee: roundMoney(fees.baseFee),
-        distanceFee: roundMoney(isBonusMode(rule.pricingMode) ? 0 : fees.distanceFee),
+        distanceFee: roundMoney(fees.distanceFee),
         desiFee: roundMoney(fees.desiFee),
-        packageFee: roundMoney(isBonusMode(rule.pricingMode) ? 0 : fees.packageFee),
-        hourlyFee: roundMoney(fees.hourlyFee),
         flatFee: roundMoney(fees.flatFee),
-        salaryPortion,
-        bonusPortion,
+        salaryPortion: 0,
+        bonusPortion: isBonus ? subtotal : 0,
         adjustments,
         subtotal,
         total: subtotal,
@@ -332,7 +248,6 @@ export function quoteCourierCost(
     }
   }
 
-  // Maaş + prim modelinde bonus kuralı yoksa: 0 prim + maaş notu
   if (list.compensationModel === 'salary_plus_bonus') {
     return {
       ok: true,
@@ -341,12 +256,11 @@ export function quoteCourierCost(
       compensationModel: list.compensationModel,
       matchedRuleId: 'salary_only',
       matchedRuleLabel: 'Sabit maaş (dönemsel)',
-      pricingMode: 'salary_bonus_package',
+      pricingMode: list.rules[0]?.pricingMode ?? 'base_plus_km',
+      distanceStructure: list.distanceStructure,
       inputs: {
         desi: input.desi,
         distanceKm: input.distanceKm,
-        packageCount: input.packageCount,
-        workedHours: input.workedHours,
         originCityId: input.origin.cityId,
         originDistrictId: input.origin.districtId,
         destCityId: input.destination.cityId,

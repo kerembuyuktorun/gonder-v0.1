@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import type {
   ColumnFiltersState,
   PaginationState,
@@ -49,6 +50,15 @@ import {
 import { CustomerListTabs } from './_components/customer-list-tabs'
 import { CustomersKpiCards } from './_components/customers-kpi-cards'
 import { buildCustomerWritePayload, sectorLabelToCode, toBackendStatus } from './_lib/map-customer'
+import {
+  countCustomersByStatusScope,
+  queryCustomers,
+} from './_lib/query-customers'
+import {
+  getCustomerListKpiMock,
+  mockCustomerList,
+} from './_mock/customers-mock-data'
+import { isLastmileDemoForced } from '../_lib/lastmile-demo-mode'
 import type {
   CustomerListKpi,
   CustomerStatusScope,
@@ -71,6 +81,8 @@ const EMPTY_KPI: CustomerListKpi = {
 }
 
 export default function CustomersListPage() {
+  const searchParams = useSearchParams()
+  const forceDemo = isLastmileDemoForced(searchParams)
   const [table, setTable] = useState<TanStackTable<LastmileCustomer> | null>(null)
   const [data, setData] = useState<LastmileCustomer[]>([])
   const [totalRows, setTotalRows] = useState(0)
@@ -158,8 +170,9 @@ export default function CustomersListPage() {
       createCustomerColumns({
         onEdit: handleEdit,
         onToggleStatus: handleToggleStatus,
+        demo: forceDemo,
       }),
-    [handleEdit, handleToggleStatus]
+    [handleEdit, handleToggleStatus, forceDemo]
   )
 
   useEffect(() => {
@@ -175,6 +188,25 @@ export default function CustomersListPage() {
 
     async function load() {
       setIsLoading(true)
+
+      if (forceDemo) {
+        if (cancelled) return
+        const result = queryCustomers({
+          rows: mockCustomerList,
+          statusScope,
+          pagination,
+          sorting,
+          columnFilters,
+          globalFilter,
+        })
+        setData(result.rows)
+        setTotalRows(result.totalRows)
+        setStatusCounts(countCustomersByStatusScope(mockCustomerList))
+        setKpi(getCustomerListKpiMock())
+        setIsLoading(false)
+        return
+      }
+
       const sort = sorting[0]
       const result = await fetchCustomersList({
         page: pagination.pageIndex + 1,
@@ -207,9 +239,10 @@ export default function CustomersListPage() {
       cancelled = true
     }
   }, [
+    columnFilters,
+    forceDemo,
     globalFilter,
-    pagination.pageIndex,
-    pagination.pageSize,
+    pagination,
     refreshKey,
     sectorFilter,
     sorting,
@@ -217,6 +250,7 @@ export default function CustomersListPage() {
   ])
 
   useEffect(() => {
+    if (forceDemo) return
     let cancelled = false
 
     async function loadStats() {
@@ -229,7 +263,7 @@ export default function CustomersListPage() {
     return () => {
       cancelled = true
     }
-  }, [refreshKey])
+  }, [forceDemo, refreshKey])
 
   const handleTableReady = useCallback((instance: TanStackTable<LastmileCustomer>) => {
     setTable(instance)
@@ -275,7 +309,14 @@ export default function CustomersListPage() {
 
       <div className='flex flex-1 flex-col gap-6 p-6'>
         <div className='flex flex-wrap items-center justify-between gap-4'>
-          <h1 className='text-2xl font-semibold tracking-tight'>Müşteri Listesi</h1>
+          <div className='flex min-w-0 items-center gap-3'>
+            <h1 className='truncate text-2xl font-semibold tracking-tight'>
+              {forceDemo ? 'Müşteri Listesi (Demo)' : 'Müşteri Listesi'}
+            </h1>
+            {forceDemo ? (
+              <Badge className='bg-amber-100 text-amber-900 hover:bg-amber-100'>Demo veri</Badge>
+            ) : null}
+          </div>
           <div className='flex shrink-0 flex-wrap items-center gap-2'>
             <Button
               type='button'

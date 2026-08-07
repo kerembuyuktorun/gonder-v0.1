@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import type {
   ColumnFiltersState,
   PaginationState,
@@ -30,6 +31,11 @@ import {
 } from './_columns/connections-columns'
 import { ConnectionListTabs } from './_components/connection-list-tabs'
 import { contactTypeFilterOptions } from './_components/contact-type-badge'
+import {
+  countConnectionsByTypeScope,
+  mockConnectionList,
+} from './_mock/connections-mock-data'
+import { isLastmileDemoForced } from '../_lib/lastmile-demo-mode'
 import type { ConnectionTypeScope, LastmileConnection } from './_types/connection'
 
 const resolveUpdater = <T,>(updater: Updater<T>, previous: T): T =>
@@ -42,6 +48,8 @@ const EMPTY_TYPE_COUNTS: Record<ConnectionTypeScope, number> = {
 }
 
 export default function ConnectionsListPage() {
+  const searchParams = useSearchParams()
+  const forceDemo = isLastmileDemoForced(searchParams)
   const [table, setTable] = useState<TanStackTable<LastmileConnection> | null>(null)
   const [data, setData] = useState<LastmileConnection[]>([])
   const [totalRows, setTotalRows] = useState(0)
@@ -106,6 +114,49 @@ export default function ConnectionsListPage() {
 
     async function load() {
       setIsLoading(true)
+
+      if (forceDemo) {
+        if (cancelled) return
+        let rows = [...mockConnectionList]
+        if (effectiveTypeScope !== 'all') {
+          rows = rows.filter((r) => r.muhatap_tipi === effectiveTypeScope)
+        }
+        if (addressTitles.length > 0) {
+          rows = rows.filter((r) => addressTitles.includes(r.adres_baslik))
+        }
+        const needle = globalFilter.trim().toLocaleLowerCase('tr-TR')
+        if (needle) {
+          rows = rows.filter((r) => {
+            const hay = [
+              r.musteri_adi,
+              r.muhatabi,
+              r.firma_adi,
+              r.telefon,
+              r.full_address,
+              r.musteri_kodu,
+            ]
+              .filter(Boolean)
+              .join(' ')
+              .toLocaleLowerCase('tr-TR')
+            return hay.includes(needle)
+          })
+        }
+        const sort = sorting[0]
+        if (sort?.id === 'kayit_tarihi') {
+          rows.sort((a, b) =>
+            sort.desc
+              ? b.kayit_tarihi.localeCompare(a.kayit_tarihi, 'tr')
+              : a.kayit_tarihi.localeCompare(b.kayit_tarihi, 'tr')
+          )
+        }
+        const start = pagination.pageIndex * pagination.pageSize
+        setData(rows.slice(start, start + pagination.pageSize))
+        setTotalRows(rows.length)
+        setTypeCounts(countConnectionsByTypeScope(mockConnectionList))
+        setIsLoading(false)
+        return
+      }
+
       const sort = sorting[0]
       const result = await fetchConnectionsList({
         page: pagination.pageIndex + 1,
@@ -141,6 +192,7 @@ export default function ConnectionsListPage() {
   }, [
     addressTitles,
     effectiveTypeScope,
+    forceDemo,
     globalFilter,
     pagination.pageIndex,
     pagination.pageSize,
@@ -172,7 +224,14 @@ export default function ConnectionsListPage() {
       />
 
       <div className='flex flex-1 flex-col gap-6 p-6'>
-        <h1 className='text-2xl font-semibold tracking-tight'>Bağlantı Listesi</h1>
+        <div className='flex flex-wrap items-center gap-3'>
+          <h1 className='text-2xl font-semibold tracking-tight'>
+            {forceDemo ? 'Bağlantı Listesi (Demo)' : 'Bağlantı Listesi'}
+          </h1>
+          {forceDemo ? (
+            <Badge className='bg-amber-100 text-amber-900 hover:bg-amber-100'>Demo veri</Badge>
+          ) : null}
+        </div>
 
         <Card>
           <CardContent className='space-y-4 px-6'>

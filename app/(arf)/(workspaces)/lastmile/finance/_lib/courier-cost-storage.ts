@@ -1,10 +1,10 @@
 /**
  * localStorage persistence for Last Mile courier cost / payout mock data.
- * Keys: arf:lastmile:courier-cost:v1:*
- * Isolated from customer pricing (arf:lastmile:pricing:v1:*).
+ * Keys: arf:lastmile:courier-cost:v3:*
+ * Isolated from customer pricing. v3: demo ID hizası (lm-*, seed-courier-*).
  */
 
-const PREFIX = 'arf:lastmile:courier-cost:v1:'
+const PREFIX = 'arf:lastmile:courier-cost:v3:'
 
 export const COURIER_COST_STORAGE_KEYS = {
   costLists: `${PREFIX}cost-lists`,

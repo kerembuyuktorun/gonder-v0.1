@@ -15,9 +15,28 @@ import { DetailActionMenu } from './detail-action-menu'
 
 type DetailHeaderProps = {
   order: OrderDetail
-  onCancel: () => void
-  onHandover: () => void
   actionPending?: boolean
+  hasPendingCancelRequest?: boolean
+  returnFeePreview?: number
+  returnFeePercent?: number
+  onInstantCancel: (payload: {
+    reasonCode: string
+    reasonLabel: string
+    note?: string
+  }) => void
+  onCancelRequest: (payload: {
+    reasonCode: string
+    reasonLabel: string
+    note?: string
+  }) => void
+  onCreateReturn: (payload: { reasonLabel?: string; note?: string }) => void
+  onDefer: (payload: {
+    reasonCode: string
+    reasonLabel: string
+    deferredToDate: string
+    note?: string
+  }) => void
+  onTransferHandover: () => void
 }
 
 const statusAccent: Record<OrderDetail['durum'], { line: string; glow: string }> = {
@@ -45,9 +64,15 @@ const statusAccent: Record<OrderDetail['durum'], { line: string; glow: string }>
 
 export function DetailHeader({
   order,
-  onCancel,
-  onHandover,
   actionPending = false,
+  hasPendingCancelRequest = false,
+  returnFeePreview = 0,
+  returnFeePercent = 50,
+  onInstantCancel,
+  onCancelRequest,
+  onCreateReturn,
+  onDefer,
+  onTransferHandover,
 }: DetailHeaderProps) {
   const accent = statusAccent[order.durum]
 
@@ -97,9 +122,15 @@ export function DetailHeader({
 
           <DetailActionMenu
             order={order}
-            onCancel={onCancel}
-            onHandover={onHandover}
             actionPending={actionPending}
+            hasPendingCancelRequest={hasPendingCancelRequest}
+            returnFeePreview={returnFeePreview}
+            returnFeePercent={returnFeePercent}
+            onInstantCancel={onInstantCancel}
+            onCancelRequest={onCancelRequest}
+            onCreateReturn={onCreateReturn}
+            onDefer={onDefer}
+            onTransferHandover={onTransferHandover}
           />
         </div>
 

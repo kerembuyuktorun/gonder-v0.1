@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ARF_ROUTES } from '../../../../../_shared/routes'
+import { withLastmileDemo } from '../../../_lib/lastmile-demo-mode'
 import {
   ChevronDown,
   Eye,
@@ -86,6 +87,7 @@ type ColumnActions = {
   onToggleStatus: (vehicle: LastmileVehicle) => void
   courierOptions: CourierOption[]
   skillLabels?: Record<string, string>
+  demo?: boolean
   permissions?: {
     canUpdate?: boolean
     canActivate?: boolean
@@ -101,6 +103,7 @@ export function createVehicleColumns({
   onToggleStatus,
   courierOptions,
   skillLabels = {},
+  demo = false,
   permissions = {
     canUpdate: true,
     canActivate: true,
@@ -108,6 +111,9 @@ export function createVehicleColumns({
     canChangeDriver: true,
   },
 }: ColumnActions): ColumnDef<LastmileVehicle>[] {
+  const detailHref = (id: string) =>
+    withLastmileDemo(ARF_ROUTES.lastmile.resources.vehicles.detail(id), demo)
+
   return [
     {
       accessorKey: 'plaka',
@@ -119,7 +125,7 @@ export function createVehicleColumns({
       header: ({ column }) => <DataTableColumnHeader column={column} title='Plaka' />,
       cell: ({ row }) => (
         <Link
-          href={ARF_ROUTES.lastmile.resources.vehicles.detail(row.original.id)}
+          href={detailHref(row.original.id)}
           className='font-mono text-sm font-semibold text-secondary underline decoration-secondary/40 underline-offset-4 transition-all hover:text-primary hover:decoration-primary/60'
         >
           {row.original.plaka}
@@ -398,7 +404,7 @@ export function createVehicleColumns({
                 <DropdownMenuLabel className='font-mono'>{vehicle.plaka}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href={ARF_ROUTES.lastmile.resources.vehicles.detail(vehicle.id)}>
+                  <Link href={detailHref(vehicle.id)}>
                     <Eye className='mr-2 size-4' />
                     Detay Gör
                   </Link>

@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ARF_ROUTES } from '../../../../_shared/routes'
+import { withLastmileDemo } from '../../_lib/lastmile-demo-mode'
 import { ChevronDown, Eye, PauseCircle, Pencil, PlayCircle } from 'lucide-react'
 import type { LastmileCustomer } from '../_types/customer'
 import { CustomerStatusBadge } from '../_components/customer-status-badge'
@@ -29,12 +30,17 @@ function columnWidth(title: string, extras = 0) {
 type ColumnActions = {
   onEdit: (customer: LastmileCustomer) => void
   onToggleStatus: (customer: LastmileCustomer) => void
+  demo?: boolean
 }
 
 export function createCustomerColumns({
   onEdit,
   onToggleStatus,
+  demo = false,
 }: ColumnActions): ColumnDef<LastmileCustomer>[] {
+  const detailHref = (id: string) =>
+    withLastmileDemo(ARF_ROUTES.lastmile.customers.detail(id), demo)
+
   return [
     {
       accessorKey: 'musteri_kodu',
@@ -46,7 +52,7 @@ export function createCustomerColumns({
       header: ({ column }) => <DataTableColumnHeader column={column} title='Müşteri Kodu' />,
       cell: ({ row }) => (
         <Link
-          href={ARF_ROUTES.lastmile.customers.detail(row.original.id)}
+          href={detailHref(row.original.id)}
           className='font-mono text-sm font-semibold text-secondary underline decoration-secondary/40 underline-offset-4 transition-all hover:text-primary hover:decoration-primary/60'
         >
           {row.original.musteri_kodu}
@@ -313,7 +319,7 @@ export function createCustomerColumns({
                 <DropdownMenuLabel>{customer.musteri_kodu}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href={ARF_ROUTES.lastmile.customers.detail(customer.id)}>
+                  <Link href={detailHref(customer.id)}>
                     <Eye className='mr-2 size-4' />
                     Detaya Git
                   </Link>

@@ -1,11 +1,12 @@
-import { LastmilePlaceholderPage } from '../../_components/lastmile-placeholder-page'
+import { Suspense } from 'react'
+import { getLastmileLiveDashboardData } from '../../_mock/dashboard-mock-data'
+import LiveDashboardContent from './page-content'
 
 export default function LastmileLiveDashboardPage() {
+  const data = getLastmileLiveDashboardData()
   return (
-    <LastmilePlaceholderPage
-      breadcrumbs={['Last Mile', 'Dashboard', 'Canlı İzleme']}
-      title='Canlı İzleme'
-      description='Bu ekran iskeleti hazırdır. Bir sonraki adımda sayfaya özel içerik ve API bağlantıları eklenecektir.'
-    />
+    <Suspense fallback={null}>
+      <LiveDashboardContent data={data} />
+    </Suspense>
   )
 }

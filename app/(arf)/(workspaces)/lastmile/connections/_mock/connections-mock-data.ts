@@ -178,3 +178,13 @@ export const mockConnectionList: LastmileConnection[] = [
     kayit_tarihi: '11.07.2026 13:05',
   },
 ]
+
+export function countConnectionsByTypeScope(
+  rows: LastmileConnection[]
+): Record<'all' | 'bireysel' | 'kurumsal', number> {
+  return {
+    all: rows.length,
+    bireysel: rows.filter((r) => r.muhatap_tipi === 'bireysel').length,
+    kurumsal: rows.filter((r) => r.muhatap_tipi === 'kurumsal').length,
+  }
+}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type {
   ColumnFiltersState,
   PaginationState,
@@ -57,6 +57,12 @@ import { VehicleListTabs } from './_components/vehicle-list-tabs'
 import { vehicleClassFilterOptions } from './_components/vehicle-type-label'
 import { VehiclesKpiCards } from './_components/vehicles-kpi-cards'
 import { vehicleToFormValuesWithScopes } from './_lib/map-vehicle'
+import { isLastmileDemoForced } from '../../_lib/lastmile-demo-mode'
+import {
+  VEHICLES_MOCK,
+  computeStatusCounts,
+  computeVehicleKpi,
+} from './_mock/vehicles-mock-data'
 import type {
   LastmileVehicle,
   VehicleListKpi,
@@ -85,6 +91,8 @@ const EMPTY_STATUS_COUNTS: Record<VehicleStatusScope, number> = {
 
 export default function VehiclesListPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const forceDemo = isLastmileDemoForced(searchParams)
   const [table, setTable] = useState<TanStackTable<LastmileVehicle> | null>(null)
   const [data, setData] = useState<LastmileVehicle[]>([])
   const [totalRows, setTotalRows] = useState(0)
@@ -122,6 +130,11 @@ export default function VehiclesListPage() {
   }, [columnFilters])
 
   const loadStats = useCallback(async () => {
+    if (forceDemo) {
+      setKpi(computeVehicleKpi(VEHICLES_MOCK))
+      setStatusCounts(computeStatusCounts(VEHICLES_MOCK))
+      return
+    }
     const result = await fetchVehicleStats()
     if (!result.success) {
       toast.error(result.error)
@@ -129,7 +142,7 @@ export default function VehiclesListPage() {
     }
     setKpi(result.data.kpi)
     setStatusCounts(result.data.statusCounts)
-  }, [])
+  }, [forceDemo])
 
   const handleLiveTrack = useCallback(
     (vehicle: LastmileVehicle) => {
@@ -269,6 +282,7 @@ export default function VehiclesListPage() {
         onToggleStatus: handleToggleStatus,
         courierOptions,
         skillLabels: skillLabelMap,
+        demo: forceDemo,
         permissions: {
           canUpdate: permissions.canUpdate,
           canActivate: permissions.canActivate,
@@ -278,6 +292,7 @@ export default function VehiclesListPage() {
       }),
     [
       courierOptions,
+      forceDemo,
       handleCourierAssign,
       handleEdit,
       handleLiveTrack,
@@ -304,6 +319,43 @@ export default function VehiclesListPage() {
     async function load() {
       setIsLoading(true)
       const sort = sorting[0]
+
+      if (forceDemo) {
+        if (cancelled) return
+        let rows = [...VEHICLES_MOCK]
+        if (statusScope !== 'all') {
+          rows = rows.filter((v) => v.durum === statusScope)
+        }
+        if (ownershipFilter.length > 0) {
+          rows = rows.filter((v) => ownershipFilter.includes(v.mulkiyet))
+        }
+        if (bodyTypeFilter.length > 0) {
+          rows = rows.filter((v) => bodyTypeFilter.includes(v.arac_tipi))
+        }
+        const needle = globalFilter.trim().toLocaleLowerCase('tr-TR')
+        if (needle) {
+          rows = rows.filter((v) => {
+            const hay = [v.plaka, v.marka, v.model, v.zimmetli_surucu, v.hizmet_bolgesi]
+              .filter(Boolean)
+              .join(' ')
+              .toLocaleLowerCase('tr-TR')
+            return hay.includes(needle)
+          })
+        }
+        if (sort?.id === 'plaka') {
+          rows.sort((a, b) =>
+            sort.desc
+              ? b.plaka.localeCompare(a.plaka, 'tr')
+              : a.plaka.localeCompare(b.plaka, 'tr')
+          )
+        }
+        const start = pagination.pageIndex * pagination.pageSize
+        setData(rows.slice(start, start + pagination.pageSize))
+        setTotalRows(rows.length)
+        await loadStats()
+        setIsLoading(false)
+        return
+      }
 
       const [listResult] = await Promise.all([
         fetchVehiclesList({
@@ -341,6 +393,7 @@ export default function VehiclesListPage() {
     }
   }, [
     bodyTypeFilter,
+    forceDemo,
     globalFilter,
     loadStats,
     ownershipFilter,
@@ -400,7 +453,14 @@ export default function VehiclesListPage() {
 
       <div className='flex flex-1 flex-col gap-6 p-6'>
         <div className='flex flex-wrap items-center justify-between gap-4'>
-          <h1 className='text-2xl font-semibold tracking-tight'>Araç Listesi</h1>
+          <div className='flex min-w-0 items-center gap-3'>
+            <h1 className='truncate text-2xl font-semibold tracking-tight'>
+              {forceDemo ? 'Araç Listesi (Demo)' : 'Araç Listesi'}
+            </h1>
+            {forceDemo ? (
+              <Badge className='bg-amber-100 text-amber-900 hover:bg-amber-100'>Demo veri</Badge>
+            ) : null}
+          </div>
           <div className='flex shrink-0 flex-wrap items-center gap-2'>
             <Button
               type='button'

@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ARF_ROUTES } from '../../../../_shared/routes'
+import { withLastmileDemo } from '../../_lib/lastmile-demo-mode'
 import {
   Ban,
   ChevronDown,
@@ -71,12 +72,18 @@ function PickupDeliveryTimeCell({
 type OrderColumnOptions = {
   /** Rota detay — siparişi rotadan çıkar */
   onRemoveFromRoute?: (order: LastmileOrder) => void
+  /** Demo mock gezinme — detay linklerine ?demo=1 ekler */
+  demo?: boolean
+  /** Satır iptal / iptal talebi */
+  onCancelOrder?: (order: LastmileOrder) => void
 }
 
 export function createOrderColumns(
   options: OrderColumnOptions = {}
 ): ColumnDef<LastmileOrder>[] {
-  const { onRemoveFromRoute } = options
+  const { onRemoveFromRoute, onCancelOrder, demo = false } = options
+  const detailHref = (id: string) =>
+    withLastmileDemo(ARF_ROUTES.lastmile.orders.detail(id), demo)
 
   return [
     createSelectionColumn<LastmileOrder>(),
@@ -89,7 +96,7 @@ export function createOrderColumns(
       header: ({ column }) => <DataTableColumnHeader column={column} title='Takip No' />,
       cell: ({ row }) => (
         <Link
-          href={ARF_ROUTES.lastmile.orders.detail(row.original.id)}
+          href={detailHref(row.original.id)}
           className='font-mono text-sm font-semibold text-secondary underline decoration-secondary/40 underline-offset-4 transition-all hover:text-primary hover:decoration-primary/60'
         >
           {row.original.takip_no}
@@ -523,7 +530,7 @@ export function createOrderColumns(
               <DropdownMenuLabel>{`Takip No ${row.original.takip_no}`}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href={ARF_ROUTES.lastmile.orders.detail(row.original.id)}>
+                <Link href={detailHref(row.original.id)}>
                   <Eye className='mr-2 size-4' />
                   Detay Görüntüle
                 </Link>
@@ -559,8 +566,9 @@ export function createOrderColumns(
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className='text-amber-700 focus:text-amber-700'
+                disabled={row.original.durum === 'iptal_edildi'}
                 onSelect={() => {
-                  // Placeholder: cancel flow
+                  onCancelOrder?.(row.original)
                 }}
               >
                 <Ban className='mr-2 size-4' />

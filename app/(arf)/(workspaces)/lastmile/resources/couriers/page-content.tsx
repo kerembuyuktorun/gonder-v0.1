@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type {
   ColumnFiltersState,
   PaginationState,
@@ -57,6 +57,11 @@ import { CouriersKpiCards } from './_components/couriers-kpi-cards'
 import { useCourierModalResources } from './_hooks/use-courier-modal-resources'
 import { useCourierPermissions } from './_hooks/use-courier-permissions'
 import { getVehicleAssignmentConflict } from '../_lib/assignment-validation'
+import { isLastmileDemoForced } from '../../_lib/lastmile-demo-mode'
+import {
+  getCourierListKpiMock,
+  mockCourierList,
+} from './_mock/couriers-mock-data'
 import type {
   CourierEmploymentType,
   CourierListKpi,
@@ -85,6 +90,8 @@ const EMPTY_STATUS_COUNTS: Record<CourierStatusScope, number> = {
 
 export default function CouriersListPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const forceDemo = isLastmileDemoForced(searchParams)
   const { vehicleOptions, skillOptions, isSkillCatalogLoading, skillLabelMap } =
     useCourierModalResources()
   const permissions = useCourierPermissions()
@@ -116,6 +123,17 @@ export default function CouriersListPage() {
   }, [columnFilters])
 
   const loadStats = useCallback(async () => {
+    if (forceDemo) {
+      const kpiData = getCourierListKpiMock()
+      setKpi(kpiData)
+      setStatusCounts({
+        all: kpiData.total,
+        yolda: kpiData.onRoad,
+        bos_ta: kpiData.idle,
+        pasif: kpiData.passive,
+      })
+      return
+    }
     const result = await fetchDriverStats()
     if (!result.success) {
       toast.error(result.error)
@@ -123,7 +141,7 @@ export default function CouriersListPage() {
     }
     setKpi(result.data.kpi)
     setStatusCounts(result.data.statusCounts)
-  }, [])
+  }, [forceDemo])
 
   const handleLiveTrack = useCallback(
     (courier: LastmileCourier) => {
@@ -312,6 +330,7 @@ export default function CouriersListPage() {
           canPassive: permissions.canPassive,
           canChangeVehicle: permissions.canChangeVehicle,
         },
+        demo: forceDemo,
       }),
     [
       handleEdit,
@@ -325,6 +344,7 @@ export default function CouriersListPage() {
       permissions.canUpdate,
       skillLabelMap,
       vehicleOptions,
+      forceDemo,
     ]
   )
 
@@ -342,6 +362,39 @@ export default function CouriersListPage() {
     async function load() {
       setIsLoading(true)
       const sort = sorting[0]
+
+      if (forceDemo) {
+        let rows = [...mockCourierList]
+        if (statusScope !== 'all') {
+          rows = rows.filter((c) => c.durum === statusScope)
+        }
+        if (employmentFilter.length > 0) {
+          rows = rows.filter((c) => employmentFilter.includes(c.istihdam))
+        }
+        const needle = globalFilter.trim().toLocaleLowerCase('tr-TR')
+        if (needle) {
+          rows = rows.filter((c) => {
+            const hay = [c.ad_soyad, c.telefon, c.eposta, c.zimmetli_arac_plaka]
+              .filter(Boolean)
+              .join(' ')
+              .toLocaleLowerCase('tr-TR')
+            return hay.includes(needle)
+          })
+        }
+        if (sort?.id === 'ad_soyad') {
+          rows.sort((a, b) =>
+            sort.desc
+              ? b.ad_soyad.localeCompare(a.ad_soyad, 'tr')
+              : a.ad_soyad.localeCompare(b.ad_soyad, 'tr')
+          )
+        }
+        const start = pagination.pageIndex * pagination.pageSize
+        setData(rows.slice(start, start + pagination.pageSize))
+        setTotalRows(rows.length)
+        await loadStats()
+        setIsLoading(false)
+        return
+      }
 
       const [listResult] = await Promise.all([
         fetchDriversList({
@@ -378,6 +431,7 @@ export default function CouriersListPage() {
     }
   }, [
     employmentFilter,
+    forceDemo,
     globalFilter,
     loadStats,
     pagination.pageIndex,

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { AppHeader } from '@hascanb/arf-ui-kit/layout-kit'
 import { Badge } from '@/components/ui/badge'
@@ -31,6 +32,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { listCourierCashBalances } from '../_api/courier-cash-api'
 import { createCourierPayout, listCourierPayouts } from '../_api/courier-cost-api'
 import { formatCurrency, formatNumber, todayIso } from '../_lib/format'
 import type {
@@ -68,6 +70,7 @@ export default function CourierPayoutsPageContent() {
   const [ledgers, setLedgers] = useState<CourierPayoutLedger[]>([])
   const [entries, setEntries] = useState<PayoutEntry[]>([])
   const [kpi, setKpi] = useState<CourierPayoutsKpi>(EMPTY_KPI)
+  const [cashByCourier, setCashByCourier] = useState<Record<string, number>>({})
   const [statusFilter, setStatusFilter] = useState<PayoutStatus | 'all'>('all')
   const [loading, setLoading] = useState(true)
 
@@ -82,13 +85,19 @@ export default function CourierPayoutsPageContent() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await listCourierPayouts({
-        courierId: courierFilter,
-        status: statusFilter === 'all' ? undefined : statusFilter,
-      })
+      const [data, cashBalances] = await Promise.all([
+        listCourierPayouts({
+          courierId: courierFilter,
+          status: statusFilter === 'all' ? undefined : statusFilter,
+        }),
+        Promise.resolve(listCourierCashBalances()),
+      ])
       setLedgers(data.ledgers)
       setEntries(data.entries)
       setKpi(data.kpi)
+      setCashByCourier(
+        Object.fromEntries(cashBalances.map((b) => [b.courierId, b.netBalance])),
+      )
     } catch {
       toast.error('Hakedişler yüklenemedi')
     } finally {
@@ -157,18 +166,16 @@ export default function CourierPayoutsPageContent() {
       <AppHeader
         breadcrumbs={[
           { label: 'Last Mile', href: ARF_ROUTES.lastmile.root },
-          { label: 'Finans', href: ARF_ROUTES.lastmile.finance.root },
-          { label: 'Kurye Ödemeleri / Hakediş' },
+          { label: 'Finans & Muhasebe', href: ARF_ROUTES.lastmile.finance.customers.list },
+          { label: 'Hakedişler' },
         ]}
       />
       <div className='flex flex-1 flex-col gap-6 p-6'>
         <div className='flex flex-wrap items-start justify-between gap-4'>
           <div>
-            <h1 className='text-2xl font-semibold tracking-tight text-slate-900'>
-              Kurye Ödemeleri / Hakediş
-            </h1>
+            <h1 className='text-2xl font-semibold tracking-tight text-slate-900'>Hakedişler</h1>
             <p className='mt-1 text-sm text-slate-500'>
-              Kurye hakedişlerini takip edin ve ödeme kaydı oluşturun.
+              Sözleşme bazlı kurye / tedarikçi hakedişlerini takip edin ve ödeme kaydı oluşturun.
             </p>
           </div>
           <Button variant='outline' size='sm' onClick={() => void load()} disabled={loading}>
@@ -243,19 +250,21 @@ export default function CourierPayoutsPageContent() {
                   <th className='px-4 py-3'>Tutar</th>
                   <th className='px-4 py-3'>Ödenen</th>
                   <th className='px-4 py-3'>Kalan</th>
+                  <th className='px-4 py-3'>Nakit bakiye</th>
                   <th className='px-4 py-3 text-right'>Aksiyon</th>
                 </tr>
               </thead>
               <tbody className='divide-y divide-slate-100'>
                 {ledgers.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className='px-4 py-12 text-center text-slate-500'>
+                    <td colSpan={8} className='px-4 py-12 text-center text-slate-500'>
                       Hakediş kaydı yok
                     </td>
                   </tr>
                 ) : (
                   ledgers.map((ledger) => {
                     const remaining = Math.max(0, ledger.amountDue - ledger.amountPaid)
+                    const cashBalance = cashByCourier[ledger.courierId]
                     return (
                       <tr key={ledger.id} className='hover:bg-slate-50/60'>
                         <td className='px-4 py-3'>
@@ -278,6 +287,21 @@ export default function CourierPayoutsPageContent() {
                         </td>
                         <td className='px-4 py-3 tabular-nums font-medium'>
                           {formatCurrency(remaining)}
+                        </td>
+                        <td className='px-4 py-3 tabular-nums'>
+                          {typeof cashBalance === 'number' ? (
+                            <Link
+                              href={ARF_ROUTES.lastmile.finance.courierBalances.detail(
+                                ledger.courierId,
+                              )}
+                              className='font-medium text-slate-900 underline-offset-2 hover:underline'
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {formatCurrency(cashBalance)}
+                            </Link>
+                          ) : (
+                            <span className='text-slate-400'>—</span>
+                          )}
                         </td>
                         <td className='px-4 py-3 text-right'>
                           {remaining > 0 ? (

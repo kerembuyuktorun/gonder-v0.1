@@ -30,6 +30,8 @@ export default function NewPriceListPageContent() {
         name: values.name,
         isDefault: values.isDefault,
         distanceStructure: values.distanceStructure,
+        returnFeePercent: values.returnFeePercent,
+        returnFeeMin: values.returnFeeMin,
         status: 'active',
         rules: values.rules,
       })
@@ -59,6 +61,7 @@ export default function NewPriceListPageContent() {
           name: '',
           isDefault: false,
           distanceStructure: 'km',
+          returnFeePercent: 50,
           rules: [],
         }}
         zones={zones}

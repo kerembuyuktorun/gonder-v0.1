@@ -177,12 +177,13 @@ export async function getCourierCostList(id: string): Promise<CourierCostList | 
 }
 
 export type UpsertCourierCostListInput = {
-  code: string
+  code?: string
   name: string
   description?: string
   isDefault?: boolean
   status?: PriceListStatus
-  compensationModel: CourierCostList['compensationModel']
+  distanceStructure: CourierCostList['distanceStructure']
+  compensationModel?: CourierCostList['compensationModel']
   fixedSalaryMonthly?: number
   validFrom?: string
   validTo?: string
@@ -195,17 +196,19 @@ export async function createCourierCostList(
   const lists = getCostLists()
   const id = createId('ccl')
   const stamp = nowIso()
+  const compensationModel = input.compensationModel ?? 'tariff'
   const list: CourierCostList = {
     id,
-    code: input.code.trim(),
+    code: (input.code?.trim() || `KURYE-${Date.now().toString(36).toUpperCase()}`).slice(0, 40),
     name: input.name.trim(),
     description: input.description?.trim(),
     isDefault: Boolean(input.isDefault),
     status: input.status ?? 'active',
     currency: 'TRY',
-    compensationModel: input.compensationModel,
+    distanceStructure: input.distanceStructure,
+    compensationModel,
     fixedSalaryMonthly:
-      input.compensationModel === 'tariff' ? undefined : input.fixedSalaryMonthly,
+      compensationModel === 'tariff' ? undefined : input.fixedSalaryMonthly,
     validFrom: input.validFrom,
     validTo: input.validTo,
     createdAt: stamp,
@@ -229,16 +232,18 @@ export async function updateCourierCostList(
   const idx = lists.findIndex((p) => p.id === id)
   if (idx < 0) return delay(undefined)
   const prev = lists[idx]
+  const compensationModel = input.compensationModel ?? prev.compensationModel
   const updated: CourierCostList = {
     ...prev,
-    code: input.code.trim(),
+    code: input.code?.trim() || prev.code,
     name: input.name.trim(),
     description: input.description?.trim(),
     isDefault: input.isDefault ?? prev.isDefault,
     status: input.status ?? prev.status,
-    compensationModel: input.compensationModel,
+    distanceStructure: input.distanceStructure,
+    compensationModel,
     fixedSalaryMonthly:
-      input.compensationModel === 'tariff' ? undefined : input.fixedSalaryMonthly,
+      compensationModel === 'tariff' ? undefined : input.fixedSalaryMonthly,
     validFrom: input.validFrom,
     validTo: input.validTo,
     updatedAt: nowIso(),

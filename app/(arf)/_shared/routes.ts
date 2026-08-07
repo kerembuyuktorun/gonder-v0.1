@@ -115,6 +115,7 @@ export const ARF_ROUTES = {
       },
       create: `${LASTMILE_BASE}/orders/new`,
       detail: (orderId: string) => `${LASTMILE_BASE}/orders/${orderId}`,
+      cancelRequests: `${LASTMILE_BASE}/orders/cancel-requests`,
     },
     planning: {
       orchestrator: `${LASTMILE_BASE}/planning/route-orchestrator`,
@@ -164,6 +165,39 @@ export const ARF_ROUTES = {
     },
     finance: {
       root: `${LASTMILE_BASE}/finance`,
+      customers: {
+        list: `${LASTMILE_BASE}/finance/customers`,
+      },
+      suppliers: {
+        list: `${LASTMILE_BASE}/finance/suppliers`,
+        create: `${LASTMILE_BASE}/finance/suppliers/new`,
+        detail: (supplierId: string) => `${LASTMILE_BASE}/finance/suppliers/${supplierId}`,
+      },
+      payouts: {
+        list: `${LASTMILE_BASE}/finance/payouts`,
+        courier: (courierId: string) =>
+          `${LASTMILE_BASE}/finance/payouts?courier=${encodeURIComponent(courierId)}`,
+      },
+      courierBalances: {
+        list: `${LASTMILE_BASE}/finance/courier-balances`,
+        detail: (courierId: string) =>
+          `${LASTMILE_BASE}/finance/courier-balances/${encodeURIComponent(courierId)}`,
+      },
+      income: {
+        list: `${LASTMILE_BASE}/finance/income`,
+      },
+      invoices: {
+        list: `${LASTMILE_BASE}/finance/invoices`,
+        create: `${LASTMILE_BASE}/finance/invoices/new`,
+        detail: (invoiceId: string) => `${LASTMILE_BASE}/finance/invoices/${invoiceId}`,
+      },
+      uninvoicedOrders: {
+        list: `${LASTMILE_BASE}/finance/uninvoiced-orders`,
+      },
+      expenses: {
+        list: `${LASTMILE_BASE}/finance/expenses`,
+      },
+      /** @deprecated Prefer settings.pricing — kept for redirects */
       priceLists: {
         list: `${LASTMILE_BASE}/finance/price-lists`,
         create: `${LASTMILE_BASE}/finance/price-lists/new`,
@@ -172,6 +206,7 @@ export const ARF_ROUTES = {
       zones: {
         list: `${LASTMILE_BASE}/finance/zones`,
       },
+      /** @deprecated Prefer finance.income / expenses in Faz 2 */
       collections: {
         list: `${LASTMILE_BASE}/finance/collections`,
         customer: (customerId: string) =>
@@ -183,6 +218,7 @@ export const ARF_ROUTES = {
         detail: (costListId: string) =>
           `${LASTMILE_BASE}/finance/courier-cost-lists/${costListId}`,
       },
+      /** @deprecated Prefer finance.payouts */
       courierPayouts: {
         list: `${LASTMILE_BASE}/finance/courier-payouts`,
         courier: (courierId: string) =>
@@ -196,6 +232,22 @@ export const ARF_ROUTES = {
       },
       globalOperationRegions: `${LASTMILE_BASE}/settings/global-operation-regions`,
       definitions: `${LASTMILE_BASE}/settings/definitions`,
+      pricing: {
+        priceLists: {
+          list: `${LASTMILE_BASE}/finance/price-lists`,
+          create: `${LASTMILE_BASE}/finance/price-lists/new`,
+          detail: (priceListId: string) => `${LASTMILE_BASE}/finance/price-lists/${priceListId}`,
+        },
+        zones: {
+          list: `${LASTMILE_BASE}/finance/zones`,
+        },
+        courierCostLists: {
+          list: `${LASTMILE_BASE}/finance/courier-cost-lists`,
+          create: `${LASTMILE_BASE}/finance/courier-cost-lists/new`,
+          detail: (costListId: string) =>
+            `${LASTMILE_BASE}/finance/courier-cost-lists/${costListId}`,
+        },
+      },
     },
   },
 

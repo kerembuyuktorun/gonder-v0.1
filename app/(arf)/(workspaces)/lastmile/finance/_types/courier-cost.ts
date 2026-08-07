@@ -1,19 +1,17 @@
-/** Last Mile kurye/tedarikçi maliyet fiyatlandırması (mock → BE taşınabilir). */
+/** Last Mile kurye maliyet fiyatlandırması (mock → BE taşınabilir). */
 
-import type { GeoPointRef, PriceListStatus } from './pricing'
+import type {
+  DesiPricingType,
+  DistanceStructure,
+  GeoPointRef,
+  PriceListStatus,
+  PricingMode,
+} from './pricing'
 
 export type CompensationModel = 'tariff' | 'salary_plus_bonus' | 'hybrid'
 
-export type CourierCostPricingMode =
-  | 'base_plus_km'
-  | 'od_district'
-  | 'zone_flat'
-  | 'desi_band_fixed'
-  | 'desi_dynamic'
-  | 'package_fee'
-  | 'hourly_shift'
-  | 'salary_bonus_package'
-  | 'salary_bonus_km'
+/** Snapshot uyumu — distanceStructure'tan türetilir. */
+export type CourierCostPricingMode = PricingMode
 
 export type CourierCostRule = {
   id: string
@@ -21,15 +19,15 @@ export type CourierCostRule = {
   name?: string
   priority: number
   status: PriceListStatus
+  /** distanceStructure'tan türetilir */
   pricingMode: CourierCostPricingMode
+  desiPricing: DesiPricingType
+  desiStart: number
+  desiEnd: number
   baseFee?: number
   perKm?: number
   perDesi?: number
-  perHour?: number
-  perPackage?: number
   flatFee?: number
-  desiStart?: number
-  desiEnd?: number
   origin?: GeoPointRef
   destination?: GeoPointRef
   zoneId?: string
@@ -46,6 +44,7 @@ export type CourierCostList = {
   isDefault: boolean
   status: PriceListStatus
   currency: 'TRY'
+  distanceStructure: DistanceStructure
   compensationModel: CompensationModel
   fixedSalaryMonthly?: number
   validFrom?: string
@@ -100,8 +99,6 @@ export type CourierCostQuoteInput = {
   destination: { cityId: string; districtId?: string }
   desi: number
   distanceKm?: number
-  packageCount?: number
-  workedHours?: number
   orderDate?: string
   manualSubtotalOverride?: number
 }
@@ -115,8 +112,6 @@ export type CourierCostBreakdown = {
   baseFee: number
   distanceFee: number
   desiFee: number
-  packageFee: number
-  hourlyFee: number
   flatFee: number
   salaryPortion: number
   bonusPortion: number
@@ -134,11 +129,10 @@ export type CourierCostQuoteResult =
       matchedRuleId: string
       matchedRuleLabel: string
       pricingMode: CourierCostPricingMode
+      distanceStructure: DistanceStructure
       inputs: {
         distanceKm?: number
         desi: number
-        packageCount?: number
-        workedHours?: number
         originCityId: string
         originDistrictId?: string
         destCityId: string
@@ -228,16 +222,13 @@ export const COMPENSATION_MODEL_LABELS: Record<CompensationModel, string> = {
   hybrid: 'Hibrit',
 }
 
+/** @deprecated UI'da DISTANCE_STRUCTURE_LABELS kullanın */
 export const COURIER_COST_MODE_LABELS: Record<CourierCostPricingMode, string> = {
-  base_plus_km: 'Başlangıç + Km',
+  base_plus_km: 'Km bazlı',
   od_district: 'Çıkış → Varış (İl/İlçe)',
-  zone_flat: 'Bölge Paketi',
+  zone_flat: 'Varış bölgesi',
   desi_band_fixed: 'Desi Bant (Sabit)',
   desi_dynamic: 'Desi Dinamik',
-  package_fee: 'Paket Ücreti',
-  hourly_shift: 'Saatlik Çalışma',
-  salary_bonus_package: 'Maaş Primi (Paket)',
-  salary_bonus_km: 'Maaş Primi (Km)',
 }
 
 export const PAYOUT_CYCLE_LABELS: Record<PayoutCycle, string> = {

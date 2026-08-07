@@ -76,6 +76,10 @@ export type PriceList = {
   status: PriceListStatus
   currency: 'TRY'
   distanceStructure: DistanceStructure
+  /** İade ücreti = gönderi bedelinin yüzdesi (örn. 50) */
+  returnFeePercent?: number
+  /** İade için taban minimum ücret (₺) */
+  returnFeeMin?: number
   validFrom?: string
   validTo?: string
   createdAt: string
@@ -104,6 +108,10 @@ export type QuoteInput = {
   kdvRate?: number
   /** Manuel override tutarı (KDV hariç ara toplam yerine) */
   manualSubtotalOverride?: number
+  /** delivery (varsayılan) | return → iade % kuralı */
+  purpose?: 'delivery' | 'return'
+  /** İade için orijinal gönderi ara toplamı (KDV hariç) */
+  originalSubtotal?: number
 }
 
 export type QuoteAdjustment = {

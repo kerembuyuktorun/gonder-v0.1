@@ -12,7 +12,7 @@ import {
 import { ARF_ROUTES } from '../../../../../_shared/routes'
 import { Copy, MoreHorizontal, Star, ToggleLeft } from 'lucide-react'
 import type { CourierCostList } from '../../_types'
-import { COMPENSATION_MODEL_LABELS } from '../../_types'
+import { DISTANCE_STRUCTURE_LABELS } from '../../_types'
 import { formatNumber } from '../../_lib/format'
 
 type Props = {
@@ -35,7 +35,7 @@ export function CourierCostListsTable({
       <div className='rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 py-16 text-center'>
         <p className='text-sm font-medium text-slate-700'>Henüz kurye ücret listesi yok</p>
         <p className='mt-1 text-sm text-slate-500'>
-          Tarife, maaş + prim veya hibrit bir maliyet listesi oluşturun.
+          Km, bölge veya çıkış–varış kurgusuyla bir maliyet listesi oluşturun.
         </p>
       </div>
     )
@@ -48,7 +48,7 @@ export function CourierCostListsTable({
           <tr>
             <th className='px-4 py-3'>Kod</th>
             <th className='px-4 py-3'>Ad</th>
-            <th className='px-4 py-3'>Model</th>
+            <th className='px-4 py-3'>Kurgu</th>
             <th className='px-4 py-3'>Durum</th>
             <th className='px-4 py-3'>Kurallar</th>
             <th className='px-4 py-3'>Atama</th>
@@ -78,7 +78,7 @@ export function CourierCostListsTable({
                 ) : null}
               </td>
               <td className='px-4 py-3 text-xs text-slate-600'>
-                {COMPENSATION_MODEL_LABELS[list.compensationModel]}
+                {DISTANCE_STRUCTURE_LABELS[list.distanceStructure]}
               </td>
               <td className='px-4 py-3'>
                 <Badge variant={list.status === 'active' ? 'default' : 'secondary'}>

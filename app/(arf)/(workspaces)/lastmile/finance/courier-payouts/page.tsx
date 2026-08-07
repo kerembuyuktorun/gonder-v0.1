@@ -1,14 +1,7 @@
-import { Suspense } from 'react'
-import CourierPayoutsPageContent from './page-content'
+import { redirect } from 'next/navigation'
+import { ARF_ROUTES } from '../../../../_shared/routes'
 
-export default function CourierPayoutsPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className='p-6 text-sm text-slate-500'>Hakedişler yükleniyor…</div>
-      }
-    >
-      <CourierPayoutsPageContent />
-    </Suspense>
-  )
+/** @deprecated Prefer /lastmile/finance/payouts */
+export default function CourierPayoutsRedirectPage() {
+  redirect(ARF_ROUTES.lastmile.finance.payouts.list)
 }

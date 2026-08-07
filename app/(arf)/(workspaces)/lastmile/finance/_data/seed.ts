@@ -76,6 +76,8 @@ export function buildSeedPriceLists(): PriceList[] {
       status: 'active',
       currency: 'TRY',
       distanceStructure: 'km',
+      returnFeePercent: 50,
+      returnFeeMin: 40,
       createdAt: now,
       updatedAt: now,
       createdBy: 'sistem',
@@ -117,6 +119,7 @@ export function buildSeedPriceLists(): PriceList[] {
       status: 'active',
       currency: 'TRY',
       distanceStructure: 'od',
+      returnFeePercent: 50,
       createdAt: now,
       updatedAt: now,
       createdBy: 'sistem',
@@ -180,6 +183,8 @@ export function buildSeedPriceLists(): PriceList[] {
       status: 'active',
       currency: 'TRY',
       distanceStructure: 'zone',
+      returnFeePercent: 40,
+      returnFeeMin: 50,
       createdAt: now,
       updatedAt: now,
       createdBy: 'sistem',
@@ -219,9 +224,15 @@ export function buildSeedPriceLists(): PriceList[] {
 export function buildSeedAssignments(): CustomerPricingAssignment[] {
   return [
     {
-      customerId: 'seed-customer-premium',
+      customerId: 'c-bnf',
       priceListId: 'pl_od',
       effectiveFrom: '2026-03-01',
+      updatedAt: now,
+    },
+    {
+      customerId: 'c-modanisa',
+      priceListId: 'pl_km_default',
+      effectiveFrom: '2026-04-01',
       updatedAt: now,
     },
   ]
@@ -230,7 +241,7 @@ export function buildSeedAssignments(): CustomerPricingAssignment[] {
 export function buildSeedPaymentTerms(): CustomerPaymentTerms[] {
   return [
     {
-      customerId: 'seed-customer-premium',
+      customerId: 'c-bnf',
       settlementType: 'vadeli',
       creditDays: 30,
       billingCycle: 'per_order',
@@ -238,10 +249,11 @@ export function buildSeedPaymentTerms(): CustomerPaymentTerms[] {
       updatedAt: now,
     },
     {
-      customerId: 'seed-customer-cash',
+      customerId: 'c-modanisa',
       settlementType: 'pesin',
       creditDays: 0,
       billingCycle: 'per_order',
+      notes: 'Peşin tahsilat',
       updatedAt: now,
     },
   ]
@@ -250,9 +262,9 @@ export function buildSeedPaymentTerms(): CustomerPaymentTerms[] {
 export function buildSeedOrderPayments(): OrderPayment[] {
   return [
     {
-      orderId: 'seed-order-1',
-      customerId: 'seed-customer-premium',
-      customerName: 'Premium Müşteri (Seed)',
+      orderId: 'lm-1001',
+      customerId: 'c-bnf',
+      customerName: 'ABC E-Ticaret',
       settlementType: 'vadeli',
       creditDays: 30,
       dueDate: '2026-07-15',
@@ -263,9 +275,9 @@ export function buildSeedOrderPayments(): OrderPayment[] {
       updatedAt: now,
     },
     {
-      orderId: 'seed-order-2',
-      customerId: 'seed-customer-premium',
-      customerName: 'Premium Müşteri (Seed)',
+      orderId: 'lm-1002',
+      customerId: 'c-modanisa',
+      customerName: 'Modanisa',
       settlementType: 'vadeli',
       creditDays: 30,
       dueDate: '2026-09-01',
@@ -276,9 +288,9 @@ export function buildSeedOrderPayments(): OrderPayment[] {
       updatedAt: now,
     },
     {
-      orderId: 'seed-order-3',
-      customerId: 'seed-customer-cash',
-      customerName: 'Peşin Müşteri (Seed)',
+      orderId: 'lm-1009',
+      customerId: 'c-bnf',
+      customerName: 'ABC E-Ticaret',
       settlementType: 'pesin',
       creditDays: 0,
       dueDate: '2026-08-05',
@@ -296,9 +308,9 @@ export function buildSeedCollections(): CollectionEntry[] {
   return [
     {
       id: 'col_1',
-      customerId: 'seed-customer-cash',
-      customerName: 'Peşin Müşteri (Seed)',
-      orderId: 'seed-order-3',
+      customerId: 'c-bnf',
+      customerName: 'ABC E-Ticaret',
+      orderId: 'lm-1009',
       amount: 114,
       method: 'havale',
       paidAt: '2026-08-05',
@@ -311,7 +323,7 @@ export function buildSeedCollections(): CollectionEntry[] {
 
 export function buildSeedOrderSnapshots(): Record<string, OrderPricingSnapshot> {
   return {
-    'seed-order-1': {
+    'lm-1001': {
       priceListId: 'pl_od',
       priceListName: 'Çıkış–Varış Asya',
       matchedRuleId: 'rule_od_ata_tuzla',
@@ -328,6 +340,69 @@ export function buildSeedOrderSnapshots(): Record<string, OrderPricingSnapshot> 
         kdvRate: 20,
         kdvAmount: 37,
         total: 222,
+      },
+      currency: 'TRY',
+      calculatedAt: now,
+    },
+    'lm-1002': {
+      priceListId: 'pl_km_default',
+      priceListName: 'Km Genel Tarifesi',
+      matchedRuleId: 'rule_km_1_5',
+      matchedRuleLabel: '1–5 desi sabit',
+      pricingMode: 'base_plus_km',
+      inputs: { desi: 2, distanceKm: 12 },
+      breakdown: {
+        baseFee: 0,
+        distanceFee: 48,
+        desiFee: 0,
+        flatFee: 90,
+        adjustments: [],
+        subtotal: 138,
+        kdvRate: 20,
+        kdvAmount: 27.6,
+        total: 165.6,
+      },
+      currency: 'TRY',
+      calculatedAt: now,
+    },
+    'lm-1009': {
+      priceListId: 'pl_km_default',
+      priceListName: 'Km Genel Tarifesi',
+      matchedRuleId: 'rule_km_1_5',
+      matchedRuleLabel: '1–5 desi sabit',
+      pricingMode: 'base_plus_km',
+      inputs: { desi: 4, distanceKm: 8 },
+      breakdown: {
+        baseFee: 0,
+        distanceFee: 24,
+        desiFee: 0,
+        flatFee: 90,
+        adjustments: [],
+        subtotal: 114,
+        kdvRate: 20,
+        kdvAmount: 22.8,
+        total: 136.8,
+      },
+      currency: 'TRY',
+      calculatedAt: now,
+    },
+    'lm-ret-1009': {
+      priceListId: 'return-rule',
+      priceListName: 'İade ücreti',
+      matchedRuleId: 'return-percent',
+      matchedRuleLabel: '%50 iade',
+      pricingMode: 'desi_band_fixed',
+      inputs: {},
+      breakdown: {
+        baseFee: 0,
+        distanceFee: 0,
+        desiFee: 0,
+        flatFee: 57,
+        adjustments: [{ label: 'İade ücreti (%50)', amount: 57 }],
+        subtotal: 57,
+        kdvRate: 20,
+        kdvAmount: 11.4,
+        total: 68.4,
       },
       currency: 'TRY',
       calculatedAt: now,
