@@ -1,0 +1,71 @@
+{
+  "compilerOptions": {
+    // Output configuration
+    "outDir": "./dist",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    
+    // Enable emit
+    "noEmit": false,
+    
+    // Module system
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "target": "ES2020",
+    "paths": {
+      "@/components/ui": [
+        "./src/ui/index.ts"
+      ],
+      "@/components/ui/*": [
+        "./src/ui/*"
+      ],
+      "@/lib/utils": [
+        "./src/lib/utils"
+      ],
+      "@/hooks/*": [
+        "./src/hooks/*"
+      ],
+      "@/styles/*": [
+        "./src/styles/*"
+      ],
+      "@hascanb/arf-ui-kit": [
+        "./src/index.ts"
+      ],
+      "@hascanb/arf-ui-kit/*": [
+        "./src/*"
+      ]
+    },
+    
+    // JSX configuration for React
+    "jsx": "react-jsx",
+    
+    // Type checking
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true,
+    
+    // Ghost UI - Allow unresolved imports (runtime provided by host)
+    "noResolve": false
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "app",
+    "playground",
+    "src/stories",
+    "src/**/*.stories.ts",
+    "src/**/*.stories.tsx",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.spec.ts",
+    "src/**/*.spec.tsx"
+  ]
+}

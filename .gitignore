@@ -1,0 +1,34 @@
+# v0 runtime files
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+
+# Common ignores
+node_modules/
+.next/
+.env*.local
+.DS_Store
+
+# Build outputs
+dist/
+*.tsbuildinfo
+
+# Playground build artifacts (TypeScript compilation)
+playground/**/*.d.ts
+playground/**/*.d.ts.map
+playground/**/*.js
+playground/**/*.js.map
+!playground/**/*.config.js
+
+# Agent/analysis files
+agent/
+.serena/
+*storybook.log
+storybook-static
+repomix-output.xml
+
+# Vercel
+.vercel/
+
+# Local backend/API requirement docs (not versioned)
+/docs/

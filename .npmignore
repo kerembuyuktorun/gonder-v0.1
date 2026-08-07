@@ -1,0 +1,50 @@
+# Source files (only dist/ should be published)
+src/
+app/
+playground/
+
+# Configuration files
+tsconfig.json
+tsconfig.build.json
+next.config.mjs
+postcss.config.mjs
+components.json
+tailwind.config.ts
+
+# Development files
+.next/
+.vscode/
+.idea/
+node_modules/
+
+# Git
+.git/
+.gitignore
+.github/
+
+# Documentation  
+agent/
+docs/
+analiz.md
+yolharitasi.md
+
+# Test files
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+__tests__/
+coverage/
+
+# Environment & Logs
+.env*
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+*.tsbuildinfo
+.eslintcache

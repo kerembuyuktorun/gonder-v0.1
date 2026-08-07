@@ -1,0 +1,36 @@
+export const dashboardLabels: Record<string, string> = {
+  'kpi.pendingOrders': 'Bekleyen sipariş',
+  'kpi.activeShipments': 'Aktif gönderi',
+  'kpi.delivered': 'Teslim edilen',
+  'kpi.openQuotes': 'Açık teklif',
+  'quick.createShipment.title': 'Gönderi Oluştur',
+  'quick.createShipment.description': 'Yeni kargo veya lojistik gönderisi başlatın',
+  'quick.connectChannel.title': 'Satış Kanalını Bağla',
+  'quick.connectChannel.description': 'Siparişleriniz otomatik aktarılsın',
+  'quick.priceCalculation.title': 'Fiyat Hesapla',
+  'quick.priceCalculation.description': 'Taşıyıcı fiyatlarını karşılaştırın',
+  'quick.excelBulk.title': 'Excel ile toplu oluştur',
+  'quick.excelBulk.description': 'Toplu siparişleri şablonla yükleyin',
+  'perf.title': 'Performans özeti',
+  'perf.shipments': 'Gönderi',
+  'perf.revenue': 'Ciro',
+  'perf.deliveryRate': 'Teslim oranı',
+  'perf.avgCost': 'Ort. maliyet',
+  'perf.reports': 'Raporlar',
+  'perf.period7d': 'Son 7 gün',
+  'perf.period30d': 'Son 30 gün',
+  'status.pending': 'Bekliyor',
+  'status.in_transit': 'Yolda',
+  'status.delivered': 'Teslim',
+  'status.issue': 'Sorunlu',
+  'integration.connected': 'Bağlı',
+  'integration.warning': 'Uyarı',
+  'integration.disconnected': 'Bağlı değil',
+  'updates.shipmentDelivered': 'GND-1005 teslim edildi',
+  'updates.quoteWaiting': 'Teklif TKF-88 yanıt bekliyor',
+  'updates.integrationWarning': 'ERP entegrasyonunda uyarı var',
+}
+
+export function tDashboard(key: string): string {
+  return dashboardLabels[key] ?? key
+}
