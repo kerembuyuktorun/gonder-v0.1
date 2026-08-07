@@ -281,6 +281,11 @@ export function createGonderNavGroups(badges: GonderNavBadges = {}): NavGroup[] 
           url: R.dashboard.root,
           icon: LayoutDashboard,
         },
+        {
+          title: 'Fiyat Hesaplama',
+          url: R.priceCalculation,
+          icon: Calculator,
+        },
       ],
     },
     {
@@ -291,6 +296,19 @@ export function createGonderNavGroups(badges: GonderNavBadges = {}): NavGroup[] 
           url: R.orders.list,
           icon: ClipboardList,
         },
+        ...(canGonder(GONDER_PERMISSIONS.quotesRead)
+          ? [
+              {
+                title: 'Teklifler',
+                url: R.quotes.list,
+                icon: Quote,
+                badge:
+                  typeof badges.quotesActionCount === 'number' && badges.quotesActionCount > 0
+                    ? String(badges.quotesActionCount)
+                    : undefined,
+              },
+            ]
+          : []),
         {
           title: 'Gönderiler',
           url: R.shipments.list,
@@ -300,6 +318,11 @@ export function createGonderNavGroups(badges: GonderNavBadges = {}): NavGroup[] 
           title: 'Yeni Gönderi',
           url: R.shipments.create,
           icon: PackagePlus,
+        },
+        {
+          title: 'Excel İçe Aktarım',
+          url: R.bulkCreate.root,
+          icon: FileSpreadsheet,
         },
         ...(canGonder(GONDER_PERMISSIONS.returnsRead)
           ? [
@@ -332,24 +355,6 @@ export function createGonderNavGroups(badges: GonderNavBadges = {}): NavGroup[] 
     {
       label: 'Fiyatlandırma',
       items: [
-        {
-          title: 'Fiyat Hesaplama',
-          url: R.priceCalculation,
-          icon: Calculator,
-        },
-        ...(canGonder(GONDER_PERMISSIONS.quotesRead)
-          ? [
-              {
-                title: 'Teklifler',
-                url: R.quotes.list,
-                icon: Quote,
-                badge:
-                  typeof badges.quotesActionCount === 'number' && badges.quotesActionCount > 0
-                    ? String(badges.quotesActionCount)
-                    : undefined,
-              },
-            ]
-          : []),
         {
           title: 'Raporlar',
           url: R.reports.root,
@@ -398,11 +403,6 @@ export function createGonderNavGroups(badges: GonderNavBadges = {}): NavGroup[] 
           title: 'Satış Kanalları',
           url: R.integrations.root,
           icon: Link2,
-        },
-        {
-          title: 'Excel İçe Aktarım',
-          url: R.bulkCreate.root,
-          icon: FileSpreadsheet,
         },
         {
           title: 'Import Geçmişi',
