@@ -19,10 +19,10 @@ type Props = {
 }
 
 export function CourierCostQuoteSimulator({ costListId, courierId }: Props) {
-  const [originCityId, setOriginCityId] = useState(SEED_GEO.istanbul.cityId)
-  const [originDistrictId, setOriginDistrictId] = useState(SEED_GEO.atasehir.districtId)
-  const [destCityId, setDestCityId] = useState(SEED_GEO.istanbul.cityId)
-  const [destDistrictId, setDestDistrictId] = useState(SEED_GEO.tuzla.districtId)
+  const [originCityId, setOriginCityId] = useState<string>(SEED_GEO.istanbul.cityId)
+  const [originDistrictId, setOriginDistrictId] = useState<string>(SEED_GEO.atasehir.districtId)
+  const [destCityId, setDestCityId] = useState<string>(SEED_GEO.istanbul.cityId)
+  const [destDistrictId, setDestDistrictId] = useState<string>(SEED_GEO.tuzla.districtId)
   const [desi, setDesi] = useState('3')
   const [distanceKm, setDistanceKm] = useState('18')
   const [packageCount, setPackageCount] = useState('2')

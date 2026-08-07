@@ -157,7 +157,7 @@ export default function CourierPayoutsPageContent() {
       <AppHeader
         breadcrumbs={[
           { label: 'Last Mile', href: ARF_ROUTES.lastmile.root },
-          { label: 'Finans', href: ARF_ROUTES.lastmile.finance.courierPayouts.list },
+          { label: 'Finans', href: ARF_ROUTES.lastmile.finance.root },
           { label: 'Kurye Ödemeleri / Hakediş' },
         ]}
       />

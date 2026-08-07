@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { AppHeader } from '@hascanb/arf-ui-kit/layout-kit'
-import { ArrowRight, MapPinned, Tags, Wallet } from 'lucide-react'
+import { ArrowRight, Bike, Handshake, MapPinned, Tags, Wallet } from 'lucide-react'
 import { ARF_ROUTES } from '../../../_shared/routes'
 
 const LINKS = [
@@ -24,6 +24,18 @@ const LINKS = [
     href: ARF_ROUTES.lastmile.finance.collections.list,
     icon: Wallet,
   },
+  {
+    title: 'Kurye Ücret Listeleri',
+    description: 'Tarife, maaş + prim ve hibrit modellerle kurye/tedarikçi maliyetlerini yönetin.',
+    href: ARF_ROUTES.lastmile.finance.courierCostLists.list,
+    icon: Bike,
+  },
+  {
+    title: 'Kurye Ödemeleri / Hakediş',
+    description: 'Kurye hakedişlerini takip edin; haftalık / aylık ödemeleri kaydedin.',
+    href: ARF_ROUTES.lastmile.finance.courierPayouts.list,
+    icon: Handshake,
+  },
 ] as const
 
 export default function FinanceHubPageContent() {
@@ -39,11 +51,12 @@ export default function FinanceHubPageContent() {
         <div>
           <h1 className='text-2xl font-semibold tracking-tight text-slate-900'>Finans</h1>
           <p className='mt-1 text-sm text-slate-500'>
-            Fiyatlandırma, bölgeler ve tahsilat işlemlerine buradan geçin.
+            Müşteri fiyatlandırması, kurye maliyetleri, bölgeler ve tahsilat / hakediş işlemlerine
+            buradan geçin.
           </p>
         </div>
 
-        <div className='grid gap-4 md:grid-cols-3'>
+        <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
           {LINKS.map((item) => {
             const Icon = item.icon
             return (

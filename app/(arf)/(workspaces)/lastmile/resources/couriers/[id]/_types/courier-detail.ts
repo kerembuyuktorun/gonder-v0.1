@@ -25,4 +25,4 @@ export type CourierActivityEvent = {
   ip?: string | null
 }
 
-export type CourierDetailTab = 'info' | 'documents' | 'assignments'
+export type CourierDetailTab = 'info' | 'documents' | 'assignments' | 'cost'

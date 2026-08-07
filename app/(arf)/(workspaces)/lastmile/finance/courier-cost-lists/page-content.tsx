@@ -87,7 +87,7 @@ export default function CourierCostListsPageContent() {
       <AppHeader
         breadcrumbs={[
           { label: 'Last Mile', href: ARF_ROUTES.lastmile.root },
-          { label: 'Finans', href: ARF_ROUTES.lastmile.finance.courierCostLists.list },
+          { label: 'Finans', href: ARF_ROUTES.lastmile.finance.root },
           { label: 'Kurye Ücret Listeleri' },
         ]}
       />

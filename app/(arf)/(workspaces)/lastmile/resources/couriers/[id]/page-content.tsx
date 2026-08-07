@@ -30,6 +30,7 @@ import { useCourierPermissions } from '../_hooks/use-courier-permissions'
 import type { CourierDocumentMeta, LastmileCourier } from '../_types/courier'
 import { CourierDetailHeader } from './_components/courier-detail-header'
 import { TabAssignmentHistory } from './_components/tab-assignment-history'
+import { TabCostPayout } from './_components/tab-cost-payout'
 import { TabDocuments } from './_components/tab-documents'
 import { TabInfo } from './_components/tab-info'
 import type {
@@ -42,6 +43,7 @@ const TAB_ITEMS: Array<{ id: CourierDetailTab; label: string }> = [
   { id: 'info', label: 'Bilgi' },
   { id: 'documents', label: 'Yasal Belgeler' },
   { id: 'assignments', label: 'Zimmet Ve İşlem Geçmişi' },
+  { id: 'cost', label: 'Ücret & Ödeme' },
 ]
 
 const ROUTES_TAB = { id: 'routes', label: 'Geçmiş Rotalar' } as const
@@ -407,6 +409,13 @@ export default function CourierDetailPageContent({
                   onLoadMoreActivities={handleLoadMoreActivities}
                   loadingMoreAssignments={loadingMoreAssignments}
                   loadingMoreActivities={loadingMoreActivities}
+                />
+              </TabsContent>
+              <TabsContent value='cost' className='mt-0'>
+                <TabCostPayout
+                  courierId={courier.id}
+                  courierName={courier.ad_soyad}
+                  readOnly={readOnly}
                 />
               </TabsContent>
             </Tabs>

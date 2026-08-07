@@ -170,6 +170,20 @@ export const createLastmileHeaderSearchCommands: SearchCommandFactory = (push) =
     keywords: ['tahsilat', 'ödeme', 'vade', 'cari'],
     onSelect: () => push(R.finance.collections.list),
   },
+  {
+    id: 'go-courier-cost-lists',
+    label: 'Kurye Ücret Listeleri',
+    group: 'Finans',
+    keywords: ['kurye', 'ücret', 'maliyet', 'maaş', 'prim', 'tarife', 'tedarikçi'],
+    onSelect: () => push(R.finance.courierCostLists.list),
+  },
+  {
+    id: 'go-courier-payouts',
+    label: 'Kurye Ödemeleri / Hakediş',
+    group: 'Finans',
+    keywords: ['kurye', 'hakediş', 'ödeme', 'maaş', 'payout'],
+    onSelect: () => push(R.finance.courierPayouts.list),
+  },
 ]
 
 export const lastmileHeaderInitialNotifications: NonNullable<AppHeaderProps['notifications']> = [
@@ -360,6 +374,16 @@ export const navGroups = [
         title: 'Tahsilatlar',
         url: R.finance.collections.list,
         icon: Wallet,
+      },
+      {
+        title: 'Kurye Ücret Listeleri',
+        url: R.finance.courierCostLists.list,
+        icon: Bike,
+      },
+      {
+        title: 'Kurye Ödemeleri / Hakediş',
+        url: R.finance.courierPayouts.list,
+        icon: Handshake,
       },
     ],
   },
