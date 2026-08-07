@@ -1,29 +1,21 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { AppHeader } from '@hascanb/arf-ui-kit/layout-kit'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
+import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Textarea } from '@/components/ui/textarea'
 import { ARF_ROUTES } from '../../../../../_shared/routes'
 import { toast } from 'sonner'
+import { getPriceList, listPriceZones, updatePriceList } from '../../_api/pricing-api'
 import {
-  getPriceList,
-  listCustomerPricingAssignments,
-  listPriceZones,
-  updatePriceList,
-} from '../../_api/pricing-api'
-import { PriceQuoteSimulator } from '../../_components/price-quote-simulator'
-import { PriceRulesEditor } from '../../_components/price-rules-editor'
+  PriceListEditor,
+  type PriceListEditorValues,
+} from '../../_components/price-list-editor'
+import { DISTANCE_STRUCTURE_LABELS } from '../../_types'
 import type { PriceList, PriceZone } from '../../_types'
-import { PRICING_MODE_LABELS } from '../../_types'
+import { PriceListCustomersSimPanel } from './_components/price-list-customers-sim-panel'
 
 export default function PriceListDetailPageContent() {
   const params = useParams<{ id: string }>()
@@ -31,27 +23,14 @@ export default function PriceListDetailPageContent() {
   const router = useRouter()
   const [list, setList] = useState<PriceList | null>(null)
   const [zones, setZones] = useState<PriceZone[]>([])
-  const [assignedCount, setAssignedCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [tab, setTab] = useState('overview')
-
-  const [code, setCode] = useState('')
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [isDefault, setIsDefault] = useState(false)
-  const [validFrom, setValidFrom] = useState('')
-  const [validTo, setValidTo] = useState('')
-  const [rules, setRules] = useState<PriceList['rules']>([])
+  const [tab, setTab] = useState('pricing')
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [detail, zoneRows, assignments] = await Promise.all([
-        getPriceList(id),
-        listPriceZones(),
-        listCustomerPricingAssignments(),
-      ])
+      const [detail, zoneRows] = await Promise.all([getPriceList(id), listPriceZones()])
       if (!detail) {
         toast.error('Fiyat listesi bulunamadı')
         router.push(ARF_ROUTES.lastmile.finance.priceLists.list)
@@ -59,14 +38,6 @@ export default function PriceListDetailPageContent() {
       }
       setList(detail)
       setZones(zoneRows)
-      setAssignedCount(assignments.filter((a) => a.priceListId === id).length)
-      setCode(detail.code)
-      setName(detail.name)
-      setDescription(detail.description ?? '')
-      setIsDefault(detail.isDefault)
-      setValidFrom(detail.validFrom ?? '')
-      setValidTo(detail.validTo ?? '')
-      setRules(detail.rules)
     } finally {
       setLoading(false)
     }
@@ -76,18 +47,15 @@ export default function PriceListDetailPageContent() {
     void load()
   }, [load])
 
-  const save = async () => {
+  const save = async (values: PriceListEditorValues) => {
     setSaving(true)
     try {
       const updated = await updatePriceList(id, {
-        code,
-        name,
-        description,
-        isDefault,
-        validFrom: validFrom || undefined,
-        validTo: validTo || undefined,
+        name: values.name,
+        isDefault: values.isDefault,
+        distanceStructure: values.distanceStructure,
         status: list?.status ?? 'active',
-        rules,
+        rules: values.rules,
       })
       if (updated) {
         setList(updated)
@@ -120,152 +88,65 @@ export default function PriceListDetailPageContent() {
       <AppHeader
         breadcrumbs={[
           { label: 'Last Mile', href: ARF_ROUTES.lastmile.root },
+          { label: 'Finans', href: ARF_ROUTES.lastmile.finance.root },
           { label: 'Fiyat Listeleri', href: ARF_ROUTES.lastmile.finance.priceLists.list },
           { label: list.name },
         ]}
       />
-      <div className='flex flex-1 flex-col gap-6 p-6'>
-        <div className='flex flex-wrap items-start justify-between gap-4'>
-          <div>
-            <div className='flex flex-wrap items-center gap-2'>
-              <h1 className='text-2xl font-semibold tracking-tight'>{list.name}</h1>
-              {list.isDefault ? (
-                <Badge className='bg-lime-100 text-lime-900 hover:bg-lime-100'>Varsayılan</Badge>
-              ) : null}
-              <Badge variant={list.status === 'active' ? 'default' : 'secondary'}>
-                {list.status === 'active' ? 'Aktif' : 'Pasif'}
-              </Badge>
-            </div>
-            <p className='mt-1 font-mono text-xs text-slate-500'>{list.code}</p>
-          </div>
-          <div className='flex gap-2'>
-            <Button variant='outline' asChild>
-              <Link href={ARF_ROUTES.lastmile.finance.priceLists.list}>Listeye dön</Link>
-            </Button>
-            <Button
-              className='bg-lime-400 text-black hover:bg-lime-300'
-              disabled={saving}
-              onClick={() => void save()}
-            >
-              {saving ? 'Kaydediliyor…' : 'Kaydet'}
-            </Button>
-          </div>
+      <div className='flex flex-1 flex-col gap-4 p-6'>
+        <div className='flex flex-wrap items-center gap-2'>
+          <h1 className='text-2xl font-semibold tracking-tight text-slate-900'>{list.name}</h1>
+          {list.isDefault ? (
+            <Badge className='bg-lime-100 text-lime-900 hover:bg-lime-100'>Varsayılan</Badge>
+          ) : null}
+          <Badge variant={list.status === 'active' ? 'default' : 'secondary'}>
+            {list.status === 'active' ? 'Aktif' : 'Pasif'}
+          </Badge>
+          <Badge variant='outline'>
+            {DISTANCE_STRUCTURE_LABELS[list.distanceStructure]}
+          </Badge>
         </div>
 
         <Card className='rounded-[24px] border-slate-200/80 shadow-none'>
           <CardContent className='p-4 lg:p-5'>
             <Tabs value={tab} onValueChange={setTab}>
-              <TabsList>
-                <TabsTrigger value='overview'>Özet</TabsTrigger>
-                <TabsTrigger value='rules'>Kurallar</TabsTrigger>
-                <TabsTrigger value='assignments'>Atanan Müşteriler</TabsTrigger>
-                <TabsTrigger value='sim'>Simülasyon</TabsTrigger>
+              <TabsList className='h-auto w-full flex-wrap justify-start gap-1 rounded-xl bg-slate-100/80 p-1'>
+                <TabsTrigger
+                  value='pricing'
+                  className='rounded-lg px-3 py-2 text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm'
+                >
+                  Fiyatlandırma
+                </TabsTrigger>
+                <TabsTrigger
+                  value='customers'
+                  className='rounded-lg px-3 py-2 text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm'
+                >
+                  Müşteriler & Simülasyon
+                </TabsTrigger>
               </TabsList>
 
-              <TabsContent value='overview' className='mt-4 space-y-4'>
-                <div className='grid gap-4 sm:grid-cols-2'>
-                  <div className='space-y-1.5'>
-                    <Label>Kod</Label>
-                    <Input value={code} onChange={(e) => setCode(e.target.value)} />
-                  </div>
-                  <div className='space-y-1.5'>
-                    <Label>Ad</Label>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} />
-                  </div>
-                  <div className='space-y-1.5 sm:col-span-2'>
-                    <Label>Açıklama</Label>
-                    <Textarea
-                      rows={3}
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                    />
-                  </div>
-                  <div className='space-y-1.5'>
-                    <Label>Geçerlilik başlangıç</Label>
-                    <Input
-                      type='date'
-                      value={validFrom}
-                      onChange={(e) => setValidFrom(e.target.value)}
-                    />
-                  </div>
-                  <div className='space-y-1.5'>
-                    <Label>Geçerlilik bitiş</Label>
-                    <Input type='date' value={validTo} onChange={(e) => setValidTo(e.target.value)} />
-                  </div>
-                  <div className='flex items-center gap-2 sm:col-span-2'>
-                    <Switch checked={isDefault} onCheckedChange={setIsDefault} id='detail-default' />
-                    <Label htmlFor='detail-default'>Varsayılan liste</Label>
-                  </div>
-                </div>
-                <div className='grid gap-3 sm:grid-cols-3'>
-                  <Card className='shadow-none'>
-                    <CardHeader className='pb-2'>
-                      <CardTitle className='text-xs font-medium text-slate-500'>Kurallar</CardTitle>
-                    </CardHeader>
-                    <CardContent className='text-2xl font-semibold'>{rules.length}</CardContent>
-                  </Card>
-                  <Card className='shadow-none'>
-                    <CardHeader className='pb-2'>
-                      <CardTitle className='text-xs font-medium text-slate-500'>
-                        Atanan müşteri
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className='text-2xl font-semibold'>{assignedCount}</CardContent>
-                  </Card>
-                  <Card className='shadow-none'>
-                    <CardHeader className='pb-2'>
-                      <CardTitle className='text-xs font-medium text-slate-500'>Para birimi</CardTitle>
-                    </CardHeader>
-                    <CardContent className='text-2xl font-semibold'>{list.currency}</CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-
-              <TabsContent value='rules' className='mt-4'>
-                <PriceRulesEditor
-                  rules={rules}
-                  zones={zones}
+              <TabsContent value='pricing' className='mt-4'>
+                <PriceListEditor
+                  key={`${list.id}-${list.updatedAt}`}
+                  mode='edit'
                   priceListId={list.id}
-                  onChange={setRules}
+                  initial={{
+                    name: list.name,
+                    isDefault: list.isDefault,
+                    distanceStructure: list.distanceStructure,
+                    rules: list.rules,
+                  }}
+                  zones={zones}
+                  saving={saving}
+                  showSimulator={false}
+                  layout='embedded'
+                  onSubmit={save}
+                  onCancel={() => router.push(ARF_ROUTES.lastmile.finance.priceLists.list)}
                 />
-                <div className='mt-3 overflow-x-auto rounded-xl border'>
-                  <table className='w-full min-w-[640px] text-left text-sm'>
-                    <thead className='border-b bg-slate-50 text-xs text-slate-500'>
-                      <tr>
-                        <th className='px-3 py-2'>Ad</th>
-                        <th className='px-3 py-2'>Mod</th>
-                        <th className='px-3 py-2'>Öncelik</th>
-                      </tr>
-                    </thead>
-                    <tbody className='divide-y'>
-                      {[...rules]
-                        .sort((a, b) => b.priority - a.priority)
-                        .map((r) => (
-                          <tr key={r.id}>
-                            <td className='px-3 py-2'>{r.name || '—'}</td>
-                            <td className='px-3 py-2'>{PRICING_MODE_LABELS[r.pricingMode]}</td>
-                            <td className='px-3 py-2'>{r.priority}</td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
               </TabsContent>
 
-              <TabsContent value='assignments' className='mt-4'>
-                <p className='text-sm text-slate-600'>
-                  Bu listeye atanan müşteri sayısı: <strong>{assignedCount}</strong>
-                </p>
-                <p className='mt-2 text-sm text-slate-500'>
-                  Atama işlemi müşteri detayındaki <em>Fiyat & Ödeme</em> sekmesinden yapılır.
-                </p>
-                <Button variant='outline' className='mt-4' asChild>
-                  <Link href={ARF_ROUTES.lastmile.customers.list}>Müşteri listesine git</Link>
-                </Button>
-              </TabsContent>
-
-              <TabsContent value='sim' className='mt-4'>
-                <PriceQuoteSimulator priceListId={list.id} />
+              <TabsContent value='customers' className='mt-4'>
+                <PriceListCustomersSimPanel priceListId={list.id} />
               </TabsContent>
             </Tabs>
           </CardContent>

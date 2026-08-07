@@ -5,6 +5,8 @@ export type {
   PriceZone,
   PriceZoneScope,
   PricingMode,
+  DistanceStructure,
+  DesiPricingType,
   GeoPointRef,
   CustomerPricingAssignment,
   QuoteInput,
@@ -15,6 +17,10 @@ export type {
 
 export {
   PRICING_MODE_LABELS,
+  DISTANCE_STRUCTURE_LABELS,
+  DESI_PRICING_LABELS,
+  pricingModeFromDistanceStructure,
+  slugCodeFromName,
 } from './pricing'
 
 export type {

@@ -22,6 +22,7 @@ import type {
   CustomerFinanceSummary,
   CustomerPaymentTerms,
   CustomerPricingAssignment,
+  DistanceStructure,
   OrderPayment,
   OrderPricingSnapshot,
   PriceList,
@@ -31,6 +32,10 @@ import type {
   QuoteInput,
   QuoteResult,
   SettlementType,
+} from '../_types'
+import {
+  pricingModeFromDistanceStructure,
+  slugCodeFromName,
 } from '../_types'
 
 function ensureSeed() {
@@ -144,34 +149,54 @@ export async function getPriceList(id: string): Promise<PriceList | undefined> {
 }
 
 export type UpsertPriceListInput = {
-  code: string
   name: string
+  code?: string
   description?: string
   isDefault?: boolean
   status?: PriceListStatus
+  distanceStructure: DistanceStructure
   validFrom?: string
   validTo?: string
   rules?: PriceRule[]
+}
+
+function normalizeRules(
+  priceListId: string,
+  structure: DistanceStructure,
+  rules: PriceRule[]
+): PriceRule[] {
+  const mode = pricingModeFromDistanceStructure(structure)
+  return rules.map((r, index) => ({
+    ...r,
+    priceListId,
+    pricingMode: mode,
+    priority: r.priority ?? (100 - index),
+    desiPricing: r.desiPricing ?? 'fixed',
+    desiStart: r.desiStart ?? 0,
+    desiEnd: r.desiEnd ?? 99,
+  }))
 }
 
 export async function createPriceList(input: UpsertPriceListInput): Promise<PriceList> {
   const lists = getPriceLists()
   const id = createId('pl')
   const stamp = nowIso()
+  const name = input.name.trim()
   const list: PriceList = {
     id,
-    code: input.code.trim(),
-    name: input.name.trim(),
+    code: (input.code?.trim() || slugCodeFromName(name)),
+    name,
     description: input.description?.trim(),
     isDefault: Boolean(input.isDefault),
     status: input.status ?? 'active',
     currency: 'TRY',
+    distanceStructure: input.distanceStructure,
     validFrom: input.validFrom,
     validTo: input.validTo,
     createdAt: stamp,
     updatedAt: stamp,
     createdBy: 'kullanici',
-    rules: (input.rules ?? []).map((r) => ({ ...r, priceListId: id })),
+    rules: normalizeRules(id, input.distanceStructure, input.rules ?? []),
   }
   let next = [list, ...lists]
   if (list.isDefault) {
@@ -189,18 +214,20 @@ export async function updatePriceList(
   const idx = lists.findIndex((p) => p.id === id)
   if (idx < 0) return delay(undefined)
   const prev = lists[idx]
+  const name = input.name.trim()
   const updated: PriceList = {
     ...prev,
-    code: input.code.trim(),
-    name: input.name.trim(),
+    code: input.code?.trim() || prev.code || slugCodeFromName(name),
+    name,
     description: input.description?.trim(),
     isDefault: input.isDefault ?? prev.isDefault,
     status: input.status ?? prev.status,
+    distanceStructure: input.distanceStructure,
     validFrom: input.validFrom,
     validTo: input.validTo,
     updatedAt: nowIso(),
     rules: input.rules
-      ? input.rules.map((r) => ({ ...r, priceListId: id }))
+      ? normalizeRules(id, input.distanceStructure, input.rules)
       : prev.rules,
   }
   let next = [...lists]

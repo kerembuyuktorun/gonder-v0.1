@@ -1,4 +1,5 @@
 import type {
+  DistanceStructure,
   PriceList,
   PriceRule,
   PriceZone,
@@ -14,7 +15,6 @@ function geoMatches(
 ): boolean {
   if (!rulePoint) return false
   if (rulePoint.cityId !== input.cityId) return false
-  // District yoksa city-level wildcard
   if (!rulePoint.districtId) return true
   if (!input.districtId) return false
   return rulePoint.districtId === input.districtId
@@ -29,76 +29,81 @@ function isDestInZone(zone: PriceZone, dest: { cityId: string; districtId?: stri
   })
 }
 
-function ruleMatches(
+function desiInRange(rule: PriceRule, desi: number): boolean {
+  const start = rule.desiStart ?? 0
+  const end = rule.desiEnd ?? Number.POSITIVE_INFINITY
+  return desi >= start && desi <= end
+}
+
+function distanceMatches(
+  structure: DistanceStructure,
   rule: PriceRule,
   input: QuoteInput,
   zonesById: Map<string, PriceZone>
 ): { match: boolean; zoneName?: string } {
-  if (rule.status !== 'active') return { match: false }
-
-  switch (rule.pricingMode) {
-    case 'od_district':
+  switch (structure) {
+    case 'od':
       return {
         match:
           geoMatches(rule.origin, input.origin) &&
           geoMatches(rule.destination, input.destination),
       }
-    case 'zone_flat': {
+    case 'zone': {
       if (!rule.zoneId) return { match: false }
       const zone = zonesById.get(rule.zoneId)
       if (!zone) return { match: false }
       const match = isDestInZone(zone, input.destination)
       return { match, zoneName: match ? zone.name : undefined }
     }
-    case 'base_plus_km':
+    case 'km':
       return { match: typeof input.distanceKm === 'number' && input.distanceKm >= 0 }
-    case 'desi_band_fixed': {
-      const start = rule.desiStart ?? 0
-      const end = rule.desiEnd ?? Number.POSITIVE_INFINITY
-      return { match: input.desi >= start && input.desi <= end }
-    }
-    case 'desi_dynamic': {
-      if (rule.desiStart != null || rule.desiEnd != null) {
-        const start = rule.desiStart ?? 0
-        const end = rule.desiEnd ?? Number.POSITIVE_INFINITY
-        return { match: input.desi >= start && input.desi <= end }
-      }
-      return { match: input.desi >= 0 }
-    }
-    default:
-      return { match: false }
   }
+}
+
+function ruleMatches(
+  list: PriceList,
+  rule: PriceRule,
+  input: QuoteInput,
+  zonesById: Map<string, PriceZone>
+): { match: boolean; zoneName?: string } {
+  if (rule.status !== 'active') return { match: false }
+  if (!desiInRange(rule, input.desi)) return { match: false }
+  return distanceMatches(list.distanceStructure, rule, input, zonesById)
 }
 
 /**
- * Desi dinamik formül (dokümante):
- * subtotal = baseFee + desi * perDesi
+ * fixed  → flatFee (+ km: perKm × distance)
+ * dynamic → baseFee + perDesi × desi (+ km: perKm × distance)
  */
 function computeFees(
+  list: PriceList,
   rule: PriceRule,
   input: QuoteInput
 ): Omit<QuoteBreakdown, 'adjustments' | 'subtotal' | 'kdvRate' | 'kdvAmount' | 'total'> {
-  switch (rule.pricingMode) {
-    case 'base_plus_km': {
-      const baseFee = rule.baseFee ?? 0
-      const distanceFee = (rule.perKm ?? 0) * (input.distanceKm ?? 0)
-      return { baseFee, distanceFee, desiFee: 0, flatFee: 0 }
+  const distanceFee =
+    list.distanceStructure === 'km' ? (rule.perKm ?? 0) * (input.distanceKm ?? 0) : 0
+
+  if (rule.desiPricing === 'fixed') {
+    return {
+      baseFee: 0,
+      distanceFee,
+      desiFee: 0,
+      flatFee: rule.flatFee ?? 0,
     }
-    case 'od_district':
-    case 'zone_flat':
-    case 'desi_band_fixed':
-      return { baseFee: 0, distanceFee: 0, desiFee: 0, flatFee: rule.flatFee ?? 0 }
-    case 'desi_dynamic': {
-      const baseFee = rule.baseFee ?? 0
-      const desiFee = (rule.perDesi ?? 0) * input.desi
-      return { baseFee, distanceFee: 0, desiFee, flatFee: 0 }
-    }
-    default:
-      return { baseFee: 0, distanceFee: 0, desiFee: 0, flatFee: 0 }
+  }
+
+  return {
+    baseFee: rule.baseFee ?? 0,
+    distanceFee,
+    desiFee: (rule.perDesi ?? 0) * input.desi,
+    flatFee: 0,
   }
 }
 
-function applyMinMax(subtotal: number, rule: PriceRule): { value: number; adjustments: QuoteBreakdown['adjustments'] } {
+function applyMinMax(
+  subtotal: number,
+  rule: PriceRule
+): { value: number; adjustments: QuoteBreakdown['adjustments'] } {
   const adjustments: QuoteBreakdown['adjustments'] = []
   let value = subtotal
   if (rule.minFee != null && value < rule.minFee) {
@@ -153,7 +158,8 @@ export function quotePrice(ctx: QuoteEngineContext, input: QuoteInput): QuoteRes
       priceListName: list.name,
       matchedRuleId: 'manual_override',
       matchedRuleLabel: 'Manuel tutar',
-      pricingMode: 'od_district',
+      pricingMode: list.rules[0]?.pricingMode ?? 'od_district',
+      distanceStructure: list.distanceStructure,
       inputs: {
         desi: input.desi,
         distanceKm: input.distanceKm,
@@ -182,10 +188,10 @@ export function quotePrice(ctx: QuoteEngineContext, input: QuoteInput): QuoteRes
   const sorted = [...list.rules].sort((a, b) => b.priority - a.priority)
 
   for (const rule of sorted) {
-    const { match, zoneName } = ruleMatches(rule, input, zonesById)
+    const { match, zoneName } = ruleMatches(list, rule, input, zonesById)
     if (!match) continue
 
-    const fees = computeFees(rule, input)
+    const fees = computeFees(list, rule, input)
     const raw = fees.baseFee + fees.distanceFee + fees.desiFee + fees.flatFee
     const { value: subtotal, adjustments } = applyMinMax(raw, rule)
     const includeKdv = input.includeKdv !== false
@@ -197,8 +203,9 @@ export function quotePrice(ctx: QuoteEngineContext, input: QuoteInput): QuoteRes
       priceListId: list.id,
       priceListName: list.name,
       matchedRuleId: rule.id,
-      matchedRuleLabel: rule.name || rule.pricingMode,
+      matchedRuleLabel: rule.name || `${rule.desiStart}–${rule.desiEnd} desi`,
       pricingMode: rule.pricingMode,
+      distanceStructure: list.distanceStructure,
       inputs: {
         desi: input.desi,
         distanceKm: input.distanceKm,

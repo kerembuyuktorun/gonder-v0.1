@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch'
 import { quotePriceApi } from '../_api/pricing-api'
 import { formatCurrency } from '../_lib/format'
 import type { QuoteResult } from '../_types'
-import { PRICING_MODE_LABELS } from '../_types'
+import { DISTANCE_STRUCTURE_LABELS } from '../_types'
 import { SEED_GEO } from '../_data/seed'
 
 type Props = {
@@ -108,7 +108,7 @@ export function PriceQuoteSimulator({ priceListId, customerId }: Props) {
               <p>
                 <span className='text-slate-500'>Kural:</span> {result.matchedRuleLabel}{' '}
                 <span className='text-xs text-slate-400'>
-                  ({PRICING_MODE_LABELS[result.pricingMode]})
+                  ({DISTANCE_STRUCTURE_LABELS[result.distanceStructure]})
                 </span>
               </p>
               <div className='grid gap-1 border-t pt-2 text-xs text-slate-600 sm:grid-cols-2'>

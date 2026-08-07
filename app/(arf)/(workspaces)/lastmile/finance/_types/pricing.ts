@@ -2,6 +2,16 @@
 
 export type PriceListStatus = 'active' | 'passive'
 
+/** Liste başına tek mesafe kurgusu. */
+export type DistanceStructure = 'km' | 'zone' | 'od'
+
+/** Her kural satırında desi ücret tipi. */
+export type DesiPricingType = 'fixed' | 'dynamic'
+
+/**
+ * Snapshot / legacy uyumu için türetilmiş mod.
+ * UI'da seçilmez; distanceStructure'dan yazılır.
+ */
 export type PricingMode =
   | 'base_plus_km'
   | 'od_district'
@@ -40,13 +50,15 @@ export type PriceRule = {
   name?: string
   priority: number
   status: PriceListStatus
+  /** distanceStructure'tan türetilir */
   pricingMode: PricingMode
+  desiPricing: DesiPricingType
+  desiStart: number
+  desiEnd: number
   baseFee?: number
   perKm?: number
   perDesi?: number
   flatFee?: number
-  desiStart?: number
-  desiEnd?: number
   origin?: GeoPointRef
   destination?: GeoPointRef
   zoneId?: string
@@ -63,6 +75,7 @@ export type PriceList = {
   isDefault: boolean
   status: PriceListStatus
   currency: 'TRY'
+  distanceStructure: DistanceStructure
   validFrom?: string
   validTo?: string
   createdAt: string
@@ -118,6 +131,7 @@ export type QuoteResult =
       matchedRuleId: string
       matchedRuleLabel: string
       pricingMode: PricingMode
+      distanceStructure: DistanceStructure
       inputs: {
         distanceKm?: number
         desi: number
@@ -157,10 +171,43 @@ export type OrderPricingSnapshot = {
   manualOverride?: boolean
 }
 
+export const DISTANCE_STRUCTURE_LABELS: Record<DistanceStructure, string> = {
+  km: 'Km bazlı',
+  zone: 'Varış bölgesi',
+  od: 'Çıkış → Varış (İl/İlçe)',
+}
+
+export const DESI_PRICING_LABELS: Record<DesiPricingType, string> = {
+  fixed: 'Sabit (bant)',
+  dynamic: 'Dinamik (desi birim)',
+}
+
+/** @deprecated UI'da kullanılmaz; snapshot etiketleri için */
 export const PRICING_MODE_LABELS: Record<PricingMode, string> = {
-  base_plus_km: 'Başlangıç + Km',
+  base_plus_km: 'Km bazlı',
   od_district: 'Çıkış → Varış (İl/İlçe)',
-  zone_flat: 'Bölge Paketi',
+  zone_flat: 'Varış bölgesi',
   desi_band_fixed: 'Desi Bant (Sabit)',
   desi_dynamic: 'Desi Dinamik',
+}
+
+export function pricingModeFromDistanceStructure(structure: DistanceStructure): PricingMode {
+  switch (structure) {
+    case 'km':
+      return 'base_plus_km'
+    case 'zone':
+      return 'zone_flat'
+    case 'od':
+      return 'od_district'
+  }
+}
+
+export function slugCodeFromName(name: string): string {
+  const slug = name
+    .trim()
+    .toLocaleUpperCase('tr-TR')
+    .replace(/[^A-Z0-9ÇĞİÖŞÜ]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 32)
+  return slug || `PL-${Date.now().toString(36).toUpperCase()}`
 }

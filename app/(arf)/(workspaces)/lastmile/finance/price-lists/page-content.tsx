@@ -91,7 +91,7 @@ export default function PriceListsPageContent() {
           <div>
             <h1 className='text-2xl font-semibold tracking-tight text-slate-900'>Fiyat Listeleri</h1>
             <p className='mt-1 text-sm text-slate-500'>
-              Genel ve müşteriye özel last mile ücretlendirmelerini yönetin.
+              Mesafe kurgusu ve desi satırlarıyla last mile ücretlendirmelerini yönetin.
             </p>
           </div>
           <div className='flex items-center gap-2'>
