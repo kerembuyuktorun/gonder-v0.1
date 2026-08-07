@@ -92,10 +92,11 @@ export function LastmileLayoutShell({ children }: { children: React.ReactNode })
       items: group.items
         .map((item) => {
           if (isCustomerRestrictedPath(item.url)) return null
-          const children = item.items?.filter(
+          const nestedItems = 'items' in item ? item.items : undefined
+          const children = nestedItems?.filter(
             (child) => !isCustomerRestrictedPath(child.url)
           )
-          if (item.items && (!children || children.length === 0)) return null
+          if (nestedItems && (!children || children.length === 0)) return null
           return children ? { ...item, items: children } : item
         })
         .filter((item): item is NonNullable<typeof item> => item != null),
