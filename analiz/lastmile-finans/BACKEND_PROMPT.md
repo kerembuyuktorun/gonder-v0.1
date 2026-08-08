@@ -1,7 +1,7 @@
 # Last Mile Fiyatlama & Finans — Backend Prompt
 
 > **Agent için kopyala:** adım adım uygulama prompt’u → [`BACKEND_AGENT_PROMPT.md`](./BACKEND_AGENT_PROMPT.md)  
-> Sayfa rehberi: [`FE_GUIDE.md`](./FE_GUIDE.md)
+> Sayfa rehberi: [`FE_GUIDE.md`](./FE_GUIDE.md) · Tam indeks: [`../README.md`](../README.md)
 
 > Frontend UI mock/localStorage ile tamam. Bu doküman BE implementasyonu içindir.
 > Önce **durum matrisi** (gerçek API / mock / placeholder), sonra kopyalanabilir prompt.

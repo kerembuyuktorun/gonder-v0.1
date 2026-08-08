@@ -1,5 +1,6 @@
 'use client'
 
+import { computeInvoiceTotals } from '../_lib/invoice-math'
 import { readJson, writeJson } from '../_lib/storage'
 import type { InvoiceLine, LastmileInvoice } from '../_types/invoice'
 

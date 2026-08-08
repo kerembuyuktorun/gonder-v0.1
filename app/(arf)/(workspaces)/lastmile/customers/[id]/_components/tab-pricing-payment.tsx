@@ -27,6 +27,7 @@ import {
 import { PriceQuoteSimulator } from '../../../finance/_components/price-quote-simulator'
 import { formatCurrency } from '../../../finance/_lib/format'
 import type {
+  BillingCycle,
   CustomerFinanceSummary,
   PriceList,
   SettlementType,
@@ -44,6 +45,7 @@ export function TabPricingPayment({ customerId, customerName }: Props) {
   const [lists, setLists] = useState<PriceList[]>([])
   const [priceListId, setPriceListId] = useState<string>(NONE)
   const [settlementType, setSettlementType] = useState<SettlementType>('pesin')
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('per_order')
   const [creditDays, setCreditDays] = useState('0')
   const [notes, setNotes] = useState('')
   const [summary, setSummary] = useState<CustomerFinanceSummary | null>(null)
@@ -63,10 +65,12 @@ export function TabPricingPayment({ customerId, customerName }: Props) {
       setPriceListId(assignment?.priceListId ?? NONE)
       if (terms) {
         setSettlementType(terms.settlementType)
+        setBillingCycle(terms.billingCycle ?? 'per_order')
         setCreditDays(String(terms.creditDays))
         setNotes(terms.notes ?? '')
       } else {
         setSettlementType('pesin')
+        setBillingCycle('per_order')
         setCreditDays('0')
         setNotes('')
       }
@@ -89,6 +93,7 @@ export function TabPricingPayment({ customerId, customerName }: Props) {
         setCustomerPricingAssignment(customerId, priceListId === NONE ? null : priceListId),
         setCustomerPaymentTerms(customerId, {
           settlementType,
+          billingCycle,
           creditDays: Number(creditDays) || 0,
           notes: notes.trim() || undefined,
         }),

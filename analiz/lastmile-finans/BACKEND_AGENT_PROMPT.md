@@ -4,6 +4,7 @@ gonder-v0.1 Last Mile FE finans çalışmalarının tamamı için **backend agen
 
 - Sayfa rehberi: [`FE_GUIDE.md`](./FE_GUIDE.md)
 - Audit / durum matrisi: [`BACKEND_PROMPT.md`](./BACKEND_PROMPT.md)
+- API (canlı BFF): [`FINANCE_API.md`](./FINANCE_API.md) · Dev: [`FINANCE_DEV.md`](./FINANCE_DEV.md)
 - FE tipler & façade: `_types/*`, `_api/*` under `app/(arf)/(workspaces)/lastmile/finance/`
 
 Aşağıdaki fenced bloğu kopyala → backend Cursor agent’a yapıştır. Repo yolunu doldur.

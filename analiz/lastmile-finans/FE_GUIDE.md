@@ -1,6 +1,6 @@
 # Last Mile Finans — Frontend Yönlendirme
 
-> **Güncel ve kapsamlı rehber:** [`../YONLENDIRME.md`](../YONLENDIRME.md)  
+> **Güncel ve kapsamlı rehber:** [`YONLENDIRME.md`](./YONLENDIRME.md) · İndeks: [`../README.md`](../README.md)  
 > Bu dosya finans/fiyatlandırma için kısa özet olarak durur; iptal–iade–devir, fiyat motoru ve demo turu ana dosyada anlatılır.
 
 Kısa rehber: hangi sayfada ne yapılır, ne işe yarar.  
@@ -41,7 +41,7 @@ Sidebar: **Finans & Muhasebe** ve **Fiyatlandırma** (açılır menüler).
 | Kurye ücret listeleri | `/lastmile/finance/courier-cost-lists` | Liste CRUD (müşteri fiyatının aynası) | Kuryeye ödenecek maliyet tarifesi |
 | Kurye ücret detay / yeni | `.../courier-cost-lists/[id]` · `.../new` | Kurallar, kurye atama, quote | Hakediş hesabının tarife tarafı |
 
-**Fiyat nasıl oluşur (özet):** Liste seviyesinde `km` | `zone` | `od` → satırda desi `fixed`/`dynamic` → teslimat quote. İade: `orijinal × returnFeePercent` (+ min). Ayrıntı: [`YONLENDIRME.md` §3](../YONLENDIRME.md).
+**Fiyat nasıl oluşur (özet):** Liste seviyesinde `km` | `zone` | `od` → satırda desi `fixed`/`dynamic` → teslimat quote. İade: `orijinal × returnFeePercent` (+ min). Ayrıntı: [`YONLENDIRME.md` §3](./YONLENDIRME.md).
 
 ---
 

@@ -14,8 +14,7 @@ export type CreateInvoiceInput = {
     quantity: number
     unitPrice: number
     taxRate: number
-    orderId?: string
-    [key: string]: unknown
+    orderId?: string | null
   }>
   orderIds?: string[]
   source: LastmileInvoice['source']
