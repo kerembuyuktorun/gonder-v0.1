@@ -55,10 +55,8 @@ export default function CourierCostListsPageContent() {
       setKpi({
         activeCount: active.length,
         tariffCount: active.filter((r) => r.compensationModel === 'tariff').length,
-        salaryCount: active.filter(
-          (r) =>
-            r.compensationModel === 'salary_plus_bonus' || r.compensationModel === 'hybrid'
-        ).length,
+        salaryCount: active.filter((r) => r.compensationModel === 'salary_plus_bonus')
+          .length,
         assignedCourierCount: assignments.length,
       })
     } catch {

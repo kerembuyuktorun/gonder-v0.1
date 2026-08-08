@@ -27,8 +27,10 @@ import type {
   OrderPricingSnapshot,
   PriceList,
   PriceListStatus,
+  PricePackageDefinition,
   PriceRule,
   PriceZone,
+  QuantityBasis,
   QuoteInput,
   QuoteResult,
   SettlementType,
@@ -57,7 +59,11 @@ function delay<T>(value: T, ms = 120): Promise<T> {
 
 function getPriceLists(): PriceList[] {
   ensureSeed()
-  return readJson<PriceList[]>(STORAGE_KEYS.priceLists, [])
+  return readJson<PriceList[]>(STORAGE_KEYS.priceLists, []).map((list) => ({
+    ...list,
+    quantityBasis: list.quantityBasis ?? 'desi',
+    packages: list.packages ?? [],
+  }))
 }
 
 function savePriceLists(lists: PriceList[]) {
@@ -155,6 +161,8 @@ export type UpsertPriceListInput = {
   isDefault?: boolean
   status?: PriceListStatus
   distanceStructure: DistanceStructure
+  quantityBasis?: QuantityBasis
+  packages?: PricePackageDefinition[]
   returnFeePercent?: number
   returnFeeMin?: number
   validFrom?: string
@@ -193,6 +201,8 @@ export async function createPriceList(input: UpsertPriceListInput): Promise<Pric
     status: input.status ?? 'active',
     currency: 'TRY',
     distanceStructure: input.distanceStructure,
+    quantityBasis: input.quantityBasis ?? 'desi',
+    packages: input.packages ?? [],
     returnFeePercent: input.returnFeePercent ?? 50,
     returnFeeMin: input.returnFeeMin,
     validFrom: input.validFrom,
@@ -227,6 +237,8 @@ export async function updatePriceList(
     isDefault: input.isDefault ?? prev.isDefault,
     status: input.status ?? prev.status,
     distanceStructure: input.distanceStructure,
+    quantityBasis: input.quantityBasis ?? prev.quantityBasis ?? 'desi',
+    packages: input.packages ?? prev.packages,
     returnFeePercent: input.returnFeePercent ?? prev.returnFeePercent ?? 50,
     returnFeeMin: input.returnFeeMin !== undefined ? input.returnFeeMin : prev.returnFeeMin,
     validFrom: input.validFrom,

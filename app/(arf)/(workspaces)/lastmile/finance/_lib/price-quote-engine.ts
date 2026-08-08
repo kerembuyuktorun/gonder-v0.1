@@ -35,6 +35,23 @@ function desiInRange(rule: PriceRule, desi: number): boolean {
   return desi >= start && desi <= end
 }
 
+function totalPackageCount(input: QuoteInput): number {
+  if (input.packageLines && input.packageLines.length > 0) {
+    return input.packageLines.reduce((sum, line) => sum + Math.max(0, line.quantity), 0)
+  }
+  return input.packageCount ?? 0
+}
+
+function quantityInRange(list: PriceList, rule: PriceRule, input: QuoteInput): boolean {
+  if ((list.quantityBasis ?? 'desi') === 'package') {
+    const count = totalPackageCount(input)
+    const start = rule.packageStart ?? 0
+    const end = rule.packageEnd ?? Number.POSITIVE_INFINITY
+    return count >= start && count <= end
+  }
+  return desiInRange(rule, input.desi)
+}
+
 function distanceMatches(
   structure: DistanceStructure,
   rule: PriceRule,
@@ -67,37 +84,103 @@ function ruleMatches(
   zonesById: Map<string, PriceZone>
 ): { match: boolean; zoneName?: string } {
   if (rule.status !== 'active') return { match: false }
-  if (!desiInRange(rule, input.desi)) return { match: false }
+  if (!quantityInRange(list, rule, input)) return { match: false }
   return distanceMatches(list.distanceStructure, rule, input, zonesById)
 }
 
 /**
- * fixed  → flatFee (+ km: perKm × distance)
- * dynamic → baseFee + perDesi × desi (+ km: perKm × distance)
+ * Paket kataloğu satırlarından ücret (Σ unitPrice × adet).
+ */
+export function computeCatalogPackageFee(
+  list: PriceList,
+  packageLines: QuoteInput['packageLines']
+): { fee: number; adjustments: QuoteBreakdown['adjustments'] } | null {
+  if (!packageLines || packageLines.length === 0) return null
+  const catalog = list.packages ?? []
+  if (catalog.length === 0) return null
+
+  let fee = 0
+  const adjustments: QuoteBreakdown['adjustments'] = []
+  for (const line of packageLines) {
+    if (!(line.quantity > 0)) continue
+    const pkg = catalog.find((p) => p.id === line.packageId)
+    if (!pkg || pkg.unitPrice == null || Number.isNaN(pkg.unitPrice)) {
+      return null
+    }
+    const lineTotal = roundMoney(pkg.unitPrice * line.quantity)
+    fee += lineTotal
+    adjustments.push({
+      label: `${pkg.code || pkg.name} × ${line.quantity}`,
+      amount: lineTotal,
+    })
+  }
+  return { fee: roundMoney(fee), adjustments }
+}
+
+/**
+ * fixed  → flatFee (+ km) [+ katalog paket]
+ * dynamic → baseFee + birim×miktar (+ km); katalog satırı varsa birim fiyat katalogdan
  */
 function computeFees(
   list: PriceList,
   rule: PriceRule,
   input: QuoteInput
-): Omit<QuoteBreakdown, 'adjustments' | 'subtotal' | 'kdvRate' | 'kdvAmount' | 'total'> {
+): Omit<QuoteBreakdown, 'adjustments' | 'subtotal' | 'kdvRate' | 'kdvAmount' | 'total'> & {
+  catalogAdjustments: QuoteBreakdown['adjustments']
+} {
   const distanceFee =
     list.distanceStructure === 'km' ? (rule.perKm ?? 0) * (input.distanceKm ?? 0) : 0
 
+  const catalog = computeCatalogPackageFee(list, input.packageLines)
+
   if (rule.desiPricing === 'fixed') {
+    if (catalog) {
+      return {
+        baseFee: 0,
+        distanceFee,
+        desiFee: catalog.fee,
+        flatFee: 0,
+        catalogAdjustments: catalog.adjustments,
+      }
+    }
     return {
       baseFee: 0,
       distanceFee,
       desiFee: 0,
       flatFee: rule.flatFee ?? 0,
+      catalogAdjustments: [],
     }
   }
+
+  if (catalog) {
+    return {
+      baseFee: rule.baseFee ?? 0,
+      distanceFee,
+      desiFee: catalog.fee,
+      flatFee: 0,
+      catalogAdjustments: catalog.adjustments,
+    }
+  }
+
+  const quantityFee =
+    (list.quantityBasis ?? 'desi') === 'package'
+      ? (rule.perPackage ?? 0) * totalPackageCount(input)
+      : (rule.perDesi ?? 0) * input.desi
 
   return {
     baseFee: rule.baseFee ?? 0,
     distanceFee,
-    desiFee: (rule.perDesi ?? 0) * input.desi,
+    desiFee: quantityFee,
     flatFee: 0,
+    catalogAdjustments: [],
   }
+}
+
+function ruleQuantityLabel(list: PriceList, rule: PriceRule): string {
+  if ((list.quantityBasis ?? 'desi') === 'package') {
+    return `${rule.packageStart ?? 0}–${rule.packageEnd ?? '∞'} paket`
+  }
+  return `${rule.desiStart}–${rule.desiEnd} desi`
 }
 
 function applyMinMax(
@@ -147,6 +230,8 @@ export function quotePrice(ctx: QuoteEngineContext, input: QuoteInput): QuoteRes
     return { ok: false, error: 'Aktif fiyat listesi bulunamadı.' }
   }
 
+  const quantityBasis = list.quantityBasis ?? 'desi'
+
   if (input.manualSubtotalOverride != null && Number.isFinite(input.manualSubtotalOverride)) {
     const subtotal = roundMoney(input.manualSubtotalOverride)
     const includeKdv = input.includeKdv !== false
@@ -160,8 +245,10 @@ export function quotePrice(ctx: QuoteEngineContext, input: QuoteInput): QuoteRes
       matchedRuleLabel: 'Manuel tutar',
       pricingMode: list.rules[0]?.pricingMode ?? 'od_district',
       distanceStructure: list.distanceStructure,
+      quantityBasis,
       inputs: {
         desi: input.desi,
+        packageCount: input.packageCount,
         distanceKm: input.distanceKm,
         originCityId: input.origin.cityId,
         originDistrictId: input.origin.districtId,
@@ -218,8 +305,11 @@ export function quotePrice(ctx: QuoteEngineContext, input: QuoteInput): QuoteRes
       matchedRuleLabel: `İade · %${percent}`,
       pricingMode: list.rules[0]?.pricingMode ?? 'od_district',
       distanceStructure: list.distanceStructure,
+      quantityBasis,
       inputs: {
         desi: input.desi,
+        packageCount: totalPackageCount(input) || undefined,
+        packageLines: input.packageLines,
         distanceKm: input.distanceKm,
         originCityId: input.origin.cityId,
         originDistrictId: input.origin.districtId,
@@ -249,9 +339,23 @@ export function quotePrice(ctx: QuoteEngineContext, input: QuoteInput): QuoteRes
     const { match, zoneName } = ruleMatches(list, rule, input, zonesById)
     if (!match) continue
 
+    if (input.packageLines && input.packageLines.some((l) => l.quantity > 0)) {
+      const catalogCheck = computeCatalogPackageFee(list, input.packageLines)
+      if (!catalogCheck) {
+        return {
+          ok: false,
+          error:
+            'Paket satırları için katalog birim fiyatı bulunamadı. Fiyat listesinde paket tanımlarını kontrol edin.',
+          priceListId: list.id,
+          priceListName: list.name,
+        }
+      }
+    }
+
     const fees = computeFees(list, rule, input)
     const raw = fees.baseFee + fees.distanceFee + fees.desiFee + fees.flatFee
-    const { value: subtotal, adjustments } = applyMinMax(raw, rule)
+    const { value: subtotal, adjustments: minMaxAdj } = applyMinMax(raw, rule)
+    const adjustments = [...fees.catalogAdjustments, ...minMaxAdj]
     const includeKdv = input.includeKdv !== false
     const kdvRate = includeKdv ? (input.kdvRate ?? 20) : 0
     const kdvAmount = includeKdv ? roundMoney(subtotal * (kdvRate / 100)) : 0
@@ -261,11 +365,14 @@ export function quotePrice(ctx: QuoteEngineContext, input: QuoteInput): QuoteRes
       priceListId: list.id,
       priceListName: list.name,
       matchedRuleId: rule.id,
-      matchedRuleLabel: rule.name || `${rule.desiStart}–${rule.desiEnd} desi`,
+      matchedRuleLabel: rule.name || ruleQuantityLabel(list, rule),
       pricingMode: rule.pricingMode,
       distanceStructure: list.distanceStructure,
+      quantityBasis,
       inputs: {
         desi: input.desi,
+        packageCount: totalPackageCount(input) || undefined,
+        packageLines: input.packageLines,
         distanceKm: input.distanceKm,
         originCityId: input.origin.cityId,
         originDistrictId: input.origin.districtId,
@@ -274,7 +381,6 @@ export function quotePrice(ctx: QuoteEngineContext, input: QuoteInput): QuoteRes
         zoneName,
       },
       breakdown: {
-        ...fees,
         baseFee: roundMoney(fees.baseFee),
         distanceFee: roundMoney(fees.distanceFee),
         desiFee: roundMoney(fees.desiFee),

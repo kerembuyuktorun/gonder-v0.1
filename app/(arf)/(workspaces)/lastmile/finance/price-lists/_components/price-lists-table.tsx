@@ -12,6 +12,10 @@ import {
 import { ARF_ROUTES } from '../../../../../_shared/routes'
 import { Copy, MoreHorizontal, Star, ToggleLeft } from 'lucide-react'
 import type { PriceList } from '../../_types'
+import {
+  DISTANCE_STRUCTURE_LABELS,
+  QUANTITY_BASIS_LABELS,
+} from '../../_types'
 import { formatNumber } from '../../_lib/format'
 
 type Props = {
@@ -48,6 +52,7 @@ export function PriceListsTable({
             <th className='px-4 py-3'>Kod</th>
             <th className='px-4 py-3'>Ad</th>
             <th className='px-4 py-3'>Durum</th>
+            <th className='px-4 py-3'>Ölçü</th>
             <th className='px-4 py-3'>Kurallar</th>
             <th className='px-4 py-3'>Atama</th>
             <th className='px-4 py-3'>Geçerlilik</th>
@@ -78,6 +83,12 @@ export function PriceListsTable({
                 <Badge variant={list.status === 'active' ? 'default' : 'secondary'}>
                   {list.status === 'active' ? 'Aktif' : 'Pasif'}
                 </Badge>
+              </td>
+              <td className='px-4 py-3 text-xs text-slate-600'>
+                <div>{QUANTITY_BASIS_LABELS[list.quantityBasis ?? 'desi']}</div>
+                <div className='text-[11px] text-slate-400'>
+                  {DISTANCE_STRUCTURE_LABELS[list.distanceStructure]}
+                </div>
               </td>
               <td className='px-4 py-3 tabular-nums'>{formatNumber(list.rules.length)}</td>
               <td className='px-4 py-3 tabular-nums'>

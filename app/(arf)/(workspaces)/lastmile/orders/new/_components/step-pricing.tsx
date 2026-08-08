@@ -39,6 +39,14 @@ export function StepPricing({ form, setForm, fieldError, onQuoteChange }: Props)
   const [termsLoaded, setTermsLoaded] = useState(false)
 
   const totalDesi = useMemo(() => sumPackageDesi(form.paketler), [form.paketler])
+  const packageCount = useMemo(
+    () =>
+      form.paketler.reduce((sum, pkg) => {
+        const n = Number(pkg.adet)
+        return sum + (Number.isFinite(n) && n > 0 ? n : 0)
+      }, 0),
+    [form.paketler]
+  )
 
   useEffect(() => {
     if (!form.musteriId || termsLoaded) return
@@ -76,6 +84,7 @@ export function StepPricing({ form, setForm, fieldError, onQuoteChange }: Props)
           districtId: form.ucret_dest_district_id || undefined,
         },
         desi: totalDesi,
+        packageCount: packageCount > 0 ? packageCount : undefined,
         distanceKm:
           form.ucret_distance_km === '' ? undefined : Number(form.ucret_distance_km),
         includeKdv: form.ucret_include_kdv,
@@ -104,6 +113,7 @@ export function StepPricing({ form, setForm, fieldError, onQuoteChange }: Props)
     form.ucret_manual_override,
     form.ucret_manual_subtotal,
     totalDesi,
+    packageCount,
   ])
 
   const patch = (partial: Partial<OrderCreateFormState>) =>
@@ -114,7 +124,10 @@ export function StepPricing({ form, setForm, fieldError, onQuoteChange }: Props)
       <div>
         <h2 className='text-lg font-semibold text-slate-900'>Ücret ve Ödeme</h2>
         <p className='mt-1 text-sm text-slate-500'>
-          Toplam desi: <strong>{totalDesi.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}</strong>
+          Toplam desi:{' '}
+          <strong>{totalDesi.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}</strong>
+          {' · '}
+          Paket adedi: <strong>{packageCount}</strong>
           {' · '}
           <Link
             href={ARF_ROUTES.lastmile.finance.priceLists.list}
@@ -246,7 +259,10 @@ export function StepPricing({ form, setForm, fieldError, onQuoteChange }: Props)
             <div className='grid gap-1 border-t pt-2 text-xs text-slate-600 sm:grid-cols-2'>
               <p>Başlangıç: {formatCurrency(quote.breakdown.baseFee)}</p>
               <p>Km: {formatCurrency(quote.breakdown.distanceFee)}</p>
-              <p>Desi: {formatCurrency(quote.breakdown.desiFee)}</p>
+              <p>
+                {quote.quantityBasis === 'package' ? 'Paket' : 'Desi'}:{' '}
+                {formatCurrency(quote.breakdown.desiFee)}
+              </p>
               <p>Sabit: {formatCurrency(quote.breakdown.flatFee)}</p>
               <p>Ara toplam: {formatCurrency(quote.breakdown.subtotal)}</p>
               <p>KDV: {formatCurrency(quote.breakdown.kdvAmount ?? 0)}</p>

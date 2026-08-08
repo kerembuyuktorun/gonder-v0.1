@@ -31,7 +31,9 @@ export default function NewCourierCostListPageContent() {
         name: values.name,
         isDefault: values.isDefault,
         distanceStructure: values.distanceStructure,
-        compensationModel: 'tariff',
+        quantityBasis: values.quantityBasis,
+        compensationModel: values.compensationModel,
+        fixedSalaryMonthly: values.fixedSalaryMonthly,
         status: 'active',
         rules: values.rules,
       })
@@ -64,6 +66,8 @@ export default function NewCourierCostListPageContent() {
           name: '',
           isDefault: false,
           distanceStructure: 'km',
+          compensationModel: 'tariff',
+          quantityBasis: 'desi',
           rules: [],
         }}
         zones={zones}

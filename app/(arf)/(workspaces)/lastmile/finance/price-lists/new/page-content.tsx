@@ -30,6 +30,8 @@ export default function NewPriceListPageContent() {
         name: values.name,
         isDefault: values.isDefault,
         distanceStructure: values.distanceStructure,
+        quantityBasis: values.quantityBasis,
+        packages: values.packages,
         returnFeePercent: values.returnFeePercent,
         returnFeeMin: values.returnFeeMin,
         status: 'active',
@@ -61,6 +63,8 @@ export default function NewPriceListPageContent() {
           name: '',
           isDefault: false,
           distanceStructure: 'km',
+          quantityBasis: 'desi',
+          packages: [],
           returnFeePercent: 50,
           rules: [],
         }}

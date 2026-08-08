@@ -6,7 +6,11 @@ import type {
   GeoPointRef,
   PriceListStatus,
   PricingMode,
+  QuantityBasis,
 } from './pricing'
+
+export type { QuantityBasis } from './pricing'
+export { QUANTITY_BASIS_LABELS } from './pricing'
 
 export type CompensationModel = 'tariff' | 'salary_plus_bonus' | 'hybrid'
 
@@ -21,12 +25,18 @@ export type CourierCostRule = {
   status: PriceListStatus
   /** distanceStructure'tan türetilir */
   pricingMode: CourierCostPricingMode
+  /** Sabit bant ücreti veya birim × miktar (desi/paket) */
   desiPricing: DesiPricingType
   desiStart: number
   desiEnd: number
+  /** quantityBasis === 'package' iken bant */
+  packageStart?: number
+  packageEnd?: number
   baseFee?: number
   perKm?: number
   perDesi?: number
+  /** Paket birim ücreti (dynamic + package) */
+  perPackage?: number
   flatFee?: number
   origin?: GeoPointRef
   destination?: GeoPointRef
@@ -45,6 +55,8 @@ export type CourierCostList = {
   status: PriceListStatus
   currency: 'TRY'
   distanceStructure: DistanceStructure
+  /** Desi veya paket adedi üzerinden tarife */
+  quantityBasis: QuantityBasis
   compensationModel: CompensationModel
   fixedSalaryMonthly?: number
   validFrom?: string
@@ -98,6 +110,8 @@ export type CourierCostQuoteInput = {
   origin: { cityId: string; districtId?: string }
   destination: { cityId: string; districtId?: string }
   desi: number
+  /** quantityBasis === 'package' için paket adedi */
+  packageCount?: number
   distanceKm?: number
   orderDate?: string
   manualSubtotalOverride?: number
@@ -111,6 +125,7 @@ export type CourierCostQuoteAdjustment = {
 export type CourierCostBreakdown = {
   baseFee: number
   distanceFee: number
+  /** Desi veya paket miktar ücreti (birime göre etiket UI'da) */
   desiFee: number
   flatFee: number
   salaryPortion: number
@@ -126,6 +141,7 @@ export type CourierCostQuoteResult =
       costListId: string
       costListName: string
       compensationModel: CompensationModel
+      quantityBasis: QuantityBasis
       matchedRuleId: string
       matchedRuleLabel: string
       pricingMode: CourierCostPricingMode
@@ -133,6 +149,7 @@ export type CourierCostQuoteResult =
       inputs: {
         distanceKm?: number
         desi: number
+        packageCount?: number
         originCityId: string
         originDistrictId?: string
         destCityId: string
@@ -217,9 +234,9 @@ export type CourierPayoutsKpi = {
 }
 
 export const COMPENSATION_MODEL_LABELS: Record<CompensationModel, string> = {
-  tariff: 'Tarife',
-  salary_plus_bonus: 'Maaş + Prim',
-  hybrid: 'Hibrit',
+  tariff: 'Tarife (paket/desi başı)',
+  hybrid: 'Paket/desi + Km',
+  salary_plus_bonus: 'Maaşlı (+ prim)',
 }
 
 /** @deprecated UI'da DISTANCE_STRUCTURE_LABELS kullanın */

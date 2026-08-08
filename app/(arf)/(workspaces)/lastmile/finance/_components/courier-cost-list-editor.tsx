@@ -17,14 +17,18 @@ import { toast } from 'sonner'
 import { SEED_DISTRICTS, SEED_GEO } from '../_data/seed'
 import { createId } from '../_lib/format'
 import type {
+  CompensationModel,
   DesiPricingType,
   DistanceStructure,
   CourierCostRule,
   PriceZone,
+  QuantityBasis,
 } from '../_types'
 import {
+  COMPENSATION_MODEL_LABELS,
   DESI_PRICING_LABELS,
   DISTANCE_STRUCTURE_LABELS,
+  QUANTITY_BASIS_LABELS,
   pricingModeFromDistanceStructure,
 } from '../_types'
 import { CourierCostQuoteSimulator } from './courier-cost-quote-simulator'
@@ -33,6 +37,9 @@ export type CourierCostListEditorValues = {
   name: string
   isDefault: boolean
   distanceStructure: DistanceStructure
+  compensationModel: CompensationModel
+  fixedSalaryMonthly?: number
+  quantityBasis: QuantityBasis
   rules: CourierCostRule[]
 }
 
@@ -53,9 +60,12 @@ type Props = {
 function emptyRule(
   costListId: string,
   structure: DistanceStructure,
+  quantityBasis: QuantityBasis,
+  needsKm: boolean,
   priority = 50
 ): CourierCostRule {
   const mode = pricingModeFromDistanceStructure(structure)
+  const isPackage = quantityBasis === 'package'
   return {
     id: createId('ccr'),
     costListId,
@@ -63,13 +73,16 @@ function emptyRule(
     status: 'active',
     pricingMode: mode,
     desiPricing: 'fixed',
-    desiStart: 1,
-    desiEnd: 5,
+    desiStart: isPackage ? 0 : 1,
+    desiEnd: isPackage ? 999 : 5,
+    packageStart: isPackage ? 1 : undefined,
+    packageEnd: isPackage ? 5 : undefined,
     flatFee: 100,
-    perKm: structure === 'km' ? 4 : undefined,
+    perKm: needsKm ? 4 : undefined,
     baseFee: undefined,
     perDesi: undefined,
-    zoneId: structure === 'zone' ? undefined : undefined,
+    perPackage: undefined,
+    zoneId: undefined,
     origin:
       structure === 'od'
         ? {
@@ -115,10 +128,29 @@ export function CourierCostListEditor({
   const [distanceStructure, setDistanceStructure] = useState<DistanceStructure>(
     initial.distanceStructure
   )
+  const [compensationModel, setCompensationModel] = useState<CompensationModel>(
+    initial.compensationModel
+  )
+  const [fixedSalaryMonthly, setFixedSalaryMonthly] = useState(
+    initial.fixedSalaryMonthly != null ? String(initial.fixedSalaryMonthly) : ''
+  )
+  const [quantityBasis, setQuantityBasis] = useState<QuantityBasis>(initial.quantityBasis)
   const [rules, setRules] = useState<CourierCostRule[]>(initial.rules)
+
+  const needsKm = compensationModel === 'hybrid' || distanceStructure === 'km'
 
   const structureOptions = useMemo(
     () => Object.entries(DISTANCE_STRUCTURE_LABELS) as [DistanceStructure, string][],
+    []
+  )
+
+  const compensationOptions = useMemo(
+    () => Object.entries(COMPENSATION_MODEL_LABELS) as [CompensationModel, string][],
+    []
+  )
+
+  const quantityOptions = useMemo(
+    () => Object.entries(QUANTITY_BASIS_LABELS) as [QuantityBasis, string][],
     []
   )
 
@@ -132,6 +164,25 @@ export function CourierCostListEditor({
     }
     setDistanceStructure(next)
     setRules([])
+  }
+
+  const changeQuantityBasis = (next: QuantityBasis) => {
+    if (next === quantityBasis) return
+    if (rules.length > 0) {
+      const ok = window.confirm(
+        'Ölçü birimi değişince mevcut kurallar silinir. Devam edilsin mi?'
+      )
+      if (!ok) return
+    }
+    setQuantityBasis(next)
+    setRules([])
+  }
+
+  const changeCompensationModel = (next: CompensationModel) => {
+    setCompensationModel(next)
+    if (next !== 'salary_plus_bonus') {
+      setFixedSalaryMonthly('')
+    }
   }
 
   const updateRule = (id: string, patch: Partial<CourierCostRule>) => {
@@ -149,6 +200,7 @@ export function CourierCostListEditor({
             flatFee: r.flatFee ?? 100,
             baseFee: undefined,
             perDesi: undefined,
+            perPackage: undefined,
             minFee: undefined,
           }
         }
@@ -156,7 +208,8 @@ export function CourierCostListEditor({
           ...r,
           desiPricing,
           baseFee: r.baseFee ?? 50,
-          perDesi: r.perDesi ?? 10,
+          perDesi: quantityBasis === 'desi' ? (r.perDesi ?? 10) : undefined,
+          perPackage: quantityBasis === 'package' ? (r.perPackage ?? 15) : undefined,
           flatFee: undefined,
           minFee: r.minFee ?? undefined,
         }
@@ -165,31 +218,55 @@ export function CourierCostListEditor({
   }
 
   const addRule = () => {
-    setRules((rows) => [emptyRule(costListId, distanceStructure, 100 - rows.length), ...rows])
+    setRules((rows) => [
+      emptyRule(costListId, distanceStructure, quantityBasis, needsKm, 100 - rows.length),
+      ...rows,
+    ])
   }
 
   const removeRule = (id: string) => setRules((rows) => rows.filter((r) => r.id !== id))
 
   const validate = (): string | null => {
     if (name.trim().length < 2) return 'İsim en az 2 karakter olmalı.'
-    if (rules.length === 0) return 'En az bir kural satırı ekleyin.'
+    if (compensationModel === 'salary_plus_bonus') {
+      const salary = Number(fixedSalaryMonthly)
+      if (!fixedSalaryMonthly.trim() || Number.isNaN(salary) || salary <= 0) {
+        return 'Maaşlı model için aylık maaş girin.'
+      }
+    }
+    const rulesRequired = compensationModel !== 'salary_plus_bonus'
+    if (rulesRequired && rules.length === 0) return 'En az bir kural satırı ekleyin.'
+
     for (const [i, rule] of rules.entries()) {
       const label = `Satır ${i + 1}`
-      if (rule.desiStart == null || rule.desiEnd == null) {
-        return `${label}: desi başlangıç/bitiş zorunlu.`
-      }
-      if (rule.desiStart > rule.desiEnd) {
-        return `${label}: desi başlangıç, bitişten büyük olamaz.`
+      if (quantityBasis === 'package') {
+        if (rule.packageStart == null || rule.packageEnd == null) {
+          return `${label}: paket başlangıç/bitiş zorunlu.`
+        }
+        if (rule.packageStart > rule.packageEnd) {
+          return `${label}: paket başlangıç, bitişten büyük olamaz.`
+        }
+      } else {
+        if (rule.desiStart == null || rule.desiEnd == null) {
+          return `${label}: desi başlangıç/bitiş zorunlu.`
+        }
+        if (rule.desiStart > rule.desiEnd) {
+          return `${label}: desi başlangıç, bitişten büyük olamaz.`
+        }
       }
       if (rule.desiPricing === 'fixed' && (rule.flatFee == null || Number.isNaN(rule.flatFee))) {
         return `${label}: sabit ücret girin.`
       }
       if (rule.desiPricing === 'dynamic') {
-        if (rule.perDesi == null || Number.isNaN(rule.perDesi)) {
+        if (quantityBasis === 'package') {
+          if (rule.perPackage == null || Number.isNaN(rule.perPackage)) {
+            return `${label}: paket birim ücreti girin.`
+          }
+        } else if (rule.perDesi == null || Number.isNaN(rule.perDesi)) {
           return `${label}: desi birim ücreti girin.`
         }
       }
-      if (distanceStructure === 'km' && (rule.perKm == null || Number.isNaN(rule.perKm))) {
+      if (needsKm && (rule.perKm == null || Number.isNaN(rule.perKm))) {
         return `${label}: km başına ücret girin.`
       }
       if (distanceStructure === 'zone' && !rule.zoneId) {
@@ -215,14 +292,33 @@ export function CourierCostListEditor({
       costListId,
       pricingMode: pricingModeFromDistanceStructure(distanceStructure),
       priority: r.priority || 100 - index,
+      perKm: needsKm ? r.perKm : undefined,
+      ...(quantityBasis === 'package'
+        ? {
+            desiStart: 0,
+            desiEnd: 999,
+            perDesi: undefined,
+          }
+        : {
+            packageStart: undefined,
+            packageEnd: undefined,
+            perPackage: undefined,
+          }),
     }))
     await onSubmit({
       name: name.trim(),
       isDefault,
       distanceStructure,
+      compensationModel,
+      fixedSalaryMonthly:
+        compensationModel === 'salary_plus_bonus' ? Number(fixedSalaryMonthly) : undefined,
+      quantityBasis,
       rules: normalized,
     })
   }
+
+  const quantityNoun = quantityBasis === 'package' ? 'Paket' : 'Desi'
+  const unitLabel = quantityBasis === 'package' ? 'Paket birim (₺)' : 'Desi birim (₺)'
 
   return (
     <div
@@ -240,12 +336,12 @@ export function CourierCostListEditor({
                 {mode === 'create' ? 'Yeni Kurye Ücret Listesi' : 'Ücret Listesini Düzenle'}
               </h1>
               <p className='mt-1 text-sm text-slate-500'>
-                İsim ve mesafe kurgusunu seçin; desi satırlarıyla kurye maliyetini tek sayfada tanımlayın.
+                Ödeme modeli, ölçü birimi ve mesafe kurgusunu seçip kural satırlarıyla tanımlayın.
               </p>
             </>
           ) : (
             <p className='text-sm text-slate-500'>
-              İsim, mesafe kurgusu ve desi satırlarını güncelleyin.
+              Ödeme modeli, ölçü birimi ve kural satırlarını güncelleyin.
             </p>
           )}
         </div>
@@ -278,12 +374,69 @@ export function CourierCostListEditor({
             <Switch checked={isDefault} onCheckedChange={setIsDefault} id='cc-default' />
             <Label htmlFor='cc-default'>Varsayılan ücret listesi</Label>
           </div>
+
+          <div className='space-y-1.5'>
+            <Label>Ödeme modeli *</Label>
+            <Select
+              value={compensationModel}
+              onValueChange={(v) => changeCompensationModel(v as CompensationModel)}
+            >
+              <SelectTrigger className='w-full'>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {compensationOptions.map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {compensationModel === 'salary_plus_bonus' ? (
+            <div className='space-y-1.5'>
+              <Label>Aylık maaş (₺) *</Label>
+              <Input
+                type='number'
+                value={fixedSalaryMonthly}
+                onChange={(e) => setFixedSalaryMonthly(e.target.value)}
+                placeholder='Örn. 28500'
+              />
+            </div>
+          ) : null}
+
+          <div className='space-y-2 sm:col-span-2'>
+            <Label>Ölçü birimi *</Label>
+            <p className='text-xs text-slate-500'>
+              Kural satırları desi veya paket adedi aralığı üzerinden çalışır.
+            </p>
+            <div className='flex flex-wrap gap-2'>
+              {quantityOptions.map(([value, label]) => (
+                <button
+                  key={value}
+                  type='button'
+                  onClick={() => changeQuantityBasis(value)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+                    quantityBasis === value
+                      ? 'bg-lime-400 text-black'
+                      : 'border border-slate-200 bg-white text-slate-600'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className='space-y-2'>
           <Label>Mesafe kurgusu *</Label>
           <p className='text-xs text-slate-500'>
             Bu listede tüm kurallar aynı mesafe yapısını kullanır; satırda değiştirilemez.
+            {compensationModel === 'hybrid'
+              ? ' Hibrit modelde mesafe kurgusu ne olursa olsun km ücreti eklenir.'
+              : null}
           </p>
           <div className='flex flex-wrap gap-2'>
             {structureOptions.map(([value, label]) => (
@@ -307,9 +460,11 @@ export function CourierCostListEditor({
       <section className='space-y-3'>
         <div className='flex items-center justify-between gap-3'>
           <div>
-            <h2 className='text-sm font-semibold text-slate-900'>Desi kuralları</h2>
+            <h2 className='text-sm font-semibold text-slate-900'>{quantityNoun} kuralları</h2>
             <p className='text-xs text-slate-500'>
-              Her satır bir desi aralığıdır. Sabit bant veya desi birim (dinamik) seçin.
+              {compensationModel === 'salary_plus_bonus'
+                ? 'Kurallar opsiyonel primdir; eşleşmezse yalnızca maaş bilgisi döner.'
+                : `Her satır bir ${quantityNoun.toLocaleLowerCase('tr-TR')} aralığıdır. Sabit bant veya birim (dinamik) seçin.`}
             </p>
           </div>
           <Button type='button' size='sm' variant='outline' onClick={addRule}>
@@ -320,7 +475,9 @@ export function CourierCostListEditor({
 
         {rules.length === 0 ? (
           <div className='rounded-xl border border-dashed px-4 py-10 text-center text-sm text-slate-500'>
-            Henüz kural yok. Satır ekleyerek desi aralığı tanımlayın.
+            {compensationModel === 'salary_plus_bonus'
+              ? 'Kural yok — yalnızca aylık maaş bilgisi kullanılır. İsterseniz prim satırı ekleyin.'
+              : `Henüz kural yok. Satır ekleyerek ${quantityNoun.toLocaleLowerCase('tr-TR')} aralığı tanımlayın.`}
           </div>
         ) : (
           <div className='space-y-3'>
@@ -441,28 +598,60 @@ export function CourierCostListEditor({
                     </div>
                   ) : null}
 
-                  <div className='w-[88px] shrink-0 space-y-1'>
-                    <Label className='text-xs'>Desi baş.</Label>
-                    <Input
-                      type='number'
-                      value={rule.desiStart}
-                      onChange={(e) =>
-                        updateRule(rule.id, { desiStart: Number(e.target.value) || 0 })
-                      }
-                    />
-                  </div>
-                  <div className='w-[88px] shrink-0 space-y-1'>
-                    <Label className='text-xs'>Desi bitiş</Label>
-                    <Input
-                      type='number'
-                      value={rule.desiEnd}
-                      onChange={(e) =>
-                        updateRule(rule.id, { desiEnd: Number(e.target.value) || 0 })
-                      }
-                    />
-                  </div>
+                  {quantityBasis === 'package' ? (
+                    <>
+                      <div className='w-[88px] shrink-0 space-y-1'>
+                        <Label className='text-xs'>Paket baş.</Label>
+                        <Input
+                          type='number'
+                          value={rule.packageStart ?? ''}
+                          onChange={(e) =>
+                            updateRule(rule.id, {
+                              packageStart: Number(e.target.value) || 0,
+                            })
+                          }
+                        />
+                      </div>
+                      <div className='w-[88px] shrink-0 space-y-1'>
+                        <Label className='text-xs'>Paket bitiş</Label>
+                        <Input
+                          type='number'
+                          value={rule.packageEnd ?? ''}
+                          onChange={(e) =>
+                            updateRule(rule.id, {
+                              packageEnd: Number(e.target.value) || 0,
+                            })
+                          }
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className='w-[88px] shrink-0 space-y-1'>
+                        <Label className='text-xs'>Desi baş.</Label>
+                        <Input
+                          type='number'
+                          value={rule.desiStart}
+                          onChange={(e) =>
+                            updateRule(rule.id, { desiStart: Number(e.target.value) || 0 })
+                          }
+                        />
+                      </div>
+                      <div className='w-[88px] shrink-0 space-y-1'>
+                        <Label className='text-xs'>Desi bitiş</Label>
+                        <Input
+                          type='number'
+                          value={rule.desiEnd}
+                          onChange={(e) =>
+                            updateRule(rule.id, { desiEnd: Number(e.target.value) || 0 })
+                          }
+                        />
+                      </div>
+                    </>
+                  )}
+
                   <div className='w-[158px] shrink-0 space-y-1'>
-                    <Label className='text-xs'>Desi tipi</Label>
+                    <Label className='text-xs'>{quantityNoun} tipi</Label>
                     <Select
                       value={rule.desiPricing}
                       onValueChange={(v) => setDesiPricing(rule.id, v as DesiPricingType)}
@@ -508,15 +697,24 @@ export function CourierCostListEditor({
                         />
                       </div>
                       <div className='w-[100px] shrink-0 space-y-1'>
-                        <Label className='text-xs'>Desi birim (₺)</Label>
+                        <Label className='text-xs'>{unitLabel}</Label>
                         <Input
                           type='number'
-                          value={rule.perDesi ?? ''}
-                          onChange={(e) =>
-                            updateRule(rule.id, {
-                              perDesi: e.target.value === '' ? undefined : Number(e.target.value),
-                            })
+                          value={
+                            quantityBasis === 'package'
+                              ? (rule.perPackage ?? '')
+                              : (rule.perDesi ?? '')
                           }
+                          onChange={(e) => {
+                            const n =
+                              e.target.value === '' ? undefined : Number(e.target.value)
+                            updateRule(
+                              rule.id,
+                              quantityBasis === 'package'
+                                ? { perPackage: n }
+                                : { perDesi: n }
+                            )
+                          }}
                         />
                       </div>
                       <div className='w-[112px] shrink-0 space-y-1'>
@@ -535,7 +733,7 @@ export function CourierCostListEditor({
                     </>
                   )}
 
-                  {distanceStructure === 'km' ? (
+                  {needsKm ? (
                     <div className='w-[100px] shrink-0 space-y-1'>
                       <Label className='text-xs'>Km başına (₺)</Label>
                       <Input
@@ -556,7 +754,9 @@ export function CourierCostListEditor({
         )}
       </section>
 
-      {showSimulator ? <CourierCostQuoteSimulator costListId={costListId} /> : null}
+      {showSimulator ? (
+        <CourierCostQuoteSimulator costListId={costListId} quantityBasis={quantityBasis} />
+      ) : null}
     </div>
   )
 }

@@ -183,6 +183,7 @@ export type UpsertCourierCostListInput = {
   isDefault?: boolean
   status?: PriceListStatus
   distanceStructure: CourierCostList['distanceStructure']
+  quantityBasis?: CourierCostList['quantityBasis']
   compensationModel?: CourierCostList['compensationModel']
   fixedSalaryMonthly?: number
   validFrom?: string
@@ -206,9 +207,10 @@ export async function createCourierCostList(
     status: input.status ?? 'active',
     currency: 'TRY',
     distanceStructure: input.distanceStructure,
+    quantityBasis: input.quantityBasis ?? 'desi',
     compensationModel,
     fixedSalaryMonthly:
-      compensationModel === 'tariff' ? undefined : input.fixedSalaryMonthly,
+      compensationModel === 'salary_plus_bonus' ? input.fixedSalaryMonthly : undefined,
     validFrom: input.validFrom,
     validTo: input.validTo,
     createdAt: stamp,
@@ -241,9 +243,10 @@ export async function updateCourierCostList(
     isDefault: input.isDefault ?? prev.isDefault,
     status: input.status ?? prev.status,
     distanceStructure: input.distanceStructure,
+    quantityBasis: input.quantityBasis ?? prev.quantityBasis ?? 'desi',
     compensationModel,
     fixedSalaryMonthly:
-      compensationModel === 'tariff' ? undefined : input.fixedSalaryMonthly,
+      compensationModel === 'salary_plus_bonus' ? input.fixedSalaryMonthly : undefined,
     validFrom: input.validFrom,
     validTo: input.validTo,
     updatedAt: nowIso(),
@@ -524,9 +527,7 @@ export function getCourierCostListsKpiSync() {
   const assignments = getAssignments()
   const active = lists.filter((l) => l.status === 'active')
   const salaryCount = lists.filter(
-    (l) =>
-      l.status === 'active' &&
-      (l.compensationModel === 'salary_plus_bonus' || l.compensationModel === 'hybrid')
+    (l) => l.status === 'active' && l.compensationModel === 'salary_plus_bonus'
   ).length
   const tariffCount = lists.filter(
     (l) => l.status === 'active' && l.compensationModel === 'tariff'

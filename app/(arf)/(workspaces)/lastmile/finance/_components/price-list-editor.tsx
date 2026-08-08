@@ -19,12 +19,15 @@ import { createId } from '../_lib/format'
 import type {
   DesiPricingType,
   DistanceStructure,
+  PricePackageDefinition,
   PriceRule,
   PriceZone,
+  QuantityBasis,
 } from '../_types'
 import {
   DESI_PRICING_LABELS,
   DISTANCE_STRUCTURE_LABELS,
+  QUANTITY_BASIS_LABELS,
   pricingModeFromDistanceStructure,
 } from '../_types'
 import { PriceQuoteSimulator } from './price-quote-simulator'
@@ -33,6 +36,8 @@ export type PriceListEditorValues = {
   name: string
   isDefault: boolean
   distanceStructure: DistanceStructure
+  quantityBasis: QuantityBasis
+  packages: PricePackageDefinition[]
   returnFeePercent?: number
   returnFeeMin?: number
   rules: PriceRule[]
@@ -55,22 +60,27 @@ type Props = {
 function emptyRule(
   priceListId: string,
   structure: DistanceStructure,
+  quantityBasis: QuantityBasis,
   priority = 50
 ): PriceRule {
   const mode = pricingModeFromDistanceStructure(structure)
+  const isPackage = quantityBasis === 'package'
   return {
     id: createId('rule'),
     priceListId,
     priority,
     status: 'active',
     pricingMode: mode,
-    desiPricing: 'fixed',
-    desiStart: 1,
-    desiEnd: 5,
-    flatFee: 100,
+    desiPricing: isPackage ? 'dynamic' : 'fixed',
+    desiStart: isPackage ? 0 : 1,
+    desiEnd: isPackage ? 999 : 5,
+    packageStart: isPackage ? 1 : undefined,
+    packageEnd: isPackage ? 99 : undefined,
+    flatFee: isPackage ? undefined : 100,
     perKm: structure === 'km' ? 4 : undefined,
-    baseFee: undefined,
+    baseFee: isPackage ? 0 : undefined,
     perDesi: undefined,
+    perPackage: undefined,
     zoneId: structure === 'zone' ? undefined : undefined,
     origin:
       structure === 'od'
@@ -90,6 +100,16 @@ function emptyRule(
             districtName: SEED_GEO.tuzla.districtName,
           }
         : undefined,
+  }
+}
+
+function emptyPackage(): PricePackageDefinition {
+  return {
+    id: createId('pkg'),
+    code: '',
+    name: '',
+    defaultDesi: undefined,
+    unitPrice: undefined,
   }
 }
 
@@ -117,6 +137,8 @@ export function PriceListEditor({
   const [distanceStructure, setDistanceStructure] = useState<DistanceStructure>(
     initial.distanceStructure
   )
+  const [quantityBasis, setQuantityBasis] = useState<QuantityBasis>(initial.quantityBasis)
+  const [packages, setPackages] = useState<PricePackageDefinition[]>(initial.packages ?? [])
   const [returnFeePercent, setReturnFeePercent] = useState(
     String(initial.returnFeePercent ?? 50)
   )
@@ -130,6 +152,11 @@ export function PriceListEditor({
     []
   )
 
+  const quantityOptions = useMemo(
+    () => Object.entries(QUANTITY_BASIS_LABELS) as [QuantityBasis, string][],
+    []
+  )
+
   const changeStructure = (next: DistanceStructure) => {
     if (next === distanceStructure) return
     if (rules.length > 0) {
@@ -140,6 +167,23 @@ export function PriceListEditor({
     }
     setDistanceStructure(next)
     setRules([])
+  }
+
+  const changeQuantityBasis = (next: QuantityBasis) => {
+    if (next === quantityBasis) return
+    if (rules.length > 0) {
+      const ok = window.confirm(
+        'Ölçü birimi değişince mevcut kurallar silinir. Devam edilsin mi?'
+      )
+      if (!ok) return
+    }
+    setQuantityBasis(next)
+    setRules([])
+    if (next !== 'package') {
+      setPackages([])
+    } else if (packages.length === 0) {
+      setPackages([emptyPackage()])
+    }
   }
 
   const updateRule = (id: string, patch: Partial<PriceRule>) => {
@@ -157,6 +201,7 @@ export function PriceListEditor({
             flatFee: r.flatFee ?? 100,
             baseFee: undefined,
             perDesi: undefined,
+            perPackage: undefined,
             minFee: undefined,
           }
         }
@@ -164,7 +209,8 @@ export function PriceListEditor({
           ...r,
           desiPricing,
           baseFee: r.baseFee ?? 50,
-          perDesi: r.perDesi ?? 10,
+          perDesi: quantityBasis === 'desi' ? (r.perDesi ?? 10) : undefined,
+          perPackage: quantityBasis === 'package' ? (r.perPackage ?? 15) : undefined,
           flatFee: undefined,
           minFee: r.minFee ?? undefined,
         }
@@ -173,27 +219,79 @@ export function PriceListEditor({
   }
 
   const addRule = () => {
-    setRules((rows) => [emptyRule(priceListId, distanceStructure, 100 - rows.length), ...rows])
+    setRules((rows) => [
+      emptyRule(priceListId, distanceStructure, quantityBasis, 100 - rows.length),
+      ...rows,
+    ])
   }
 
   const removeRule = (id: string) => setRules((rows) => rows.filter((r) => r.id !== id))
 
+  const updatePackage = (id: string, patch: Partial<PricePackageDefinition>) => {
+    setPackages((rows) => rows.map((p) => (p.id === id ? { ...p, ...patch } : p)))
+  }
+
+  const addPackage = () => {
+    setPackages((rows) => [...rows, emptyPackage()])
+  }
+
+  const removePackage = (id: string) => setPackages((rows) => rows.filter((p) => p.id !== id))
+
   const validate = (): string | null => {
     if (name.trim().length < 2) return 'İsim en az 2 karakter olmalı.'
     if (rules.length === 0) return 'En az bir kural satırı ekleyin.'
+
+    if (quantityBasis === 'package') {
+      if (packages.length === 0) {
+        return 'Paket ölçüsünde en az bir paket tanımı ekleyin.'
+      }
+      for (const [i, pkg] of packages.entries()) {
+        const label = `Paket ${i + 1}`
+        if (!pkg.code.trim()) return `${label}: kod zorunlu.`
+        if (!pkg.name.trim()) return `${label}: isim zorunlu.`
+        if (pkg.unitPrice == null || Number.isNaN(pkg.unitPrice) || pkg.unitPrice < 0) {
+          return `${label}: birim fiyat zorunlu (₺).`
+        }
+      }
+    }
+
     for (const [i, rule] of rules.entries()) {
       const label = `Satır ${i + 1}`
-      if (rule.desiStart == null || rule.desiEnd == null) {
-        return `${label}: desi başlangıç/bitiş zorunlu.`
+      if (quantityBasis === 'package') {
+        if (rule.packageStart == null || rule.packageEnd == null) {
+          return `${label}: paket başlangıç/bitiş zorunlu.`
+        }
+        if (rule.packageStart > rule.packageEnd) {
+          return `${label}: paket başlangıç, bitişten büyük olamaz.`
+        }
+      } else {
+        if (rule.desiStart == null || rule.desiEnd == null) {
+          return `${label}: desi başlangıç/bitiş zorunlu.`
+        }
+        if (rule.desiStart > rule.desiEnd) {
+          return `${label}: desi başlangıç, bitişten büyük olamaz.`
+        }
       }
-      if (rule.desiStart > rule.desiEnd) {
-        return `${label}: desi başlangıç, bitişten büyük olamaz.`
-      }
-      if (rule.desiPricing === 'fixed' && (rule.flatFee == null || Number.isNaN(rule.flatFee))) {
-        return `${label}: sabit ücret girin.`
+      if (rule.desiPricing === 'fixed') {
+        if (quantityBasis === 'package') {
+          // Paket ücreti katalogdan; sabit ücret opsiyonel (sipariş tabanı / yedek)
+          if (rule.flatFee != null && Number.isNaN(rule.flatFee)) {
+            return `${label}: sabit ücret geçersiz.`
+          }
+        } else if (rule.flatFee == null || Number.isNaN(rule.flatFee)) {
+          return `${label}: sabit ücret girin.`
+        }
       }
       if (rule.desiPricing === 'dynamic') {
-        if (rule.perDesi == null || Number.isNaN(rule.perDesi)) {
+        if (quantityBasis === 'package') {
+          // Katalog birim fiyatı asıl ücret; perPackage yalnızca satır olmadan adet bazlı yedek
+          if (
+            rule.perPackage != null &&
+            (Number.isNaN(rule.perPackage) || rule.perPackage < 0)
+          ) {
+            return `${label}: paket birim ücreti geçersiz.`
+          }
+        } else if (rule.perDesi == null || Number.isNaN(rule.perDesi)) {
           return `${label}: desi birim ücreti girin.`
         }
       }
@@ -223,16 +321,40 @@ export function PriceListEditor({
       priceListId,
       pricingMode: pricingModeFromDistanceStructure(distanceStructure),
       priority: r.priority || 100 - index,
+      ...(quantityBasis === 'package'
+        ? {
+            desiStart: 0,
+            desiEnd: 999,
+            perDesi: undefined,
+          }
+        : {
+            packageStart: undefined,
+            packageEnd: undefined,
+            perPackage: undefined,
+          }),
     }))
     await onSubmit({
       name: name.trim(),
       isDefault,
       distanceStructure,
+      quantityBasis,
+      packages:
+        quantityBasis === 'package'
+          ? packages.map((p) => ({
+              ...p,
+              code: p.code.trim(),
+              name: p.name.trim(),
+            }))
+          : [],
       returnFeePercent: Number(returnFeePercent) || 50,
       returnFeeMin: returnFeeMin === '' ? undefined : Number(returnFeeMin),
       rules: normalized,
     })
   }
+
+  const quantityNoun = quantityBasis === 'package' ? 'Paket' : 'Desi'
+  const unitLabel =
+    quantityBasis === 'package' ? 'Yedek paket birim (₺)' : 'Desi birim (₺)'
 
   return (
     <div
@@ -250,12 +372,12 @@ export function PriceListEditor({
                 {mode === 'create' ? 'Yeni Fiyat Listesi' : 'Fiyat Listesini Düzenle'}
               </h1>
               <p className='mt-1 text-sm text-slate-500'>
-                İsim ve mesafe kurgusunu seçin; desi satırlarıyla ücretleri tek sayfada tanımlayın.
+                İsim, ölçü birimi ve mesafe kurgusunu seçin; kural satırlarıyla ücretleri tanımlayın.
               </p>
             </>
           ) : (
             <p className='text-sm text-slate-500'>
-              İsim, mesafe kurgusu ve desi satırlarını güncelleyin.
+              İsim, ölçü birimi, mesafe kurgusu ve kural satırlarını güncelleyin.
             </p>
           )}
         </div>
@@ -287,6 +409,29 @@ export function PriceListEditor({
           <div className='flex items-center gap-2 sm:col-span-2'>
             <Switch checked={isDefault} onCheckedChange={setIsDefault} id='pl-default' />
             <Label htmlFor='pl-default'>Varsayılan fiyat listesi</Label>
+          </div>
+
+          <div className='space-y-2 sm:col-span-2'>
+            <Label>Ölçü birimi *</Label>
+            <p className='text-xs text-slate-500'>
+              Kural satırları desi veya paket adedi aralığı üzerinden çalışır.
+            </p>
+            <div className='flex flex-wrap gap-2'>
+              {quantityOptions.map(([value, label]) => (
+                <button
+                  key={value}
+                  type='button'
+                  onClick={() => changeQuantityBasis(value)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+                    quantityBasis === value
+                      ? 'bg-lime-400 text-black'
+                      : 'border border-slate-200 bg-white text-slate-600'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -340,12 +485,103 @@ export function PriceListEditor({
         </div>
       </section>
 
+      {quantityBasis === 'package' ? (
+        <section className='space-y-3'>
+          <div className='flex items-center justify-between gap-3'>
+            <div>
+              <h2 className='text-sm font-semibold text-slate-900'>Paket kataloğu</h2>
+              <p className='text-xs text-slate-500'>
+                Ücretlendirme bu tanımlara göre yapılır: her paketin birim fiyatı × sipariş
+                adedi.
+              </p>
+            </div>
+            <Button type='button' size='sm' variant='outline' onClick={addPackage}>
+              <Plus className='mr-1.5 size-3.5' />
+              Paket ekle
+            </Button>
+          </div>
+
+          {packages.length === 0 ? (
+            <div className='rounded-xl border border-dashed px-4 py-8 text-center text-sm text-slate-500'>
+              En az bir paket tanımlayın; birim fiyat zorunludur.
+            </div>
+          ) : (
+            <div className='space-y-3'>
+              {packages.map((pkg, index) => (
+                <div
+                  key={pkg.id}
+                  className='flex flex-wrap items-end gap-2 rounded-2xl border border-slate-200 bg-white p-3'
+                >
+                  <p className='w-full text-xs font-medium uppercase tracking-wide text-slate-400'>
+                    Paket #{index + 1}
+                  </p>
+                  <div className='w-[120px] shrink-0 space-y-1'>
+                    <Label className='text-xs'>Kod *</Label>
+                    <Input
+                      value={pkg.code}
+                      onChange={(e) => updatePackage(pkg.id, { code: e.target.value })}
+                      placeholder='PKG-S'
+                    />
+                  </div>
+                  <div className='min-w-[160px] flex-1 space-y-1'>
+                    <Label className='text-xs'>İsim *</Label>
+                    <Input
+                      value={pkg.name}
+                      onChange={(e) => updatePackage(pkg.id, { name: e.target.value })}
+                      placeholder='Küçük paket'
+                    />
+                  </div>
+                  <div className='w-[100px] shrink-0 space-y-1'>
+                    <Label className='text-xs'>Vars. desi</Label>
+                    <Input
+                      type='number'
+                      value={pkg.defaultDesi ?? ''}
+                      onChange={(e) =>
+                        updatePackage(pkg.id, {
+                          defaultDesi:
+                            e.target.value === '' ? undefined : Number(e.target.value),
+                        })
+                      }
+                      placeholder='Opsiyonel'
+                    />
+                  </div>
+                  <div className='w-[112px] shrink-0 space-y-1'>
+                    <Label className='text-xs'>Birim fiyat (₺) *</Label>
+                    <Input
+                      type='number'
+                      value={pkg.unitPrice ?? ''}
+                      onChange={(e) =>
+                        updatePackage(pkg.id, {
+                          unitPrice:
+                            e.target.value === '' ? undefined : Number(e.target.value),
+                        })
+                      }
+                      placeholder='45'
+                    />
+                  </div>
+                  <Button
+                    type='button'
+                    size='icon'
+                    variant='ghost'
+                    className='size-8 shrink-0 text-slate-500'
+                    onClick={() => removePackage(pkg.id)}
+                  >
+                    <Trash2 className='size-3.5' />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null}
+
       <section className='space-y-3'>
         <div className='flex items-center justify-between gap-3'>
           <div>
-            <h2 className='text-sm font-semibold text-slate-900'>Desi kuralları</h2>
+            <h2 className='text-sm font-semibold text-slate-900'>{quantityNoun} kuralları</h2>
             <p className='text-xs text-slate-500'>
-              Her satır bir desi aralığıdır. Sabit bant veya desi birim (dinamik) seçin.
+              Her satır bir {quantityNoun.toLocaleLowerCase('tr-TR')} aralığıdır. Sabit bant veya
+              birim (dinamik) seçin.
             </p>
           </div>
           <Button type='button' size='sm' variant='outline' onClick={addRule}>
@@ -356,7 +592,8 @@ export function PriceListEditor({
 
         {rules.length === 0 ? (
           <div className='rounded-xl border border-dashed px-4 py-10 text-center text-sm text-slate-500'>
-            Henüz kural yok. Satır ekleyerek desi aralığı tanımlayın.
+            Henüz kural yok. Satır ekleyerek {quantityNoun.toLocaleLowerCase('tr-TR')} aralığı
+            tanımlayın.
           </div>
         ) : (
           <div className='space-y-3'>
@@ -477,28 +714,60 @@ export function PriceListEditor({
                     </div>
                   ) : null}
 
-                  <div className='w-[88px] shrink-0 space-y-1'>
-                    <Label className='text-xs'>Desi baş.</Label>
-                    <Input
-                      type='number'
-                      value={rule.desiStart}
-                      onChange={(e) =>
-                        updateRule(rule.id, { desiStart: Number(e.target.value) || 0 })
-                      }
-                    />
-                  </div>
-                  <div className='w-[88px] shrink-0 space-y-1'>
-                    <Label className='text-xs'>Desi bitiş</Label>
-                    <Input
-                      type='number'
-                      value={rule.desiEnd}
-                      onChange={(e) =>
-                        updateRule(rule.id, { desiEnd: Number(e.target.value) || 0 })
-                      }
-                    />
-                  </div>
+                  {quantityBasis === 'package' ? (
+                    <>
+                      <div className='w-[88px] shrink-0 space-y-1'>
+                        <Label className='text-xs'>Paket baş.</Label>
+                        <Input
+                          type='number'
+                          value={rule.packageStart ?? ''}
+                          onChange={(e) =>
+                            updateRule(rule.id, {
+                              packageStart: Number(e.target.value) || 0,
+                            })
+                          }
+                        />
+                      </div>
+                      <div className='w-[88px] shrink-0 space-y-1'>
+                        <Label className='text-xs'>Paket bitiş</Label>
+                        <Input
+                          type='number'
+                          value={rule.packageEnd ?? ''}
+                          onChange={(e) =>
+                            updateRule(rule.id, {
+                              packageEnd: Number(e.target.value) || 0,
+                            })
+                          }
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className='w-[88px] shrink-0 space-y-1'>
+                        <Label className='text-xs'>Desi baş.</Label>
+                        <Input
+                          type='number'
+                          value={rule.desiStart}
+                          onChange={(e) =>
+                            updateRule(rule.id, { desiStart: Number(e.target.value) || 0 })
+                          }
+                        />
+                      </div>
+                      <div className='w-[88px] shrink-0 space-y-1'>
+                        <Label className='text-xs'>Desi bitiş</Label>
+                        <Input
+                          type='number'
+                          value={rule.desiEnd}
+                          onChange={(e) =>
+                            updateRule(rule.id, { desiEnd: Number(e.target.value) || 0 })
+                          }
+                        />
+                      </div>
+                    </>
+                  )}
+
                   <div className='w-[158px] shrink-0 space-y-1'>
-                    <Label className='text-xs'>Desi tipi</Label>
+                    <Label className='text-xs'>{quantityNoun} tipi</Label>
                     <Select
                       value={rule.desiPricing}
                       onValueChange={(v) => setDesiPricing(rule.id, v as DesiPricingType)}
@@ -544,15 +813,24 @@ export function PriceListEditor({
                         />
                       </div>
                       <div className='w-[100px] shrink-0 space-y-1'>
-                        <Label className='text-xs'>Desi birim (₺)</Label>
+                        <Label className='text-xs'>{unitLabel}</Label>
                         <Input
                           type='number'
-                          value={rule.perDesi ?? ''}
-                          onChange={(e) =>
-                            updateRule(rule.id, {
-                              perDesi: e.target.value === '' ? undefined : Number(e.target.value),
-                            })
+                          value={
+                            quantityBasis === 'package'
+                              ? (rule.perPackage ?? '')
+                              : (rule.perDesi ?? '')
                           }
+                          onChange={(e) => {
+                            const n =
+                              e.target.value === '' ? undefined : Number(e.target.value)
+                            updateRule(
+                              rule.id,
+                              quantityBasis === 'package'
+                                ? { perPackage: n }
+                                : { perDesi: n }
+                            )
+                          }}
                         />
                       </div>
                       <div className='w-[112px] shrink-0 space-y-1'>
@@ -592,7 +870,13 @@ export function PriceListEditor({
         )}
       </section>
 
-      {showSimulator ? <PriceQuoteSimulator priceListId={priceListId} /> : null}
+      {showSimulator ? (
+        <PriceQuoteSimulator
+          priceListId={priceListId}
+          quantityBasis={quantityBasis}
+          packages={quantityBasis === 'package' ? packages : []}
+        />
+      ) : null}
     </div>
   )
 }

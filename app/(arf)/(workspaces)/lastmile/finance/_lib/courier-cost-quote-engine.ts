@@ -28,7 +28,14 @@ function isDestInZone(zone: PriceZone, dest: { cityId: string; districtId?: stri
   })
 }
 
-function desiInRange(rule: CourierCostRule, desi: number): boolean {
+function quantityInRange(list: CourierCostList, rule: CourierCostRule, input: CourierCostQuoteInput): boolean {
+  if ((list.quantityBasis ?? 'desi') === 'package') {
+    const count = input.packageCount ?? 0
+    const start = rule.packageStart ?? 0
+    const end = rule.packageEnd ?? Number.POSITIVE_INFINITY
+    return count >= start && count <= end
+  }
+  const desi = input.desi
   const start = rule.desiStart ?? 0
   const end = rule.desiEnd ?? Number.POSITIVE_INFINITY
   return desi >= start && desi <= end
@@ -66,21 +73,22 @@ function ruleMatches(
   zonesById: Map<string, PriceZone>
 ): { match: boolean; zoneName?: string } {
   if (rule.status !== 'active') return { match: false }
-  if (!desiInRange(rule, input.desi)) return { match: false }
+  if (!quantityInRange(list, rule, input)) return { match: false }
   return distanceMatches(list.distanceStructure, rule, input, zonesById)
 }
 
 /**
- * fixed  → flatFee (+ km: perKm × distance)
- * dynamic → baseFee + perDesi × desi (+ km: perKm × distance)
+ * fixed  → flatFee (+ hybrid veya km: perKm × distance)
+ * dynamic → baseFee + perDesi|perPackage × miktar (+ km)
  */
 function computeFees(
   list: CourierCostList,
   rule: CourierCostRule,
   input: CourierCostQuoteInput
 ): Pick<CourierCostBreakdown, 'baseFee' | 'distanceFee' | 'desiFee' | 'flatFee'> {
-  const distanceFee =
-    list.distanceStructure === 'km' ? (rule.perKm ?? 0) * (input.distanceKm ?? 0) : 0
+  const needsKm =
+    list.compensationModel === 'hybrid' || list.distanceStructure === 'km'
+  const distanceFee = needsKm ? (rule.perKm ?? 0) * (input.distanceKm ?? 0) : 0
 
   if (rule.desiPricing === 'fixed') {
     return {
@@ -91,12 +99,25 @@ function computeFees(
     }
   }
 
+  const quantityFee =
+    (list.quantityBasis ?? 'desi') === 'package'
+      ? (rule.perPackage ?? 0) * (input.packageCount ?? 0)
+      : (rule.perDesi ?? 0) * input.desi
+
   return {
     baseFee: rule.baseFee ?? 0,
     distanceFee,
-    desiFee: (rule.perDesi ?? 0) * input.desi,
+    desiFee: quantityFee,
     flatFee: 0,
   }
+}
+
+function ruleLabel(list: CourierCostList, rule: CourierCostRule): string {
+  if (rule.name) return rule.name
+  if ((list.quantityBasis ?? 'desi') === 'package') {
+    return `${rule.packageStart ?? 0}–${rule.packageEnd ?? '∞'} paket`
+  }
+  return `${rule.desiStart}–${rule.desiEnd} desi`
 }
 
 function applyMinMax(
@@ -155,6 +176,24 @@ function emptyBreakdown(
   }
 }
 
+function buildInputs(
+  list: CourierCostList,
+  input: CourierCostQuoteInput,
+  extras?: { zoneName?: string; fixedSalaryMonthly?: number }
+) {
+  return {
+    desi: input.desi,
+    packageCount: input.packageCount,
+    distanceKm: input.distanceKm,
+    originCityId: input.origin.cityId,
+    originDistrictId: input.origin.districtId,
+    destCityId: input.destination.cityId,
+    destDistrictId: input.destination.districtId,
+    zoneName: extras?.zoneName,
+    fixedSalaryMonthly: extras?.fixedSalaryMonthly,
+  }
+}
+
 export function quoteCourierCost(
   ctx: CourierCostQuoteContext,
   input: CourierCostQuoteInput
@@ -165,9 +204,7 @@ export function quoteCourierCost(
   }
 
   const salaryNote =
-    list.compensationModel === 'salary_plus_bonus' || list.compensationModel === 'hybrid'
-      ? list.fixedSalaryMonthly
-      : undefined
+    list.compensationModel === 'salary_plus_bonus' ? list.fixedSalaryMonthly : undefined
 
   if (input.manualSubtotalOverride != null && Number.isFinite(input.manualSubtotalOverride)) {
     const subtotal = roundMoney(input.manualSubtotalOverride)
@@ -176,19 +213,12 @@ export function quoteCourierCost(
       costListId: list.id,
       costListName: list.name,
       compensationModel: list.compensationModel,
+      quantityBasis: list.quantityBasis ?? 'desi',
       matchedRuleId: 'manual_override',
       matchedRuleLabel: 'Manuel tutar',
       pricingMode: list.rules[0]?.pricingMode ?? 'od_district',
       distanceStructure: list.distanceStructure,
-      inputs: {
-        desi: input.desi,
-        distanceKm: input.distanceKm,
-        originCityId: input.origin.cityId,
-        originDistrictId: input.origin.districtId,
-        destCityId: input.destination.cityId,
-        destDistrictId: input.destination.districtId,
-        fixedSalaryMonthly: salaryNote,
-      },
+      inputs: buildInputs(list, input, { fixedSalaryMonthly: salaryNote }),
       breakdown: emptyBreakdown({
         flatFee: subtotal,
         adjustments: [{ label: 'Manuel override', amount: 0 }],
@@ -210,28 +240,29 @@ export function quoteCourierCost(
     const fees = computeFees(list, rule, input)
     const raw = fees.baseFee + fees.distanceFee + fees.desiFee + fees.flatFee
     const { value: subtotal, adjustments } = applyMinMax(raw, rule)
-    const isBonus =
-      list.compensationModel === 'salary_plus_bonus' || list.compensationModel === 'hybrid'
+    const isBonus = list.compensationModel === 'salary_plus_bonus'
+
+    if (
+      list.compensationModel === 'hybrid' &&
+      (input.distanceKm == null || !Number.isFinite(input.distanceKm))
+    ) {
+      adjustments.push({
+        label: 'Mesafe (km) girilmedi — km ücreti 0',
+        amount: 0,
+      })
+    }
 
     return {
       ok: true,
       costListId: list.id,
       costListName: list.name,
       compensationModel: list.compensationModel,
+      quantityBasis: list.quantityBasis ?? 'desi',
       matchedRuleId: rule.id,
-      matchedRuleLabel: rule.name || `${rule.desiStart}–${rule.desiEnd} desi`,
+      matchedRuleLabel: ruleLabel(list, rule),
       pricingMode: rule.pricingMode,
       distanceStructure: list.distanceStructure,
-      inputs: {
-        desi: input.desi,
-        distanceKm: input.distanceKm,
-        originCityId: input.origin.cityId,
-        originDistrictId: input.origin.districtId,
-        destCityId: input.destination.cityId,
-        destDistrictId: input.destination.districtId,
-        zoneName,
-        fixedSalaryMonthly: salaryNote,
-      },
+      inputs: buildInputs(list, input, { zoneName, fixedSalaryMonthly: salaryNote }),
       breakdown: {
         baseFee: roundMoney(fees.baseFee),
         distanceFee: roundMoney(fees.distanceFee),
@@ -254,19 +285,12 @@ export function quoteCourierCost(
       costListId: list.id,
       costListName: list.name,
       compensationModel: list.compensationModel,
+      quantityBasis: list.quantityBasis ?? 'desi',
       matchedRuleId: 'salary_only',
       matchedRuleLabel: 'Sabit maaş (dönemsel)',
       pricingMode: list.rules[0]?.pricingMode ?? 'base_plus_km',
       distanceStructure: list.distanceStructure,
-      inputs: {
-        desi: input.desi,
-        distanceKm: input.distanceKm,
-        originCityId: input.origin.cityId,
-        originDistrictId: input.origin.districtId,
-        destCityId: input.destination.cityId,
-        destDistrictId: input.destination.districtId,
-        fixedSalaryMonthly: list.fixedSalaryMonthly,
-      },
+      inputs: buildInputs(list, input, { fixedSalaryMonthly: list.fixedSalaryMonthly }),
       breakdown: emptyBreakdown({
         salaryPortion: 0,
         adjustments: [

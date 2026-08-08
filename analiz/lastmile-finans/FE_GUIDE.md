@@ -41,7 +41,7 @@ Sidebar: **Finans & Muhasebe** ve **Fiyatlandırma** (açılır menüler).
 | Kurye ücret listeleri | `/lastmile/finance/courier-cost-lists` | Liste CRUD (müşteri fiyatının aynası) | Kuryeye ödenecek maliyet tarifesi |
 | Kurye ücret detay / yeni | `.../courier-cost-lists/[id]` · `.../new` | Kurallar, kurye atama, quote | Hakediş hesabının tarife tarafı |
 
-**Fiyat nasıl oluşur (özet):** Liste seviyesinde `km` | `zone` | `od` → satırda desi `fixed`/`dynamic` → teslimat quote. İade: `orijinal × returnFeePercent` (+ min). Ayrıntı: [`YONLENDIRME.md` §3](./YONLENDIRME.md).
+**Fiyat nasıl oluşur (özet):** Liste seviyesinde `km` | `zone` | `od` + `quantityBasis` (`desi` | `package`). **Paket** ölçüsünde katalog (`packages[].unitPrice`) × sipariş satır adedi (`packageLines`) asıl ücreti verir; kural satırları bant eşlemesi + km/taban içindir. Desi ölçüsünde satırda `fixed`/`dynamic`. İade: `orijinal × returnFeePercent` (+ min). Ayrıntı: [`YONLENDIRME.md` §3](./YONLENDIRME.md).
 
 ---
 

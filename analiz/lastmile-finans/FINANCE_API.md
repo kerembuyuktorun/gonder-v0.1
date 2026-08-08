@@ -50,6 +50,8 @@ Tipler: `OrderPricingSnapshot`, `OrderPayment` (`collectionStatus` türetilir).
 
 Motor: `finance/_lib/price-quote-engine.ts` (server import). KDV default %20.
 
+`quantityBasis=package` iken `packages` kataloğu zorunlu; quote’ta `packageLines: [{ packageId, quantity }]` ile ücret `Σ unitPrice × quantity` (+ mesafe kuralı). Yalnız `packageCount` verilirse kuraldaki `perPackage` yedek olarak kullanılır.
+
 ---
 
 ## 3) Customer finance

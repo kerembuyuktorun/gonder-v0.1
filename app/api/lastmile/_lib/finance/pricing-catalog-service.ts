@@ -22,6 +22,7 @@ import type {
   PriceListStatus,
   PriceRule,
   PriceZone,
+  QuantityBasis,
   QuoteInput,
   QuoteResult,
   SettlementType,
@@ -103,9 +104,16 @@ async function ensureSeed(tenantId: string) {
   await writeTenantJson(tenantId, FILES.seeded, true)
 }
 
-async function getPriceLists(tenantId: string) {
+async function getPriceLists(tenantId: string): Promise<PriceList[]> {
   await ensureSeed(tenantId)
-  return readTenantJson<PriceList[]>(tenantId, FILES.priceLists, [])
+  const lists = await readTenantJson<PriceList[]>(tenantId, FILES.priceLists, [])
+  return lists.map(
+    (list): PriceList => ({
+      ...list,
+      quantityBasis: list.quantityBasis ?? 'desi',
+      packages: list.packages ?? [],
+    })
+  )
 }
 
 async function savePriceLists(tenantId: string, lists: PriceList[]) {
@@ -171,6 +179,9 @@ function normalizeRules(
     desiPricing: r.desiPricing ?? 'fixed',
     desiStart: r.desiStart ?? 0,
     desiEnd: r.desiEnd ?? 99,
+    packageStart: r.packageStart,
+    packageEnd: r.packageEnd,
+    perPackage: r.perPackage,
   }))
 }
 
@@ -181,6 +192,8 @@ export type UpsertPriceListInput = {
   isDefault?: boolean
   status?: PriceListStatus
   distanceStructure: DistanceStructure
+  quantityBasis?: QuantityBasis
+  packages?: PriceList['packages']
   returnFeePercent?: number
   returnFeeMin?: number
   validFrom?: string
@@ -216,6 +229,8 @@ export async function createPriceList(tenantId: string, input: UpsertPriceListIn
     status: input.status ?? 'active',
     currency: 'TRY',
     distanceStructure: input.distanceStructure,
+    quantityBasis: input.quantityBasis ?? 'desi',
+    packages: input.packages ?? [],
     returnFeePercent: input.returnFeePercent ?? 50,
     returnFeeMin: input.returnFeeMin,
     validFrom: input.validFrom,
@@ -245,6 +260,8 @@ export async function updatePriceList(tenantId: string, id: string, input: Upser
     isDefault: input.isDefault ?? prev.isDefault,
     status: input.status ?? prev.status,
     distanceStructure: input.distanceStructure,
+    quantityBasis: input.quantityBasis ?? prev.quantityBasis ?? 'desi',
+    packages: input.packages ?? prev.packages ?? [],
     returnFeePercent: input.returnFeePercent ?? prev.returnFeePercent ?? 50,
     returnFeeMin: input.returnFeeMin !== undefined ? input.returnFeeMin : prev.returnFeeMin,
     validFrom: input.validFrom,

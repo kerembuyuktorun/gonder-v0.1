@@ -14,7 +14,11 @@ import {
   CourierCostListEditor,
   type CourierCostListEditorValues,
 } from '../../_components/courier-cost-list-editor'
-import { DISTANCE_STRUCTURE_LABELS } from '../../_types'
+import {
+  COMPENSATION_MODEL_LABELS,
+  DISTANCE_STRUCTURE_LABELS,
+  QUANTITY_BASIS_LABELS,
+} from '../../_types'
 import type { CourierCostList, PriceZone } from '../../_types'
 import { CourierCostCouriersSimPanel } from './_components/courier-cost-couriers-sim-panel'
 
@@ -55,8 +59,9 @@ export default function CourierCostListDetailPageContent() {
         name: values.name,
         isDefault: values.isDefault,
         distanceStructure: values.distanceStructure,
-        compensationModel: list?.compensationModel ?? 'tariff',
-        fixedSalaryMonthly: list?.fixedSalaryMonthly,
+        quantityBasis: values.quantityBasis,
+        compensationModel: values.compensationModel,
+        fixedSalaryMonthly: values.fixedSalaryMonthly,
         status: list?.status ?? 'active',
         rules: values.rules,
       })
@@ -114,6 +119,12 @@ export default function CourierCostListDetailPageContent() {
           <Badge variant='outline'>
             {DISTANCE_STRUCTURE_LABELS[list.distanceStructure]}
           </Badge>
+          <Badge variant='outline'>
+            {COMPENSATION_MODEL_LABELS[list.compensationModel]}
+          </Badge>
+          <Badge variant='outline'>
+            {QUANTITY_BASIS_LABELS[list.quantityBasis ?? 'desi']}
+          </Badge>
         </div>
 
         <Card className='rounded-[24px] border-slate-200/80 shadow-none'>
@@ -143,6 +154,9 @@ export default function CourierCostListDetailPageContent() {
                     name: list.name,
                     isDefault: list.isDefault,
                     distanceStructure: list.distanceStructure,
+                    compensationModel: list.compensationModel,
+                    fixedSalaryMonthly: list.fixedSalaryMonthly,
+                    quantityBasis: list.quantityBasis ?? 'desi',
                     rules: list.rules,
                   }}
                   zones={zones}

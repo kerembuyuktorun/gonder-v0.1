@@ -48,6 +48,7 @@ export type UpsertCourierCostListInput = {
   isDefault?: boolean
   status?: PriceListStatus
   distanceStructure: CourierCostList['distanceStructure']
+  quantityBasis?: CourierCostList['quantityBasis']
   compensationModel?: CourierCostList['compensationModel']
   fixedSalaryMonthly?: number
   validFrom?: string

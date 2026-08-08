@@ -12,7 +12,11 @@ import {
 import { ARF_ROUTES } from '../../../../../_shared/routes'
 import { Copy, MoreHorizontal, Star, ToggleLeft } from 'lucide-react'
 import type { CourierCostList } from '../../_types'
-import { DISTANCE_STRUCTURE_LABELS } from '../../_types'
+import {
+  COMPENSATION_MODEL_LABELS,
+  DISTANCE_STRUCTURE_LABELS,
+  QUANTITY_BASIS_LABELS,
+} from '../../_types'
 import { formatNumber } from '../../_lib/format'
 
 type Props = {
@@ -78,7 +82,13 @@ export function CourierCostListsTable({
                 ) : null}
               </td>
               <td className='px-4 py-3 text-xs text-slate-600'>
-                {DISTANCE_STRUCTURE_LABELS[list.distanceStructure]}
+                <div className='space-y-0.5'>
+                  <p>{DISTANCE_STRUCTURE_LABELS[list.distanceStructure]}</p>
+                  <p className='text-slate-400'>
+                    {COMPENSATION_MODEL_LABELS[list.compensationModel]} ·{' '}
+                    {QUANTITY_BASIS_LABELS[list.quantityBasis ?? 'desi']}
+                  </p>
+                </div>
               </td>
               <td className='px-4 py-3'>
                 <Badge variant={list.status === 'active' ? 'default' : 'secondary'}>

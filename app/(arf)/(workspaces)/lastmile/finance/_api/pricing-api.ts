@@ -48,6 +48,8 @@ export type UpsertPriceListInput = {
   isDefault?: boolean
   status?: PriceListStatus
   distanceStructure: DistanceStructure
+  quantityBasis?: import('../_types').QuantityBasis
+  packages?: import('../_types').PricePackageDefinition[]
   returnFeePercent?: number
   returnFeeMin?: number
   validFrom?: string
