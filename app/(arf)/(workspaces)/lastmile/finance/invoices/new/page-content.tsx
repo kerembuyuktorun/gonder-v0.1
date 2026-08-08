@@ -21,7 +21,7 @@ import { InvoiceModeChooser } from '../../_components/invoice-mode-chooser'
 import { ManualInvoiceForm } from '../../_components/manual-invoice-form'
 import { UninvoicedOrdersTable } from '../../_components/uninvoiced-orders-table'
 import { formatTry, ordersToInvoiceLines } from '../../_lib/invoice-from-orders'
-import { computeInvoiceTotals } from '../../_mock/invoice-store'
+import { computeInvoiceTotals } from '../../_lib/invoice-math'
 import type { UninvoicedOrderRow } from '../../_types/invoice'
 
 type Mode = 'choose' | 'manual' | 'orders'

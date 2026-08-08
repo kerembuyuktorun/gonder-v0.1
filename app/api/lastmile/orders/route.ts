@@ -111,11 +111,21 @@ export async function POST(request: Request) {
     )
   }
 
+  // Optional finance fields (Step 1 A): strip before upstream so unknown keys don't break ops API.
+  // Pricing is optional — create still works without them.
+  const root =
+    body && typeof body === 'object' ? ({ ...(body as Record<string, unknown>) } as Record<string, unknown>) : {}
+  const pricingSnapshot = root.pricingSnapshot ?? root.snapshot
+  const payment = root.payment
+  delete root.pricingSnapshot
+  delete root.snapshot
+  delete root.payment
+
   const upstream = await lastmileRest<unknown>(
     'api/v1/last-mile-orders',
     {
       method: 'POST',
-      body: JSON.stringify(body),
+      body: JSON.stringify(root),
     },
     auth.accessToken
   )
@@ -125,6 +135,31 @@ export async function POST(request: Request) {
   }
 
   const order = unwrapEntity(upstream.data)
+  const orderId = String(
+    order.id ?? order.orderId ?? order.order_id ?? ''
+  ).trim()
+
+  let pricing:
+    | { snapshot: unknown; payment: unknown }
+    | undefined
+
+  if (
+    orderId &&
+    pricingSnapshot &&
+    typeof pricingSnapshot === 'object' &&
+    payment &&
+    typeof payment === 'object'
+  ) {
+    const { resolveFinanceTenantId } = await import('../_lib/finance/tenant')
+    const { saveOrderPricing } = await import('../_lib/finance/order-pricing-service')
+    const tenantId = await resolveFinanceTenantId(auth.accessToken, request)
+    if (tenantId) {
+      pricing = await saveOrderPricing(tenantId, orderId, {
+        snapshot: pricingSnapshot as never,
+        payment: payment as never,
+      })
+    }
+  }
 
   return NextResponse.json({
     success: true,
@@ -137,6 +172,7 @@ export async function POST(request: Request) {
         typeof order.dispatchedRouteId === 'string' ? order.dispatchedRouteId : undefined,
       dispatchWarning:
         typeof order.dispatchWarning === 'string' ? order.dispatchWarning : undefined,
+      ...(pricing ? { pricing } : {}),
     },
   })
 }

@@ -15,7 +15,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import type { LastmileCustomer } from '../../customers/_types/customer'
 import { formatTry } from '../_lib/invoice-from-orders'
-import { computeInvoiceTotals } from '../_mock/invoice-store'
+import { computeInvoiceTotals } from '../_lib/invoice-math'
 
 type DraftLine = {
   key: string

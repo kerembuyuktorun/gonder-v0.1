@@ -84,7 +84,7 @@ export default function CourierBalanceDetailPageContent() {
     }
     setSaving(true)
     try {
-      recordRemittance({
+      await recordRemittance({
         courierId,
         courierName: balance?.courierName,
         amount: value,

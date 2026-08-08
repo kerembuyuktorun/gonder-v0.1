@@ -27,6 +27,9 @@ agent/
 storybook-static
 repomix-output.xml
 
+# Local last-mile finance BFF store (tenant JSON bags)
+.data/
+
 # Vercel
 .vercel/
 
