@@ -75,7 +75,7 @@ const FEATURES = [
             <Boxes className='size-3.5' />
             Excel içe aktarım · 48 sipariş
           </div>
-          <div className='h-2 overflow-hidden rounded-full bg-[var(--gl-bg)]'>
+          <div className='h-2 overflow-hidden rounded-full bg-[var(--gl-subtle)]'>
             <div className='h-full w-3/4 rounded-full bg-[var(--gl-petrol)]' />
           </div>
           <p className='mt-2 text-[11px] text-[var(--gl-muted)]'>36 sipariş gönderiye hazır</p>
@@ -146,7 +146,7 @@ const FEATURES = [
 
 export function FeaturesSection() {
   return (
-    <section id='ozellikler' className='gl-section scroll-mt-16 bg-white/50'>
+    <section id='ozellikler' className='gl-section scroll-mt-16 bg-[var(--gl-bg-soft)]'>
       <div className='gl-container'>
         <div className='mx-auto max-w-2xl text-center'>
           <h2 className='text-3xl font-bold sm:text-4xl'>Tekliften teslimata, tüm süreç elinin altında.</h2>

@@ -369,7 +369,7 @@ export function QuoteForm() {
     <div className='flex flex-col'>
       <Tabs value={draft.mode} onValueChange={(v) => setMode(v as 'kargo' | 'lojistik')}>
         <div className='border-b border-[var(--gl-border)] px-4 pt-4'>
-          <TabsList className='grid w-full grid-cols-2 bg-[var(--gl-bg)]'>
+          <TabsList className='grid w-full grid-cols-2 bg-[var(--gl-subtle)]'>
             <TabsTrigger value='kargo' className='gap-1.5 text-xs sm:text-sm'>
               <Package className='size-3.5' />
               Kargo
@@ -513,7 +513,7 @@ export function QuoteForm() {
                       <Plus className='mr-1 size-3.5' />
                       Farklı boyutta parça ekle
                     </Button>
-                    <div className='rounded-lg bg-[var(--gl-bg)] p-3 text-xs'>
+                    <div className='rounded-lg bg-[var(--gl-subtle)] p-3 text-xs'>
                       <p>
                         <strong>Özet:</strong> {kargoTotals.quantity} parça · {kargoTotals.weightKg} kg ·{' '}
                         {kargoTotals.desi} desi
@@ -1010,7 +1010,7 @@ function ResultsPanel({
   if (result.kind === 'no_service' || result.kind === 'special_request') {
     return (
       <div className='space-y-4'>
-        <div className='flex gap-3 rounded-xl bg-[var(--gl-bg)] p-4'>
+        <div className='flex gap-3 rounded-xl bg-[var(--gl-subtle)] p-4'>
           <AlertCircle className='size-5 shrink-0 text-[var(--gl-accent)]' />
           <div>
             <p className='text-sm font-medium'>

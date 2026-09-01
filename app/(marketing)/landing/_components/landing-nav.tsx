@@ -46,7 +46,7 @@ export function LandingNav() {
   return (
     <header
       className={`sticky top-0 z-50 border-b transition-colors ${
-        scrolled ? 'border-[var(--gl-border)] bg-[#f5f2eb]/95 backdrop-blur-md' : 'border-transparent bg-transparent'
+        scrolled ? 'border-[var(--gl-border)] bg-white/90 backdrop-blur-md' : 'border-transparent bg-transparent'
       }`}
     >
       <div className='gl-container flex h-16 items-center justify-between gap-4'>
@@ -73,7 +73,7 @@ export function LandingNav() {
                   <button
                     key={s.label}
                     type='button'
-                    className='block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--gl-bg)]'
+                    className='block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--gl-subtle)]'
                     onClick={() => startQuote(s.mode)}
                   >
                     {s.label}

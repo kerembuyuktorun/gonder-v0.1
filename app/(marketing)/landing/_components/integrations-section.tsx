@@ -64,7 +64,7 @@ export function IntegrationsSection() {
                 { step: '2', label: 'Gönderiye dönüştürülür', detail: 'Toplu seçim ve etiket oluşturma' },
                 { step: '3', label: 'Takip bilgisi geri iletilir', detail: 'Durum kanala otomatik yansır' },
               ].map((item) => (
-                <div key={item.step} className='flex gap-3 rounded-lg bg-[var(--gl-bg)] p-3'>
+                <div key={item.step} className='flex gap-3 rounded-lg bg-[var(--gl-subtle)] p-3'>
                   <span className='flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--gl-petrol)] text-xs font-bold text-white'>
                     {item.step}
                   </span>

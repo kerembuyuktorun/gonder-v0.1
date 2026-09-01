@@ -38,7 +38,7 @@ const FAQ = [
 
 export function FaqSection() {
   return (
-    <section id='sss' className='gl-section scroll-mt-16 bg-white/50'>
+    <section id='sss' className='gl-section scroll-mt-16 bg-[var(--gl-bg-soft)]'>
       <div className='gl-container max-w-3xl'>
         <div className='text-center'>
           <h2 className='text-3xl font-bold sm:text-4xl'>Sık sorulan sorular</h2>

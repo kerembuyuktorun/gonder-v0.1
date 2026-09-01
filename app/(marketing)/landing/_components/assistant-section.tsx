@@ -152,21 +152,21 @@ export function AssistantSection() {
                   className={`max-w-[90%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
                     msg.role === 'user'
                       ? 'ml-auto bg-[var(--gl-petrol)] text-white'
-                      : 'bg-[var(--gl-bg)] text-[var(--gl-ink)]'
+                      : 'bg-[var(--gl-subtle)] text-[var(--gl-ink)]'
                   }`}
                 >
                   {msg.text}
                 </div>
               ))}
               {typing ? (
-                <div className='max-w-[60%] rounded-2xl bg-[var(--gl-bg)] px-3 py-2 text-sm text-[var(--gl-muted)]'>
+                <div className='max-w-[60%] rounded-2xl bg-[var(--gl-subtle)] px-3 py-2 text-sm text-[var(--gl-muted)]'>
                   Yazıyor…
                 </div>
               ) : null}
             </div>
 
             {summary ? (
-              <div className='border-t border-[var(--gl-border)] bg-[var(--gl-bg)]/70 p-4'>
+              <div className='border-t border-[var(--gl-border)] bg-[var(--gl-subtle)]/70 p-4'>
                 <p className='gl-eyebrow'>Taşıma özeti</p>
                 <p className='mt-1.5 text-sm font-medium'>{summaryLine(summary)}</p>
                 <button
