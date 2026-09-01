@@ -1,0 +1,92 @@
+.gonder-landing {
+  --gl-bg: #f5f2eb;
+  --gl-surface: #ffffff;
+  --gl-ink: #192d32;
+  --gl-petrol: #195b55;
+  --gl-petrol-light: #1f726a;
+  --gl-accent: #c44a2d;
+  --gl-accent-hover: #a83d24;
+  --gl-yellow: #e8ce87;
+  --gl-border: #dedcd5;
+  --gl-muted: #5c6b6f;
+  --gl-radius: 1rem;
+  --gl-radius-lg: 1.25rem;
+  --gl-shadow: 0 18px 48px -24px rgb(25 45 50 / 0.18);
+  color: var(--gl-ink);
+  background: var(--gl-bg);
+  font-family: var(--font-source-sans), system-ui, sans-serif;
+}
+
+.gonder-landing h1,
+.gonder-landing h2,
+.gonder-landing h3,
+.gonder-landing h4 {
+  font-family: var(--font-manrope), system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.gonder-landing .gl-container {
+  width: min(100% - 2rem, 72rem);
+  margin-inline: auto;
+}
+
+.gonder-landing .gl-section {
+  padding-block: clamp(3.5rem, 8vw, 6rem);
+}
+
+.gonder-landing .gl-card {
+  background: var(--gl-surface);
+  border: 1px solid var(--gl-border);
+  border-radius: var(--gl-radius-lg);
+  box-shadow: var(--gl-shadow);
+}
+
+.gonder-landing .gl-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  background: var(--gl-accent);
+  color: #fff;
+  font-weight: 600;
+  padding: 0.75rem 1.25rem;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.gonder-landing .gl-btn-primary:hover {
+  background: var(--gl-accent-hover);
+}
+
+.gonder-landing .gl-btn-primary:focus-visible {
+  outline: 2px solid var(--gl-accent);
+  outline-offset: 2px;
+}
+
+.gonder-landing .gl-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid var(--gl-border);
+  background: var(--gl-surface);
+  color: var(--gl-ink);
+  font-weight: 600;
+  padding: 0.75rem 1.25rem;
+}
+
+.gonder-landing .gl-btn-secondary:hover {
+  border-color: var(--gl-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gonder-landing *,
+  .gonder-landing *::before,
+  .gonder-landing *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
