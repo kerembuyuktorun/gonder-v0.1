@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react'
 import { MapPin } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -16,19 +15,27 @@ import { CITY_MAP_COORDS, TURKEY_CITIES } from '../_lib/turkey-cities'
 
 const MAP_CITIES = TURKEY_CITIES.filter((c) => CITY_MAP_COORDS[c])
 
+const BENEFITS = [
+  'Ambar hatlarının dijital görünürlüğü',
+  'Standart yük bilgisi iletimi',
+  'Kapasiteye göre eşleştirme',
+  'Tekliflerin tek talep üzerinden takibi',
+  'Yükleme, aktarma ve teslimat bilgisine erişim',
+]
+
 function TurkeyOutline() {
   return (
     <path
       d='M8 18 C12 8, 28 6, 42 12 C58 8, 78 14, 82 28 C88 38, 84 52, 76 62 C68 72, 52 78, 38 74 C24 70, 12 58, 8 42 Z'
-      fill='rgba(255,255,255,0.06)'
-      stroke='rgba(255,255,255,0.25)'
+      fill='#ffffff'
+      stroke='rgba(25,91,85,0.28)'
       strokeWidth='0.8'
     />
   )
 }
 
 export function NetworkMapSection() {
-  const { prefillRoute, scrollToQuote } = useQuoteLanding()
+  const { prefillRoute } = useQuoteLanding()
   const [origin, setOrigin] = useState('İstanbul')
   const [dest, setDest] = useState('Ankara')
 
@@ -41,42 +48,57 @@ export function NetworkMapSection() {
   }, [origin, dest, originCoord, destCoord])
 
   return (
-    <section id='navlun-agi' className='gl-section scroll-mt-16 bg-[#195B55] text-white'>
+    <section
+      id='navlun-agi'
+      className='gl-section scroll-mt-16 border-y border-[var(--gl-border)] bg-[var(--gl-petrol-soft)]'
+    >
       <div className='gl-container'>
-        <div className='grid items-center gap-10 lg:grid-cols-2'>
+        <div className='grid items-center gap-10 lg:grid-cols-2 lg:gap-14'>
           <div className='space-y-5'>
-            <h2 className='text-3xl font-bold sm:text-4xl'>81 il. Tek navlun ağı.</h2>
-            <p className='text-lg text-white/80'>Ambar taşımacılığını dijitalleştiriyoruz.</p>
-            <p className='text-sm leading-relaxed text-white/70'>
-              Yerel ambarları ve taşıma ağlarını ortak bir dijital yapıda buluşturuyoruz. Yüküne uygun hattı
-              bulmanı, teklif almanı ve taşıma sürecini takip etmeni kolaylaştırıyoruz.
+            <p className='gl-eyebrow'>Navlun ağı</p>
+            <h2 className='text-3xl font-bold text-[var(--gl-ink)] sm:text-4xl'>
+              81 il. Tek navlun ağı.
+            </h2>
+            <p className='text-lg font-semibold text-[var(--gl-petrol)]'>
+              Ambar taşımacılığını dijitalleştiriyoruz.
             </p>
-            <ul className='space-y-2 text-sm text-white/75'>
-              <li>· Ambar hatlarının dijital görünürlüğü</li>
-              <li>· Standart yük bilgisi iletimi</li>
-              <li>· Kapasiteye göre eşleştirme</li>
-              <li>· Tekliflerin tek talep üzerinden takibi</li>
+            <p className='max-w-lg text-sm leading-relaxed text-[var(--gl-muted)]'>
+              Yerel ambarları ve taşıma ağlarını ortak bir dijital yapıda buluşturuyoruz. Yüküne
+              uygun hattı bulmanı, teklif almanı ve taşıma sürecini takip etmeni kolaylaştırıyoruz.
+            </p>
+
+            <ul className='space-y-2.5 text-sm text-[var(--gl-ink)]'>
+              {BENEFITS.map((item) => (
+                <li key={item} className='flex items-start gap-2.5'>
+                  <span
+                    className='mt-1.5 size-1.5 shrink-0 rounded-full bg-[var(--gl-petrol)]'
+                    aria-hidden
+                  />
+                  {item}
+                </li>
+              ))}
             </ul>
+
             <div className='flex flex-wrap gap-3 pt-2'>
               <button
                 type='button'
                 className='gl-btn-primary'
                 onClick={() => prefillRoute(origin, dest, 'lojistik')}
               >
-                Bu hatta teklif al
+                Yüküm İçin Teklif Al
               </button>
-              <button type='button' className='gl-btn-secondary border-white/30 bg-transparent text-white hover:border-white'>
+              <a href='#isletme' className='gl-btn-secondary'>
                 Taşıma Ağına Katıl
-              </button>
+              </a>
             </div>
           </div>
 
-          <div className='space-y-4'>
+          <div className='gl-card space-y-4 p-4 sm:p-5'>
             <div className='grid gap-3 sm:grid-cols-2'>
               <div className='space-y-1.5'>
-                <Label className='text-white/80'>Çıkış ili</Label>
+                <Label>Çıkış ili</Label>
                 <Select value={origin} onValueChange={setOrigin}>
-                  <SelectTrigger className='border-white/20 bg-white/10 text-white'>
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -89,9 +111,9 @@ export function NetworkMapSection() {
                 </Select>
               </div>
               <div className='space-y-1.5'>
-                <Label className='text-white/80'>Varış ili</Label>
+                <Label>Varış ili</Label>
                 <Select value={dest} onValueChange={setDest}>
-                  <SelectTrigger className='border-white/20 bg-white/10 text-white'>
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -105,8 +127,8 @@ export function NetworkMapSection() {
               </div>
             </div>
 
-            <div className='relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/15 bg-[#144a45]'>
-              <svg viewBox='0 0 100 80' className='h-full w-full' aria-label='Türkiye haritası'>
+            <div className='relative aspect-[4/3] overflow-hidden rounded-xl border border-[var(--gl-border)] bg-[var(--gl-bg-soft)]'>
+              <svg viewBox='0 0 100 80' className='h-full w-full' aria-label='Türkiye navlun ağı haritası'>
                 <TurkeyOutline />
                 {routeLine ? (
                   <line
@@ -117,7 +139,6 @@ export function NetworkMapSection() {
                     stroke='var(--gl-accent)'
                     strokeWidth='1.2'
                     strokeDasharray='2 1.5'
-                    opacity='0.9'
                   />
                 ) : null}
                 {MAP_CITIES.map((city) => {
@@ -129,16 +150,17 @@ export function NetworkMapSection() {
                       <circle
                         cx={coord.x}
                         cy={coord.y}
-                        r={active ? 2.8 : 1.8}
-                        fill={active ? 'var(--gl-accent)' : 'rgba(255,255,255,0.7)'}
+                        r={active ? 2.8 : 1.6}
+                        fill={active ? 'var(--gl-accent)' : 'rgba(25,91,85,0.45)'}
                       />
                       {active ? (
                         <text
                           x={coord.x}
-                          y={coord.y - 4}
+                          y={coord.y - 4.5}
                           textAnchor='middle'
-                          fontSize='3.5'
-                          fill='white'
+                          fontSize='3.6'
+                          fontWeight='600'
+                          fill='#192d32'
                           className='select-none'
                         >
                           {city}
@@ -148,22 +170,26 @@ export function NetworkMapSection() {
                   )
                 })}
               </svg>
-              <p className='absolute bottom-3 left-3 flex items-center gap-1.5 text-[10px] text-white/50'>
-                <MapPin className='size-3' />
+              <p className='absolute bottom-2.5 left-3 flex items-center gap-1.5 text-[10px] text-[var(--gl-muted)]'>
+                <MapPin className='size-3' aria-hidden />
                 Örnek harita — gerçek kapasite verisi yok
               </p>
             </div>
 
-            <Button
-              variant='outline'
-              className='w-full border-white/30 bg-transparent text-white hover:bg-white/10 lg:hidden'
-              onClick={() => {
-                prefillRoute(origin, dest, 'lojistik')
-                scrollToQuote()
-              }}
-            >
-              Yüküm İçin Teklif Al
-            </Button>
+            <p className='text-xs leading-relaxed text-[var(--gl-muted)]'>
+              81 il ağ kapsamını gösterir; belirli tarih, ilçe ve yük için hizmet bulunabilirliği
+              teklif adımında belirlenir.
+            </p>
+
+            <div className='lg:hidden'>
+              <button
+                type='button'
+                className='gl-btn-secondary w-full'
+                onClick={() => prefillRoute(origin, dest, 'lojistik')}
+              >
+                Bu hatta teklif al
+              </button>
+            </div>
           </div>
         </div>
       </div>

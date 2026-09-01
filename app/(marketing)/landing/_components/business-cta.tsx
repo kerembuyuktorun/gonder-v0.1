@@ -26,12 +26,12 @@ export function BusinessCta() {
   }
 
   return (
-    <section className='gl-section'>
+    <section id='isletme' className='gl-section scroll-mt-16'>
       <div className='gl-container'>
         <div className='gl-card grid gap-8 overflow-hidden lg:grid-cols-[1fr_auto] lg:items-center lg:p-10'>
           <div className='space-y-4 p-6 lg:p-0'>
-            <span className='inline-flex size-10 items-center justify-center rounded-xl bg-[var(--gl-yellow)]/60 text-[var(--gl-ink)]'>
-              <Building2 className='size-5' />
+            <span className='inline-flex size-10 items-center justify-center rounded-xl bg-[var(--gl-yellow-soft)] text-[var(--gl-ink)]'>
+              <Building2 className='size-5' aria-hidden />
             </span>
             <h2 className='text-2xl font-bold sm:text-3xl'>Her gün gönderiyorsan, birlikte planlayalım.</h2>
             <p className='max-w-lg text-[var(--gl-muted)]'>

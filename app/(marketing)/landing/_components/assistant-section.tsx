@@ -1,73 +1,45 @@
 'use client'
 
-import { useCallback, useState } from 'react'
-import { Bot, Sparkles } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { useQuoteLanding } from './quote-context'
-import type { KargoDraft, LogisticsDraft, QuoteDraft } from '../_lib/quote-types'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Bot, Send, Sparkles } from 'lucide-react'
+import { useQuoteLanding, type QuoteDraftPatch } from './quote-context'
+import { buildReplies, parsePrompt } from '../_lib/parse-prompt'
 
 type ChatMessage = { role: 'user' | 'assistant'; text: string }
-
-type QuotePrefillPatch = {
-  mode?: QuoteDraft['mode']
-  kargo?: Partial<KargoDraft>
-  lojistik?: Partial<LogisticsDraft>
-}
 
 const PROMPTS = [
   'Kargom için fiyat almak istiyorum.',
   'Parsiyel taşıma mı, komple araç mı?',
-  'Yükümü tarif ederek teklif hazırlamak istiyorum.',
+  'Bursa’dan Ankara’ya 3 palet seramik göndereceğim.',
 ]
 
-const DEMO_FLOW: Record<string, { replies: string[]; prefill: QuotePrefillPatch }> = {
-  'Bursa’dan Ankara’ya gelecek hafta 3 palet seramik göndereceğim.': {
-    replies: [
-      'Anladım: Bursa → Ankara, 3 palet seramik, gelecek hafta yükleme. Birkaç detay daha:',
-      'Nilüfer veya Osmangazi çıkış olabilir mi? Palet ölçüsü standart (120×80 cm) ve istiflenebilir mi?',
-      'Özet: Parsiyel · 3 palet · ~750 kg · Bursa/Nilüfer → Ankara/Çankaya · Gelecek hafta. Forma aktarabilirsin.',
-    ],
-    prefill: {
-      mode: 'lojistik',
-      lojistik: {
-        subtype: 'ltl',
-        loadUnit: 'palet',
-        pieceCount: 3,
-        loadDescription: 'Seramik',
-        stackable: false,
-        weightKg: 750,
-        loadingDate: '',
-        origin: { city: 'Bursa', district: 'Nilüfer' },
-        destination: { city: 'Ankara', district: 'Çankaya' },
-      },
-    },
-  },
-  'Kargom için fiyat almak istiyorum.': {
-    replies: [
-      'Kargo teklifi için paket boyutunu ve güzergâhı bilmem yeterli.',
-      'Hazır boyutlardan seçebilir veya ölçülerini girebilirsin. Çıkış ve varış ili?',
-    ],
-    prefill: { mode: 'kargo' },
-  },
-  'Parsiyel taşıma mı, komple araç mı?': {
-    replies: [
-      'Parsiyel: Araçta yükün kadar yer kullanırsın — palet, koli veya parça yükler için.',
-      'Komple: Tüm aracı yüküne ayırırsın — tek seferde büyük hacim veya ağır yükler için.',
-      'Yük hacmini tarif edersen hangisinin uygun olduğunu birlikte belirleyebiliriz.',
-    ],
-    prefill: { mode: 'lojistik' },
-  },
-  'Yükümü tarif ederek teklif hazırlamak istiyorum.': {
-    replies: [
-      'Harika. Yükün cinsi, yaklaşık ağırlığı, parça adedi ve çıkış-varış illerini yazman yeterli.',
-      'Örnek: "İstanbul\'dan İzmir\'e 2 palet gıda, soğuk zincir gerekli."',
-    ],
-    prefill: { mode: 'lojistik', lojistik: { subtype: 'ltl' } },
-  },
+const STATIC_ANSWERS: Record<string, string[]> = {
+  'Parsiyel taşıma mı, komple araç mı?': [
+    'Parsiyel: Araçta yükün kadar yer kullanırsın — palet, koli veya parça yükler için.',
+    'Komple: Tüm aracı yüküne ayırırsın — büyük hacim veya ağır yükler için.',
+    'Yükünü tarif edersen hangisinin uygun olduğunu birlikte belirleyebiliriz.',
+  ],
+}
+
+function summaryLine(patch: QuoteDraftPatch): string {
+  if (patch.mode === 'kargo') {
+    const o = patch.kargo?.origin?.city
+    const d = patch.kargo?.destination?.city
+    return ['Kargo gönderisi', o && d ? `${o} → ${d}` : null].filter(Boolean).join(' · ')
+  }
+
+  const l = patch.lojistik
+  const parts = [`Lojistik · ${l?.subtype === 'ftl' ? 'Komple araç' : 'Parsiyel'}`]
+  if (l?.pieceCount) parts.push(`${l.pieceCount} ${l.loadUnit ?? 'parça'}`)
+  if (l?.weightKg) parts.push(`~${l.weightKg.toLocaleString('tr-TR')} kg`)
+  if (l?.origin?.city && l?.destination?.city) {
+    parts.push(`${l.origin.city} → ${l.destination.city}`)
+  }
+  return parts.join(' · ')
 }
 
 export function AssistantSection() {
-  const { prefillFromAssistant } = useQuoteLanding()
+  const { prefillFromAssistant, assistantSeed } = useQuoteLanding()
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
@@ -75,92 +47,93 @@ export function AssistantSection() {
     },
   ])
   const [input, setInput] = useState('')
-  const [summary, setSummary] = useState<QuotePrefillPatch | null>(null)
+  const [summary, setSummary] = useState<QuoteDraftPatch | null>(null)
   const [typing, setTyping] = useState(false)
+  const logRef = useRef<HTMLDivElement>(null)
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([])
 
-  const runDemo = useCallback((text: string) => {
-    const flow = DEMO_FLOW[text]
-    if (!flow) return
+  useEffect(() => {
+    return () => timers.current.forEach(clearTimeout)
+  }, [])
 
+  useEffect(() => {
+    logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' })
+  }, [messages, typing])
+
+  const respond = useCallback((text: string) => {
     setMessages((m) => [...m, { role: 'user', text }])
     setInput('')
     setTyping(true)
     setSummary(null)
 
-    flow.replies.forEach((reply, i) => {
-      setTimeout(() => {
-        setMessages((m) => [...m, { role: 'assistant', text: reply }])
-        if (i === flow.replies.length - 1) {
-          setTyping(false)
-          setSummary(flow.prefill)
-        }
-      }, (i + 1) * 700)
+    const canned = STATIC_ANSWERS[text]
+    const parsed = canned ? null : parsePrompt(text)
+    const replies = canned ?? buildReplies(parsed!)
+
+    replies.forEach((reply, i) => {
+      const timer = setTimeout(
+        () => {
+          setMessages((m) => [...m, { role: 'assistant', text: reply }])
+          if (i === replies.length - 1) {
+            setTyping(false)
+            if (parsed) setSummary(parsed.patch)
+          }
+        },
+        (i + 1) * 650
+      )
+      timers.current.push(timer)
     })
   }, [])
+
+  // Hero chatbox'tan gelen mesaj
+  useEffect(() => {
+    if (!assistantSeed) return
+    respond(assistantSeed.text)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- yalnızca yeni gönderimde çalışır
+  }, [assistantSeed?.nonce])
 
   const handleSend = () => {
     const trimmed = input.trim()
     if (!trimmed) return
-    if (DEMO_FLOW[trimmed]) {
-      runDemo(trimmed)
-      return
-    }
-    setMessages((m) => [...m, { role: 'user', text: trimmed }])
-    setInput('')
-    setTyping(true)
-    setTimeout(() => {
-      setMessages((m) => [
-        ...m,
-        {
-          role: 'assistant',
-          text: 'Bu prototipte yalnızca hazır örnekler destekleniyor. Yukarıdaki örneklerden birini deneyebilir veya doğrudan teklif formunu kullanabilirsin.',
-        },
-      ])
-      setTyping(false)
-    }, 600)
+    respond(trimmed)
   }
 
   return (
-    <section id='asistan' className='gl-section scroll-mt-16 bg-[var(--gl-bg)]'>
+    <section id='asistan' className='gl-section scroll-mt-16 bg-[var(--gl-bg-soft)]'>
       <div className='gl-container'>
-        <div className='grid gap-10 lg:grid-cols-2'>
+        <div className='grid items-start gap-10 lg:grid-cols-2 lg:gap-14'>
           <div className='space-y-4'>
-            <span className='inline-flex items-center gap-1.5 rounded-full bg-[var(--gl-yellow)]/50 px-3 py-1 text-xs font-semibold text-[var(--gl-ink)]'>
-              <Sparkles className='size-3.5' />
+            <span className='inline-flex items-center gap-1.5 rounded-full bg-[var(--gl-yellow-soft)] px-3 py-1 text-xs font-semibold text-[var(--gl-ink)]'>
+              <Sparkles className='size-3.5' aria-hidden />
               Örnek deneyim
             </span>
-            <h2 className='text-3xl font-bold sm:text-4xl'>Ne göndereceğini anlat. Birlikte hazırlayalım.</h2>
+            <h2 className='text-3xl font-bold sm:text-4xl'>
+              Ne göndereceğini anlat. Birlikte hazırlayalım.
+            </h2>
             <p className='text-[var(--gl-muted)]'>
-              Gönder Asistan, yük bilgilerini ayıklar ve teklif formunu senin yerine doldurur. Gerçek fiyat ve
-              müsaitlik yalnızca bağlı sistemlerden gelir.
+              Gönder Asistan yük bilgilerini ayıklar, eksikleri sorar ve teklif formunu senin yerine
+              doldurur. Fiyat ve müsaitlik yalnızca bağlı sistemlerden gelir; onayın olmadan
+              rezervasyon oluşturulmaz.
             </p>
-            <div className='flex flex-wrap gap-2'>
+
+            <div className='flex flex-wrap gap-2 pt-1'>
               {PROMPTS.map((p) => (
                 <button
                   key={p}
                   type='button'
-                  className='rounded-full border border-[var(--gl-border)] bg-white px-3 py-1.5 text-xs font-medium hover:border-[var(--gl-ink)]'
-                  onClick={() => runDemo(p)}
+                  className='rounded-full border border-[var(--gl-border)] bg-white px-3 py-1.5 text-xs font-medium transition-colors hover:border-[var(--gl-ink)]'
+                  onClick={() => respond(p)}
                 >
                   {p}
                 </button>
               ))}
             </div>
-            <button
-              type='button'
-              className='rounded-full border border-[var(--gl-border)] bg-white px-3 py-1.5 text-xs font-medium hover:border-[var(--gl-ink)]'
-              onClick={() =>
-                runDemo('Bursa’dan Ankara’ya gelecek hafta 3 palet seramik göndereceğim.')
-              }
-            >
-              Bursa → Ankara · 3 palet seramik
-            </button>
           </div>
 
           <div className='gl-card flex flex-col overflow-hidden'>
             <div className='flex items-center gap-2 border-b border-[var(--gl-border)] px-4 py-3'>
-              <span className='flex size-8 items-center justify-center rounded-lg bg-[var(--gl-petrol)] text-white'>
-                <Bot className='size-4' />
+              <span className='flex size-8 items-center justify-center rounded-lg bg-[var(--gl-petrol-soft)] text-[var(--gl-petrol)]'>
+                <Bot className='size-4' aria-hidden />
               </span>
               <div>
                 <p className='text-sm font-semibold'>Gönder Asistan</p>
@@ -168,11 +141,15 @@ export function AssistantSection() {
               </div>
             </div>
 
-            <div className='flex max-h-72 flex-1 flex-col gap-3 overflow-y-auto p-4'>
+            <div
+              ref={logRef}
+              className='flex h-72 flex-col gap-3 overflow-y-auto p-4'
+              aria-live='polite'
+            >
               {messages.map((msg, i) => (
                 <div
                   key={`${msg.role}-${i}`}
-                  className={`max-w-[90%] rounded-2xl px-3 py-2 text-sm ${
+                  className={`max-w-[90%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
                     msg.role === 'user'
                       ? 'ml-auto bg-[var(--gl-petrol)] text-white'
                       : 'bg-[var(--gl-bg)] text-[var(--gl-ink)]'
@@ -189,37 +166,40 @@ export function AssistantSection() {
             </div>
 
             {summary ? (
-              <div className='border-t border-[var(--gl-border)] bg-[var(--gl-bg)]/80 p-4'>
-                <p className='text-xs font-semibold text-[var(--gl-muted)]'>Taşıma özeti</p>
-                <p className='mt-1 text-sm'>
-                  {summary.mode === 'kargo'
-                    ? 'Kargo gönderisi'
-                    : `Lojistik · ${summary.lojistik?.subtype === 'ftl' ? 'Komple' : 'Parsiyel'}`}
-                  {summary.lojistik?.origin?.city
-                    ? ` · ${summary.lojistik.origin.city} → ${summary.lojistik.destination?.city}`
-                    : null}
-                </p>
-                <Button
-                  className='mt-3 w-full bg-[var(--gl-accent)] hover:bg-[var(--gl-accent-hover)]'
-                  onClick={() => prefillFromAssistant(summary as Partial<QuoteDraft>)}
+              <div className='border-t border-[var(--gl-border)] bg-[var(--gl-bg)]/70 p-4'>
+                <p className='gl-eyebrow'>Taşıma özeti</p>
+                <p className='mt-1.5 text-sm font-medium'>{summaryLine(summary)}</p>
+                <button
+                  type='button'
+                  className='gl-btn-primary mt-3 w-full'
+                  onClick={() => prefillFromAssistant(summary)}
                 >
                   Teklif Formuna Aktar
-                </Button>
+                </button>
               </div>
             ) : null}
 
             <div className='flex gap-2 border-t border-[var(--gl-border)] p-3'>
+              <label htmlFor='assistant-input' className='sr-only'>
+                Asistana mesaj yaz
+              </label>
               <input
+                id='assistant-input'
                 type='text'
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder='Mesajını yaz…'
+                placeholder='Örn. İstanbul’dan İzmir’e 2 palet gıda…'
                 className='flex-1 rounded-lg border border-[var(--gl-border)] px-3 py-2 text-sm outline-none focus:border-[var(--gl-petrol)]'
               />
-              <Button type='button' size='sm' onClick={handleSend}>
-                Gönder
-              </Button>
+              <button
+                type='button'
+                onClick={handleSend}
+                aria-label='Gönder'
+                className='inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--gl-accent)] text-white transition-colors hover:bg-[var(--gl-accent-hover)]'
+              >
+                <Send className='size-4' aria-hidden />
+              </button>
             </div>
           </div>
         </div>

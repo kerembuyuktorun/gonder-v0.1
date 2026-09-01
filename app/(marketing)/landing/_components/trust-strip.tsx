@@ -1,21 +1,30 @@
-import { Truck } from 'lucide-react'
+import { Boxes, PackageCheck, Route, Warehouse } from 'lucide-react'
+
+const BENEFITS = [
+  { icon: PackageCheck, label: 'Kargo, parsiyel ve komple araç' },
+  { icon: Route, label: '81 il navlun ağı kapsamı' },
+  { icon: Warehouse, label: 'Ambar hatları dijital görünür' },
+  { icon: Boxes, label: 'Toplu gönderi ve entegrasyon' },
+]
 
 export function TrustStrip() {
   return (
-    <section aria-label='Taşıma partnerleri' className='border-y border-[var(--gl-border)] bg-white/60 py-6'>
-      <div className='gl-container flex flex-col items-center gap-4 sm:flex-row sm:justify-between'>
-        <p className='text-sm font-medium text-[var(--gl-muted)]'>Taşıma partnerleri</p>
-        <div className='flex flex-wrap items-center justify-center gap-3 sm:justify-end'>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div
-              key={i}
-              className='flex h-10 min-w-[7rem] items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--gl-border)] bg-[var(--gl-bg)] px-4 text-xs font-medium text-[var(--gl-muted)]'
+    <section
+      aria-label='Öne çıkan faydalar'
+      className='border-y border-[var(--gl-border)] bg-[var(--gl-bg-soft)] py-5'
+    >
+      <div className='gl-container grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4'>
+        {BENEFITS.map((item) => (
+          <div key={item.label} className='flex items-center gap-2.5'>
+            <span
+              className='flex size-8 shrink-0 items-center justify-center rounded-lg bg-[var(--gl-petrol-soft)] text-[var(--gl-petrol)]'
+              aria-hidden
             >
-              <Truck className='size-3.5 opacity-50' aria-hidden />
-              Partner {i}
-            </div>
-          ))}
-        </div>
+              <item.icon className='size-4' />
+            </span>
+            <p className='text-sm font-medium text-[var(--gl-ink)]'>{item.label}</p>
+          </div>
+        ))}
       </div>
     </section>
   )

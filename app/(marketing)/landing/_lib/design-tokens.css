@@ -1,17 +1,23 @@
 .gonder-landing {
   --gl-bg: #f5f2eb;
+  --gl-bg-soft: #faf8f4;
   --gl-surface: #ffffff;
   --gl-ink: #192d32;
   --gl-petrol: #195b55;
   --gl-petrol-light: #1f726a;
+  --gl-petrol-soft: #eaf1ef;
   --gl-accent: #c44a2d;
   --gl-accent-hover: #a83d24;
+  --gl-accent-soft: #fbeee9;
   --gl-yellow: #e8ce87;
+  --gl-yellow-soft: #fbf3de;
   --gl-border: #dedcd5;
+  --gl-border-strong: #cbc8be;
   --gl-muted: #5c6b6f;
   --gl-radius: 1rem;
   --gl-radius-lg: 1.25rem;
   --gl-shadow: 0 18px 48px -24px rgb(25 45 50 / 0.18);
+  --gl-shadow-lift: 0 28px 64px -28px rgb(25 45 50 / 0.26);
   color: var(--gl-ink);
   background: var(--gl-bg);
   font-family: var(--font-source-sans), system-ui, sans-serif;
@@ -39,6 +45,23 @@
   border: 1px solid var(--gl-border);
   border-radius: var(--gl-radius-lg);
   box-shadow: var(--gl-shadow);
+}
+
+/* Teknik his: küçük mono etiketler */
+.gonder-landing .gl-eyebrow {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gl-muted);
+}
+
+/* Zeminde çok hafif teknik ızgara */
+.gonder-landing .gl-grid-bg {
+  background-image:
+    linear-gradient(to right, rgb(25 45 50 / 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(25 45 50 / 0.045) 1px, transparent 1px);
+  background-size: 56px 56px;
 }
 
 .gonder-landing .gl-btn-primary {
@@ -74,10 +97,64 @@
   color: var(--gl-ink);
   font-weight: 600;
   padding: 0.75rem 1.25rem;
+  transition: border-color 0.15s ease;
 }
 
 .gonder-landing .gl-btn-secondary:hover {
   border-color: var(--gl-ink);
+}
+
+.gonder-landing .gl-btn-secondary:focus-visible {
+  outline: 2px solid var(--gl-ink);
+  outline-offset: 2px;
+}
+
+/* Hero görsel kutuları */
+.gonder-landing .gl-tile {
+  background: var(--gl-surface);
+  border: 1px solid var(--gl-border);
+  border-radius: 1.1rem;
+  box-shadow: var(--gl-shadow);
+  overflow: hidden;
+}
+
+.gonder-landing .gl-float {
+  animation: gl-float 9s ease-in-out infinite;
+}
+
+.gonder-landing .gl-float-slow {
+  animation: gl-float 12s ease-in-out infinite;
+}
+
+@keyframes gl-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Chatbox yazar imleci */
+.gonder-landing .gl-caret {
+  display: inline-block;
+  width: 1px;
+  height: 1.1em;
+  margin-left: 1px;
+  background: var(--gl-muted);
+  vertical-align: -0.18em;
+  animation: gl-blink 1.05s step-end infinite;
+}
+
+@keyframes gl-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
