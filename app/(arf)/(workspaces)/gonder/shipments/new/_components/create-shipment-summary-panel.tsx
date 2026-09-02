@@ -1,10 +1,19 @@
 'use client'
 
-import { AlertCircle, Box, CheckCircle2, Package, PackageOpen, Ruler, Truck } from 'lucide-react'
+import {
+  AlertCircle,
+  Box,
+  CheckCircle2,
+  CreditCard,
+  Package,
+  PackageOpen,
+  Ruler,
+  Truck,
+} from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { COURIER_SPEED_LABELS, OPERATION_TYPE_LABELS } from '../../../_lib/price-calculation-labels'
+import { SERVICE_TIMING_LABELS, OPERATION_TYPE_LABELS } from '../../../_lib/price-calculation-labels'
 import {
   getCreateShipmentMissingFields,
   type CreateShipmentDraft,
@@ -16,6 +25,12 @@ type Props = {
   sourceLabel: string
   submitting?: boolean
   onSubmit: () => void
+}
+
+const PAYMENT_METHOD_SUMMARY: Record<'wallet' | 'invoice' | 'card', string> = {
+  wallet: 'Cüzdan',
+  invoice: 'Fatura / vadeli',
+  card: 'Kart',
 }
 
 function formatMoney(value: number | null) {
@@ -65,11 +80,11 @@ export function CreateShipmentSummaryPanel({
                 : 'Adres seçilmedi'
             }
           />
-          {draft.operationType === 'courier' && draft.courierSpeed ? (
+          {draft.courierSpeed ? (
             <SummaryRow
               icon={Box}
-              label='Kurye hızı'
-              value={COURIER_SPEED_LABELS[draft.courierSpeed]}
+              label='Teslimat zamanı'
+              value={SERVICE_TIMING_LABELS[draft.courierSpeed]}
             />
           ) : null}
           {draft.pieces.length > 0 ? (
@@ -99,6 +114,19 @@ export function CreateShipmentSummaryPanel({
             value={
               draft.providerName && draft.serviceName
                 ? `${draft.providerName} · ${draft.serviceName}`
+                : 'Seçilmedi'
+            }
+          />
+          <SummaryRow
+            icon={CreditCard}
+            label='Ödeme'
+            value={
+              draft.paymentMethod
+                ? draft.paymentMethod === 'card'
+                  ? draft.cardPayment
+                    ? `Kart · ${draft.cardPayment.maskedNumber}`
+                    : 'Kart · tahsilat bekliyor'
+                  : PAYMENT_METHOD_SUMMARY[draft.paymentMethod]
                 : 'Seçilmedi'
             }
           />

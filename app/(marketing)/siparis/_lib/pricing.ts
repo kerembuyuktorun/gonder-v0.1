@@ -1,6 +1,7 @@
 import { findBody, findVehicle } from './catalog'
 import { roadDistanceKm } from './address-search'
-import type { Offer, OrderDraft } from './order-types'
+import type { DeliverySpeed, Offer, OrderDraft } from './order-types'
+import { DELIVERY_SPEED_LABELS } from './order-types'
 
 export type PriceLine = {
   label: string
@@ -19,6 +20,12 @@ export type PriceBreakdown = {
 
 const VAT_RATE = 0.2
 
+function deliverySpeedFactor(speed: DeliverySpeed): number {
+  if (speed === 'same_day') return 1.28
+  if (speed === 'scheduled') return 0.88
+  return 1.12
+}
+
 function round(value: number): number {
   return Math.round(value / 5) * 5
 }
@@ -30,6 +37,27 @@ export function calcDesi(widthCm: number, lengthCm: number, heightCm: number, qu
 function extrasLines(draft: OrderDraft, base: number): PriceLine[] {
   const lines: PriceLine[] = []
   const { extras } = draft
+  const speed = draft.deliverySpeed
+  if (speed && speed !== 'express') {
+    const factor = deliverySpeedFactor(speed)
+    const delta = round(base * (factor - 1))
+    if (delta !== 0) {
+      lines.push({
+        label: `Teslimat zamanı · ${DELIVERY_SPEED_LABELS[speed]}`,
+        detail: speed === 'scheduled' ? 'Planlı teslim indirimi' : 'Aynı gün / ertesi gün farkı',
+        amount: delta,
+      })
+    }
+  } else if (speed === 'express') {
+    const delta = round(base * (deliverySpeedFactor('express') - 1))
+    if (delta !== 0) {
+      lines.push({
+        label: 'Teslimat zamanı · Express',
+        detail: 'Öncelikli hat',
+        amount: delta,
+      })
+    }
+  }
 
   if (extras.temperatureControl) {
     lines.push({ label: 'Isı kontrollü taşıma', detail: 'Soğuk zincir', amount: round(base * 0.12) })
@@ -135,81 +163,95 @@ function transitDays(distanceKm: number): number {
 export function buildOffers(draft: OrderDraft, breakdown: PriceBreakdown): Offer[] {
   const base = breakdown.total
   const days = transitDays(breakdown.distanceKm)
+  const speed = draft.deliverySpeed
 
   if (draft.service === 'kargo') {
     return [
       {
         id: 'kargo-economy',
         plan: 'economy',
-        title: 'Ekonomik',
-        description: 'Bütçe dostu, standart teslim ağı üzerinden.',
-        carrier: 'Gönder Ekonomi',
+        title: 'EkoGönder',
+        description: 'Ekonomik hat üzerinden oluşan taşıma seçeneği.',
+        carrier: 'EkoGönder',
         price: round(base * 0.86),
-        comparePrice: base,
-        etaLabel: `${days + 2}–${days + 4} iş günü`,
+        etaLabel: speed === 'express' ? `${days + 2}–${days + 4} iş günü` : speed === 'same_day' ? 'Ertesi gün' : `${days + 2}–${days + 4} iş günü`,
         perks: ['Kapıdan kapıya', 'Online takip'],
-        badge: 'En uygun',
+        quoteSource: 'network',
+        serviceLabel: 'Koli / Paket',
+        badge: 'En Uygun',
       },
       {
         id: 'kargo-standard',
         plan: 'instant',
-        title: 'Standart',
-        description: 'Fiyat ve hız dengesi. Anında onaylanır.',
+        title: 'Gönder Standart',
+        description: 'Anlaşmalı ağ üzerinden anlık oluşan seçenek.',
         carrier: 'Gönder Standart',
         price: base,
-        etaLabel: `${days + 1}–${days + 2} iş günü`,
+        etaLabel: speed === 'same_day' ? 'Aynı gün / ertesi gün' : speed === 'scheduled' ? 'Planlı teslim' : `${days + 1}–${days + 2} iş günü`,
         perks: ['Kapıdan kapıya', 'Online takip', 'SMS bildirim'],
+        quoteSource: 'instant',
+        serviceLabel: 'Koli / Paket',
         badge: 'Önerilen',
       },
       {
         id: 'kargo-express',
         plan: 'express',
-        title: 'Hızlı',
+        title: 'Gönder Express',
         description: 'Öncelikli hat, en kısa teslim süresi.',
         carrier: 'Gönder Express',
         price: round(base * 1.38),
-        etaLabel: `${days} iş günü`,
+        etaLabel: speed === 'same_day' ? 'Aynı gün' : speed === 'scheduled' ? 'Planlı teslim' : `${days} iş günü`,
         perks: ['Öncelikli işlem', 'Online takip', 'SMS bildirim'],
+        quoteSource: 'instant',
+        serviceLabel: 'Koli / Paket',
+        badge: 'En Hızlı',
       },
     ]
   }
+
+  const isFtl = draft.logisticsMode === 'ftl'
+  const serviceLabel = isFtl ? 'FTL / Komple araç' : 'LTL / Parsiyel'
 
   return [
     {
       id: 'loj-instant',
       plan: 'instant',
-      title: 'Anında Onay',
-      description: 'Aracın hemen ayrılır, tarih garantili yükleme.',
-      carrier: 'Gönder Navlun Ağı',
+      title: 'LojistikPro',
+      description: isFtl
+        ? 'Komple araç için anlık oluşan taşıma seçeneği.'
+        : 'Parsiyel yük için anlık oluşan taşıma seçeneği.',
+      carrier: 'LojistikPro',
       price: base,
-      etaLabel: `${days} gün içinde teslim`,
-      perks: ['Belirttiğin tarihte yükleme', 'Araç anında tahsis', 'Tam takip'],
+      etaLabel: speed === 'same_day' ? 'Aynı gün / ertesi gün' : speed === 'scheduled' ? 'Planlı teslim' : `${days} gün içinde teslim`,
+      perks: ['Belirttiğin tarihte yükleme', 'Araç tahsisi', 'Tam takip'],
+      quoteSource: 'instant',
+      serviceLabel,
       badge: 'Önerilen',
     },
     {
-      id: 'loj-flexible',
+      id: 'loj-network',
       plan: 'flexible',
-      title: 'Esnek Tarih',
-      description: 'Yükleme tarihini 3 güne kadar esnetirsen navlun düşer.',
+      title: 'Gönder Navlun Ağı',
+      description: 'Taşıma ağı üzerinden oluşan hat eşleşmesi. Mevcut seçeneklerle birlikte değerlendirebilirsin.',
       carrier: 'Gönder Navlun Ağı',
       price: round(base * 0.87),
-      comparePrice: base,
-      etaLabel: `${days + 2}–${days + 3} gün içinde teslim`,
-      perks: ['±3 gün yükleme aralığı', 'Uygun araç çıkınca planlanır', 'Tam takip'],
-      badge: '%13 tasarruf',
+      etaLabel: `${days + 1}–${days + 3} gün içinde teslim`,
+      perks: ['Ağ eşleşmesi', 'Uygun araç çıkınca planlanır', 'Tam takip'],
+      quoteSource: 'network',
+      serviceLabel,
+      badge: 'En Uygun',
     },
     {
-      id: 'loj-backload',
+      id: 'loj-specialist',
       plan: 'backload',
-      title: 'Dönüş Yükü Bekle',
-      description: 'Bu hatta dönüş yapan boş araç çıkarsa en düşük navlunu yakalarsın.',
-      carrier: 'Gönder Navlun Ağı',
-      price: round(base * 0.74),
-      comparePrice: base,
-      etaLabel: 'Eşleşme sonrası 1–2 gün',
-      perks: ['En düşük navlun', 'Eşleşince bildirim gelir', 'Onaylamazsan ücret yok'],
-      requiresMatching: true,
-      badge: '%26 tasarruf',
+      title: 'Anadolu Filo',
+      description: 'Lojistik uzmanının değerlendirdiği araç ve taşıyıcı alternatifi.',
+      carrier: 'Anadolu Filo',
+      price: round(base * 0.94),
+      etaLabel: `${days + 1}–${days + 2} gün içinde teslim`,
+      perks: ['Uzman değerlendirmesi', 'Özel araç alternatifi', 'Tam takip'],
+      quoteSource: 'specialist',
+      serviceLabel,
     },
   ]
 }

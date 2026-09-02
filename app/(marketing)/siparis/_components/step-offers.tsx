@@ -1,20 +1,13 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, BellRing, CalendarClock, Check, Loader2, PiggyBank, Zap } from 'lucide-react'
+import { Check, Headset, Loader2 } from 'lucide-react'
+import { CarrierLogo } from '../../../(arf)/(workspaces)/gonder/_components/carrier-logo'
 import { buildBreakdown, buildOffers } from '../_lib/pricing'
-import { formatTry, type Offer } from '../_lib/order-types'
+import { formatTry, type Offer, type OfferQuoteSource } from '../_lib/order-types'
 import { OrderSummary } from './order-summary'
 import { StepHeader, StepNav } from './step-shell'
 import { useWizard } from './wizard-context'
-
-const PLAN_ICON = {
-  instant: Zap,
-  flexible: CalendarClock,
-  backload: PiggyBank,
-  express: Zap,
-  economy: PiggyBank,
-} as const
 
 export function StepOffers() {
   const { draft, next, back, selectedOffer, setSelectedOffer } = useWizard()
@@ -49,32 +42,27 @@ export function StepOffers() {
   }
 
   const isLogistics = draft.service === 'lojistik'
-  const cheapest = offers.reduce((min, offer) => (offer.price < min.price ? offer : min), offers[0])
-  const instant = offers.find((offer) => offer.plan === 'instant')
-  const maxSaving = instant && cheapest ? instant.price - cheapest.price : 0
-
   const planDelta = selectedOffer ? selectedOffer.price - breakdown.total : 0
 
   return (
     <div>
       <StepHeader
         title='Teklifini seç'
-        description='Bilgilerini kontrol et, sana en uygun planı seç. Ödeme öncesinde her şeyi bir kez daha göreceksin.'
+        description='Talebin için oluşan taşıma seçeneklerini hemen değerlendirebilirsin. Gönder ağı uygun alternatifleri senin için oluşturur.'
       />
 
       <div className='grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]'>
         <div className='space-y-4'>
-          {isLogistics && !loading && maxSaving > 0 ? (
-            <div className='flex items-start gap-3 rounded-2xl border border-[var(--gl-yellow)] bg-[var(--gl-yellow-soft)] p-4'>
-              <BellRing className='mt-0.5 size-5 shrink-0 text-[var(--gl-accent)]' aria-hidden />
+          {isLogistics && !loading ? (
+            <div className='flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-50/80 p-4'>
+              <Headset className='mt-0.5 size-5 shrink-0 text-amber-800' aria-hidden />
               <div>
                 <p className='text-sm font-semibold text-[var(--gl-ink)]'>
-                  Bu hatta beklersen {formatTry(maxSaving)} tasarruf edebilirsin
+                  Lojistik uzmanımız talebinizi inceliyor.
                 </p>
                 <p className='mt-1 text-sm leading-relaxed text-[var(--gl-muted)]'>
-                  {draft.origin?.city} – {draft.destination?.city} hattında sık dönüş yükü çıkıyor. Yükleme tarihini
-                  esnetir ya da dönüş yükü eşleşmesini beklersen navlun belirgin şekilde düşüyor. Acelen varsa anında
-                  onay planı tarihini garanti eder.
+                  Talebiniz için uygun taşıyıcı ve araç alternatifleri değerlendiriliyor. Mevcut
+                  teklifleriniz varsa bunları kullanmaya devam edebilirsiniz.
                 </p>
               </div>
             </div>
@@ -84,7 +72,7 @@ export function StepOffers() {
             <div className='space-y-4'>
               <div className='flex items-center gap-2.5 text-sm text-[var(--gl-muted)]'>
                 <Loader2 className='size-4 animate-spin' aria-hidden />
-                Taşıyıcı ağı taranıyor, teklifin hazırlanıyor…
+                Gönder ağı talebiniz için uygun seçenekleri oluşturuyor…
               </div>
               {[0, 1, 2].map((index) => (
                 <div key={index} className='h-32 animate-pulse rounded-2xl border border-[var(--gl-border)] bg-[var(--gl-subtle)]' />
@@ -100,16 +88,16 @@ export function StepOffers() {
                   onSelect={() => setSelectedOffer(offer)}
                 />
               ))}
+              <div className='rounded-2xl border border-[var(--gl-border)] bg-[var(--gl-subtle)] p-4'>
+                <p className='text-sm font-semibold text-[var(--gl-ink)]'>Teklifleriniz hazır.</p>
+                <p className='mt-1 text-sm leading-relaxed text-[var(--gl-muted)]'>
+                  Kullanılabilir seçenekleri hemen değerlendirebilirsiniz. Gönder ağı talebinizi
+                  işlemeye devam ederken farklı bir taşıyıcı veya daha uygun bir teklif oluşması da
+                  mümkün olabilir.
+                </p>
+              </div>
             </div>
           )}
-
-          {isLogistics && !loading ? (
-            <p className='flex items-start gap-2 rounded-xl bg-[var(--gl-subtle)] p-3 text-xs leading-relaxed text-[var(--gl-muted)]'>
-              <AlertCircle className='mt-0.5 size-3.5 shrink-0' aria-hidden />
-              Dönüş yükü planında araç eşleşmesi garanti değildir. Eşleşme bulunduğunda sana bildirim gelir; onaylamazsan
-              herhangi bir ücret tahakkuk etmez.
-            </p>
-          ) : null}
         </div>
 
         <aside className='space-y-4 lg:sticky lg:top-24 lg:h-fit'>
@@ -134,7 +122,7 @@ export function StepOffers() {
               {planDelta !== 0 ? (
                 <div className='flex items-center justify-between'>
                   <dt className='text-[var(--gl-muted)]'>
-                    {planDelta < 0 ? `${selectedOffer?.title} indirimi` : `${selectedOffer?.title} farkı`}
+                    {planDelta < 0 ? `${selectedOffer?.carrier} farkı` : `${selectedOffer?.carrier} farkı`}
                   </dt>
                   <dd
                     className={`font-medium tabular-nums ${planDelta < 0 ? 'text-[var(--gl-petrol)]' : 'text-[var(--gl-ink)]'}`}
@@ -158,12 +146,24 @@ export function StepOffers() {
       <StepNav
         onBack={back}
         onNext={next}
-        nextLabel={selectedOffer?.requiresMatching ? 'Talebi Onayla' : 'Teklifi Onayla ve Öde'}
+        nextLabel='Teklifi Seç'
         nextDisabled={loading || !selectedOffer}
-        helper={selectedOffer ? `${selectedOffer.title} · ${selectedOffer.etaLabel}` : undefined}
+        helper={selectedOffer ? `${selectedOffer.carrier} · ${selectedOffer.etaLabel}` : undefined}
       />
     </div>
   )
+}
+
+const SOURCE_LABELS: Record<OfferQuoteSource, string> = {
+  instant: 'Anlık Teklif',
+  network: 'Gönder Eşleşmesi',
+  specialist: 'Uzman Teklifi',
+}
+
+const SOURCE_CLASS: Record<OfferQuoteSource, string> = {
+  instant: 'bg-sky-50 text-sky-800',
+  network: 'bg-violet-50 text-violet-800',
+  specialist: 'bg-amber-50 text-amber-800',
 }
 
 function OfferCard({
@@ -175,9 +175,6 @@ function OfferCard({
   selected: boolean
   onSelect: () => void
 }) {
-  const Icon = PLAN_ICON[offer.plan]
-  const saving = offer.comparePrice ? offer.comparePrice - offer.price : 0
-
   return (
     <button
       type='button'
@@ -189,17 +186,16 @@ function OfferCard({
           : 'border-[var(--gl-border)] bg-white hover:border-[var(--gl-border-strong)]'
       }`}
     >
-      <span
-        className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${
-          selected ? 'bg-[var(--gl-petrol)] text-white' : 'bg-[var(--gl-subtle)] text-[var(--gl-petrol)]'
-        }`}
-      >
-        <Icon className='size-5' aria-hidden />
-      </span>
+      <CarrierLogo name={offer.carrier} />
 
       <div className='min-w-0 flex-1'>
         <div className='flex flex-wrap items-center gap-2'>
-          <p className='text-base font-bold text-[var(--gl-ink)]'>{offer.title}</p>
+          <p className='text-base font-bold text-[var(--gl-ink)]'>{offer.carrier}</p>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${SOURCE_CLASS[offer.quoteSource]}`}
+          >
+            {SOURCE_LABELS[offer.quoteSource]}
+          </span>
           {offer.badge ? (
             <span className='rounded-full bg-[var(--gl-yellow-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--gl-ink)]'>
               {offer.badge}
@@ -208,6 +204,14 @@ function OfferCard({
         </div>
         <p className='mt-1 text-sm leading-relaxed text-[var(--gl-muted)]'>{offer.description}</p>
         <ul className='mt-2 flex flex-wrap gap-x-4 gap-y-1'>
+          <li className='inline-flex items-center gap-1.5 text-xs text-[var(--gl-muted)]'>
+            <Check className='size-3 text-[var(--gl-petrol)]' aria-hidden />
+            {offer.serviceLabel}
+          </li>
+          <li className='inline-flex items-center gap-1.5 text-xs text-[var(--gl-muted)]'>
+            <Check className='size-3 text-[var(--gl-petrol)]' aria-hidden />
+            {offer.etaLabel}
+          </li>
           {offer.perks.map((perk) => (
             <li key={perk} className='inline-flex items-center gap-1.5 text-xs text-[var(--gl-muted)]'>
               <Check className='size-3 text-[var(--gl-petrol)]' aria-hidden />
@@ -217,15 +221,18 @@ function OfferCard({
         </ul>
       </div>
 
-      <div className='shrink-0 text-left sm:text-right'>
-        {saving > 0 ? (
-          <p className='text-xs text-[var(--gl-muted)] line-through'>{formatTry(offer.comparePrice ?? 0)}</p>
-        ) : null}
+      <div className='flex shrink-0 flex-col items-start gap-2 sm:items-end'>
         <p className='text-xl font-bold text-[var(--gl-ink)]'>{formatTry(offer.price)}</p>
         <p className='text-xs text-[var(--gl-muted)]'>{offer.etaLabel}</p>
-        {saving > 0 ? (
-          <p className='mt-1 text-xs font-semibold text-[var(--gl-petrol)]'>{formatTry(saving)} tasarruf</p>
-        ) : null}
+        <span
+          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+            selected
+              ? 'bg-[var(--gl-petrol)] text-white'
+              : 'bg-[var(--gl-subtle)] text-[var(--gl-ink)]'
+          }`}
+        >
+          Teklifi Seç
+        </span>
       </div>
     </button>
   )

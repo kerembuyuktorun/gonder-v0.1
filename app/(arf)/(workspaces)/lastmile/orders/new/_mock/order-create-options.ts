@@ -260,6 +260,7 @@ export function createInitialOrderForm(): OrderCreateFormState {
     referans_no: '',
     siparis_tipi: '',
     rota_tipi: '',
+    teslimat_hizi: 'express',
     alim_tarih: '',
     alim_baslangic: '',
     alim_bitis: '',

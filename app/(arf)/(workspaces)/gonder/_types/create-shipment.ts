@@ -1,3 +1,4 @@
+import type { QuotePaymentSummary } from './payment'
 import type {
   AddressDraft,
   CourierSpeed,
@@ -20,6 +21,8 @@ export type CreateShipmentDraft = {
   source: CreateShipmentSource
   orderId: string | null
   quoteId: string | null
+  /** Teklif talebi (TKF) kimliği — ödeme ve dönüşüm kaydı için */
+  quoteRequestId: string | null
   templateId: string | null
   repeatShipmentId: string | null
   operationType: OperationType | null
@@ -31,6 +34,8 @@ export type CreateShipmentDraft = {
   serviceName: string | null
   priceTry: number | null
   paymentMethod: 'wallet' | 'invoice' | 'card' | null
+  /** Kart ile tahsilat tamamlandıysa ödeme özeti */
+  cardPayment: QuotePaymentSummary | null
   note: string
 }
 
@@ -47,6 +52,7 @@ export const EMPTY_CREATE_SHIPMENT_DRAFT: CreateShipmentDraft = {
   source: 'manual',
   orderId: null,
   quoteId: null,
+  quoteRequestId: null,
   templateId: null,
   repeatShipmentId: null,
   operationType: 'parcel',
@@ -58,6 +64,7 @@ export const EMPTY_CREATE_SHIPMENT_DRAFT: CreateShipmentDraft = {
   serviceName: null,
   priceTry: null,
   paymentMethod: 'invoice',
+  cardPayment: null,
   note: '',
 }
 
@@ -85,10 +92,12 @@ export function isCreateShipmentStepReady(
   if (step === 4) {
     const quoteReady = Boolean(draft.providerName && draft.serviceName && draft.priceTry != null)
     if (!quoteReady) return false
-    if (draft.operationType === 'courier' && !draft.courierSpeed) return false
+    if (!draft.courierSpeed) return false
     return true
   }
-  return Boolean(draft.paymentMethod)
+  if (!draft.paymentMethod) return false
+  // Kart seçildiyse tahsilat tamamlanmış olmalı.
+  return draft.paymentMethod !== 'card' || draft.cardPayment != null
 }
 
 export function canSubmitCreateShipment(draft: CreateShipmentDraft): boolean {
@@ -119,7 +128,8 @@ export function getCreateShipmentMissingFields(draft: CreateShipmentDraft): stri
   if (!draft.providerName?.trim()) missing.push('Taşıyıcı')
   if (!draft.serviceName?.trim()) missing.push('Servis')
   if (draft.priceTry == null) missing.push('Fiyat')
-  if (draft.operationType === 'courier' && !draft.courierSpeed) missing.push('Kurye hızı')
+  if (!draft.courierSpeed) missing.push('Teslimat zamanı')
   if (!draft.paymentMethod) missing.push('Ödeme yöntemi')
+  if (draft.paymentMethod === 'card' && !draft.cardPayment) missing.push('Kart ödemesi')
   return missing
 }

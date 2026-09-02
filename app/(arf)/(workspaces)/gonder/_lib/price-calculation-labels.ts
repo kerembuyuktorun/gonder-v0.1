@@ -18,8 +18,18 @@ export const LOGISTICS_SUBTYPE_LABELS = {
   ltl: 'LTL / Parsiyel',
 } as const
 
-export const COURIER_SPEED_LABELS = {
+/** Teslimat zamanı — kargo, kurye ve lojistikte ortak */
+export const SERVICE_TIMING_LABELS = {
   express: 'Express',
-  same_day: 'Aynı gün',
+  same_day: 'Aynı gün / Ertesi gün',
   scheduled: 'Planlı',
 } as const
+
+export const SERVICE_TIMING_HINTS = {
+  express: 'Öncelikli hat, en kısa teslim',
+  same_day: 'Bugün veya ertesi iş günü teslim',
+  scheduled: 'Tarih planlayarak gönder',
+} as const
+
+/** @deprecated Use SERVICE_TIMING_LABELS — kurye hızı artık tüm operasyon tiplerinde ortak */
+export const COURIER_SPEED_LABELS = SERVICE_TIMING_LABELS

@@ -8,6 +8,7 @@ import {
   type CreateShipmentSource,
   type CreateShipmentStep,
 } from '../_types/create-shipment'
+import type { QuotePaymentSummary } from '../_types/payment'
 import type {
   AddressDraft,
   CourierSpeed,
@@ -33,6 +34,7 @@ type CreateShipmentStore = {
     priceTry: number | null
   }) => void
   setPaymentMethod: (value: CreateShipmentDraft['paymentMethod']) => void
+  setCardPayment: (value: QuotePaymentSummary | null) => void
   setNote: (value: string) => void
   patchDraft: (patch: Partial<CreateShipmentDraft>) => void
   hydrateFromSources: (patch: Partial<CreateShipmentDraft>) => void
@@ -81,7 +83,16 @@ export const useCreateShipmentStore = create<CreateShipmentStore>()(
           },
         })),
       setPaymentMethod: (paymentMethod) =>
-        set((state) => ({ draft: { ...state.draft, paymentMethod } })),
+        set((state) => ({
+          draft: {
+            ...state.draft,
+            paymentMethod,
+            // Karttan başka yönteme geçilirse tahsilat kaydı taslakta tutulmaz.
+            cardPayment: paymentMethod === 'card' ? state.draft.cardPayment : null,
+          },
+        })),
+      setCardPayment: (cardPayment) =>
+        set((state) => ({ draft: { ...state.draft, cardPayment } })),
       setNote: (note) => set((state) => ({ draft: { ...state.draft, note } })),
       patchDraft: (patch) => set((state) => ({ draft: { ...state.draft, ...patch } })),
       hydrateFromSources: (patch) =>

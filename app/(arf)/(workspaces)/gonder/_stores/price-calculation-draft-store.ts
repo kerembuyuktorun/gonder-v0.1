@@ -56,8 +56,7 @@ export const usePriceDraftStore = create<PriceDraftStore>()(
             operationType,
             logisticsSubtype:
               operationType === 'logistics' ? state.draft.logisticsSubtype ?? 'ltl' : null,
-            courierSpeed:
-              operationType === 'courier' ? state.draft.courierSpeed ?? 'express' : null,
+            courierSpeed: state.draft.courierSpeed ?? 'express',
           },
         })),
       setOrigin: (origin) =>
@@ -126,13 +125,14 @@ export function isPriceDraftReady(draft: PriceCalculationDraft): boolean {
 
   if (draft.operationType === 'logistics') {
     if (!draft.logisticsSubtype) return false
+    if (!draft.courierSpeed) return false
     if (draft.logisticsSubtype === 'ftl') {
       return Boolean(draft.vehicleType && draft.bodyType)
     }
     return Boolean(draft.loadType && draft.weightKg && draft.weightKg > 0)
   }
 
-  if (draft.operationType === 'courier' && !draft.courierSpeed) return false
+  if (!draft.courierSpeed) return false
   if (!draft.pieces.length) return false
   return draft.pieces.every(
     (piece) =>

@@ -191,6 +191,18 @@ export function OrderSummaryDialog({
             <SummaryRow label='Müşteri' value={customer} />
             <SummaryRow label='Referans No' value={form.referans_no || '—'} />
             <SummaryRow label='Sipariş Tipi' value={orderType} />
+            <SummaryRow
+              label='Teslimat zamanı'
+              value={
+                form.teslimat_hizi === 'express'
+                  ? 'Express'
+                  : form.teslimat_hizi === 'same_day'
+                    ? 'Aynı gün / Ertesi gün'
+                    : form.teslimat_hizi === 'scheduled'
+                      ? 'Planlı'
+                      : '—'
+              }
+            />
             <SummaryRow label='Rota Tipi' value={form.rota_tipi || '—'} />
             <SummaryRow
               label='Alım/Teslim Tarihi'

@@ -1,3 +1,4 @@
+import type { QuotePaymentSummary } from '../_types/payment'
 import type { PriceCalculationDraft, SearchQuote } from '../_types/price-calculation'
 import { calcPiecesTotals } from '../_types/price-calculation'
 import {
@@ -30,6 +31,10 @@ export interface QuoteRequestsRepository {
   countActionRequired(): Promise<number>
   createFromPriceDraft(draft: PriceCalculationDraft): Promise<QuoteRequest>
   selectOffer(requestId: string, offerId: string): Promise<QuoteRequest>
+  /** Kart ödemesi başlatıldığında talebi tahsilat beklemeye alır */
+  markPaymentPending(requestId: string): Promise<QuoteRequest>
+  /** Başarılı kart tahsilatını talebe iliştirir */
+  attachPayment(requestId: string, payment: QuotePaymentSummary): Promise<QuoteRequest>
   markConverted(requestId: string, shipmentId: string): Promise<QuoteRequest>
 }
 
@@ -53,6 +58,8 @@ function offerFromSearchQuote(requestId: string, quote: SearchQuote): QuoteOffer
     priceTry: quote.priceTry,
     status,
     badges: quote.badges,
+    quoteSource: quote.quoteSource,
+    vehicleLabel: quote.vehicleLabel,
     hasInstantPrice: quote.hasInstantPrice,
     hasPickupService: quote.hasPickupService,
     serviceType: quote.serviceType,
@@ -76,6 +83,7 @@ const seed: QuoteRequest[] = [
     updatedAt: '2026-08-07T08:20:00.000Z',
     selectedQuoteId: null,
     shipmentId: null,
+    payment: null,
     offers: [
       {
         id: 'qo-1001-a',
@@ -88,7 +96,9 @@ const seed: QuoteRequest[] = [
         score: 4.8,
         priceTry: 189,
         status: 'recommended',
-        badges: ['recommended'],
+        badges: ['recommended', 'fastest'],
+        quoteSource: 'instant',
+        vehicleLabel: 'Koli / Paket',
         hasInstantPrice: true,
         hasPickupService: true,
         serviceType: 'express',
@@ -104,7 +114,8 @@ const seed: QuoteRequest[] = [
         score: 4.5,
         priceTry: 142,
         status: 'received',
-        badges: ['fastest'],
+        quoteSource: 'network',
+        vehicleLabel: 'Koli / Paket',
         hasInstantPrice: true,
         hasPickupService: true,
         serviceType: 'standard',
@@ -120,6 +131,9 @@ const seed: QuoteRequest[] = [
         score: 4.1,
         priceTry: 118,
         status: 'received',
+        badges: ['best_price'],
+        quoteSource: 'network',
+        vehicleLabel: 'Koli / Paket',
         hasInstantPrice: true,
         hasPickupService: false,
         serviceType: 'economy',
@@ -142,6 +156,7 @@ const seed: QuoteRequest[] = [
     updatedAt: '2026-08-07T09:10:00.000Z',
     selectedQuoteId: null,
     shipmentId: null,
+    payment: null,
     offers: [
       {
         id: 'qo-1002-a',
@@ -153,6 +168,9 @@ const seed: QuoteRequest[] = [
         score: 4.7,
         priceTry: 95,
         status: 'received',
+        badges: ['recommended', 'fastest'],
+        quoteSource: 'instant',
+        vehicleLabel: 'Kurye',
         hasInstantPrice: true,
         hasPickupService: true,
         serviceType: 'same_day',
@@ -167,6 +185,8 @@ const seed: QuoteRequest[] = [
         pickupLabel: 'Randevulu',
         priceTry: null,
         status: 'pending',
+        quoteSource: 'network',
+        vehicleLabel: 'Planlı kurye',
         hasInstantPrice: false,
         hasPickupService: true,
         serviceType: 'scheduled',
@@ -189,6 +209,18 @@ const seed: QuoteRequest[] = [
     updatedAt: '2026-08-03T11:20:00.000Z',
     selectedQuoteId: 'qo-1003-a',
     shipmentId: 'sh-1003',
+    payment: {
+      paymentId: 'pay-1003',
+      reference: 'ODM-40318827',
+      amountTry: 240,
+      chargedTry: 240,
+      installment: 1,
+      brand: 'visa',
+      maskedNumber: '454671 •••••• 9012',
+      authCode: '481203',
+      threeDSecure: true,
+      paidAt: '2026-08-03T11:18:00.000Z',
+    },
     offers: [
       {
         id: 'qo-1003-a',
@@ -201,6 +233,8 @@ const seed: QuoteRequest[] = [
         priceTry: 240,
         status: 'selected',
         badges: ['recommended'],
+        quoteSource: 'instant',
+        vehicleLabel: 'Koli / Paket',
         hasInstantPrice: true,
         hasPickupService: true,
         serviceType: 'standard',
@@ -223,21 +257,60 @@ const seed: QuoteRequest[] = [
     updatedAt: '2026-08-06T12:00:00.000Z',
     selectedQuoteId: 'qo-1004-a',
     shipmentId: null,
+    payment: null,
     offers: [
       {
         id: 'qo-1004-a',
         requestId: 'qr-1004',
         providerName: 'Express Lojistik',
-        serviceName: 'LTL Teklif',
+        serviceName: 'LTL Parsiyel',
         etaLabel: '3-4 iş günü',
         pickupLabel: 'Depodan alma',
         score: 4.3,
         priceTry: 1850,
         status: 'selected',
+        badges: ['recommended'],
+        quoteSource: 'instant',
+        vehicleLabel: 'Kamyon · Tenteli',
         hasInstantPrice: true,
         hasPickupService: true,
         serviceType: 'ltl',
         receivedAt: '2026-08-05T17:00:00.000Z',
+      },
+      {
+        id: 'qo-1004-b',
+        requestId: 'qr-1004',
+        providerName: 'Gönder Navlun Ağı',
+        serviceName: 'Hat eşleşmesi · Parsiyel',
+        etaLabel: '4-5 iş günü',
+        pickupLabel: 'Eşleşme sonrası planlanır',
+        score: 4.2,
+        priceTry: 1620,
+        status: 'received',
+        badges: ['best_price'],
+        quoteSource: 'network',
+        vehicleLabel: 'Kamyon · Tenteli',
+        hasInstantPrice: false,
+        hasPickupService: true,
+        serviceType: 'ltl',
+        receivedAt: '2026-08-05T17:20:00.000Z',
+      },
+      {
+        id: 'qo-1004-c',
+        requestId: 'qr-1004',
+        providerName: 'Anadolu Filo',
+        serviceName: 'Uzman değerlendirmesi · LTL',
+        etaLabel: 'Değerlendiriliyor',
+        pickupLabel: 'Uzman onayı sonrası planlanır',
+        score: 4.4,
+        priceTry: null,
+        status: 'pending',
+        quoteSource: 'specialist',
+        vehicleLabel: 'Kamyon · Tenteli',
+        hasInstantPrice: false,
+        hasPickupService: true,
+        serviceType: 'ltl',
+        receivedAt: '2026-08-05T17:25:00.000Z',
       },
     ],
   },
@@ -328,6 +401,7 @@ export class MockQuoteRequestsRepository implements QuoteRequestsRepository {
       updatedAt: new Date().toISOString(),
       selectedQuoteId: null,
       shipmentId: null,
+      payment: null,
       offers,
     }
     this.items = [created, ...this.items]
@@ -343,11 +417,45 @@ export class MockQuoteRequestsRepository implements QuoteRequestsRepository {
       ...current,
       status: 'selected',
       selectedQuoteId: offerId,
+      payment: null,
       updatedAt: new Date().toISOString(),
       offers: current.offers.map((offer) => ({
         ...offer,
         status: offer.id === offerId ? 'selected' : offer.status === 'selected' ? 'received' : offer.status,
       })),
+    }
+    this.items[index] = next
+    return next
+  }
+
+  async markPaymentPending(requestId: string): Promise<QuoteRequest> {
+    await delay(40)
+    const index = this.items.findIndex((item) => item.id === requestId)
+    if (index < 0) throw new Error('Teklif talebi bulunamadı')
+    const current = this.items[index]!
+    if (!current.selectedQuoteId) throw new Error('Ödeme için önce bir teklif seçin')
+    if (current.status === 'paid' || current.status === 'converted') return current
+    const next: QuoteRequest = {
+      ...current,
+      status: 'payment_pending',
+      updatedAt: new Date().toISOString(),
+    }
+    this.items[index] = next
+    return next
+  }
+
+  async attachPayment(
+    requestId: string,
+    payment: QuotePaymentSummary
+  ): Promise<QuoteRequest> {
+    await delay(40)
+    const index = this.items.findIndex((item) => item.id === requestId)
+    if (index < 0) throw new Error('Teklif talebi bulunamadı')
+    const next: QuoteRequest = {
+      ...this.items[index]!,
+      status: 'paid',
+      payment,
+      updatedAt: new Date().toISOString(),
     }
     this.items[index] = next
     return next

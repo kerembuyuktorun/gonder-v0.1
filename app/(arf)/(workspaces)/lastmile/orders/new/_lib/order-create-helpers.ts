@@ -99,6 +99,7 @@ const FIELD_STEP_MAP: Partial<Record<keyof OrderCreateFormState, OrderCreateStep
   referans_no: 1,
   siparis_tipi: 1,
   rota_tipi: 1,
+  teslimat_hizi: 1,
   alim_tarih: 1,
   alim_baslangic: 1,
   alim_bitis: 1,
@@ -444,6 +445,7 @@ export function validateOrderCreate(form: OrderCreateFormState): OrderCreateFiel
 
   if (!form.musteriId) errors.musteriId = 'Müşteri seçimi zorunludur.'
   if (!form.siparis_tipi) errors.siparis_tipi = 'Sipariş tipi seçimi zorunludur.'
+  if (!form.teslimat_hizi) errors.teslimat_hizi = 'Teslimat zamanı seçimi zorunludur.'
   if (!form.rota_tipi) {
     errors.rota_tipi = 'Rota tipi seçimi zorunludur.'
   } else if (

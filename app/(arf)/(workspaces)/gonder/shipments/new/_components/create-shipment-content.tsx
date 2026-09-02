@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AppHeader } from '@hascanb/arf-ui-kit/layout-kit'
-import { Bike, Cloud, Package, Truck } from 'lucide-react'
+import { Bike, Cloud, CreditCard, Package, Truck } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,21 +14,25 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { ARF_ROUTES } from '../../../../../_shared/routes'
+import { CardPaymentDialog } from '../../../_components/card-payment-dialog'
 import { PartyAddressCard } from '../../../_components/party-address-card'
 import { PieceListEditor } from '../../../_components/piece-list-editor'
+import { QuotePaymentReceipt } from '../../../_components/quote-payment-receipt'
 import { SelectionTile } from '../../../_components/selection-tile'
 import { ordersRepository } from '../../../_data/orders-repository'
 import { quoteRepository } from '../../../_data/quote-repository'
+import { quoteRequestsRepository } from '../../../_data/quote-requests-repository'
 import { shipmentsListRepository } from '../../../_data/shipments-list-repository'
 import { useCreateShipmentHydrated } from '../../../_hooks/use-create-shipment-hydrated'
 import { usePriceDraftHydrated } from '../../../_hooks/use-price-draft-hydrated'
-import { COURIER_SPEED_LABELS } from '../../../_lib/price-calculation-labels'
+import { SERVICE_TIMING_LABELS } from '../../../_lib/price-calculation-labels'
 import { useCreateShipmentStore } from '../../../_stores/create-shipment-draft-store'
 import { usePriceDraftStore } from '../../../_stores/price-calculation-draft-store'
 import {
   canSubmitCreateShipment,
   getCreateShipmentMissingFields,
 } from '../../../_types/create-shipment'
+import { toQuotePaymentSummary, type CardPayment } from '../../../_types/payment'
 import {
   calcPiecesTotals,
   createPieceId,
@@ -66,6 +70,7 @@ export function CreateShipmentContent() {
     setCourierSpeed,
     setQuoteSummary,
     setPaymentMethod,
+    setCardPayment,
     setNote,
     hydrateFromSources,
     resetDraft,
@@ -75,6 +80,7 @@ export function CreateShipmentContent() {
   const [submitting, setSubmitting] = useState(false)
   const [bootstrapped, setBootstrapped] = useState(false)
   const [autosaveFlash, setAutosaveFlash] = useState(false)
+  const [paymentOpen, setPaymentOpen] = useState(false)
 
   const totals = useMemo(() => calcPiecesTotals(draft.pieces), [draft.pieces])
   const hasOperation = Boolean(draft.operationType)
@@ -84,6 +90,9 @@ export function CreateShipmentContent() {
   const showPackages = hasOperation
   const showService = hasOperation && (hasAddresses || draft.pieces.length > 0)
   const showNotes = hasOperation
+  const priceChangedAfterPayment = Boolean(
+    draft.cardPayment && draft.priceTry !== draft.cardPayment.amountTry
+  )
 
   useEffect(() => {
     if (!hydrated || !bootstrapped) return
@@ -100,6 +109,7 @@ export function CreateShipmentContent() {
     draft.serviceName,
     draft.priceTry,
     draft.paymentMethod,
+    draft.cardPayment,
     draft.note,
     draft.courierSpeed,
     hydrated,
@@ -253,6 +263,19 @@ export function CreateShipmentContent() {
     searchParams,
   ])
 
+  async function handleCardPaid(payment: CardPayment) {
+    const summary = toQuotePaymentSummary(payment)
+    setCardPayment(summary)
+    if (draft.quoteRequestId) {
+      try {
+        await quoteRequestsRepository.attachPayment(draft.quoteRequestId, summary)
+      } catch {
+        // Teklif kaydı güncellenemese de taslaktaki tahsilat geçerli kalır.
+      }
+    }
+    toast.success(`Ödeme alındı · ${payment.reference}`)
+  }
+
   async function handleSubmit() {
     setAttempted(true)
     if (!canSubmitCreateShipment(draft)) {
@@ -282,6 +305,10 @@ export function CreateShipmentContent() {
 
       if (draft.orderId) {
         await ordersRepository.updateStatus(draft.orderId, 'shipment_created')
+      }
+
+      if (draft.quoteRequestId) {
+        await quoteRequestsRepository.markConverted(draft.quoteRequestId, created.id)
       }
 
       resetDraft()
@@ -472,32 +499,33 @@ export function CreateShipmentContent() {
                         }
                       />
                     </div>
-                    {draft.operationType === 'courier' ? (
-                      <div className='space-y-1'>
-                        <Label className='text-xs text-muted-foreground'>Kurye hızı</Label>
-                        <div className='flex flex-wrap gap-1.5'>
-                          {(
-                            Object.keys(COURIER_SPEED_LABELS) as Array<
-                              keyof typeof COURIER_SPEED_LABELS
-                            >
-                          ).map((speed) => (
-                            <button
-                              key={speed}
-                              type='button'
-                              onClick={() => setCourierSpeed(speed)}
-                              className={cn(
-                                'rounded-full border px-2.5 py-1 text-xs',
-                                draft.courierSpeed === speed
-                                  ? 'border-primary bg-primary/10'
-                                  : 'border-border text-muted-foreground'
-                              )}
-                            >
-                              {COURIER_SPEED_LABELS[speed]}
-                            </button>
-                          ))}
-                        </div>
+                    <div className='space-y-1 sm:col-span-2'>
+                      <Label className='text-xs text-muted-foreground'>Teslimat zamanı</Label>
+                      <div className='flex flex-wrap gap-1.5'>
+                        {(
+                          Object.keys(SERVICE_TIMING_LABELS) as Array<
+                            keyof typeof SERVICE_TIMING_LABELS
+                          >
+                        ).map((speed) => (
+                          <button
+                            key={speed}
+                            type='button'
+                            onClick={() => setCourierSpeed(speed)}
+                            className={cn(
+                              'rounded-full border px-2.5 py-1 text-xs',
+                              draft.courierSpeed === speed
+                                ? 'border-primary bg-primary/10'
+                                : 'border-border text-muted-foreground'
+                            )}
+                          >
+                            {SERVICE_TIMING_LABELS[speed]}
+                          </button>
+                        ))}
                       </div>
-                    ) : null}
+                      {attempted && !draft.courierSpeed ? (
+                        <p className='text-[11px] text-destructive'>Teslimat zamanını seçin</p>
+                      ) : null}
+                    </div>
                   </div>
                   {attempted &&
                   (!draft.providerName || !draft.serviceName || draft.priceTry == null) ? (
@@ -540,6 +568,43 @@ export function CreateShipmentContent() {
                       ))}
                     </div>
                   </div>
+
+                  {draft.paymentMethod === 'card' ? (
+                    <div className='space-y-2'>
+                      {draft.cardPayment ? (
+                        <>
+                          <QuotePaymentReceipt payment={draft.cardPayment} compact />
+                          {priceChangedAfterPayment ? (
+                            <p className='text-[11px] text-amber-800'>
+                              Fiyat ödeme sonrasında değişti. Farkı tahsil etmek için ödemeyi
+                              yenileyin.
+                            </p>
+                          ) : null}
+                        </>
+                      ) : (
+                        <p className='text-[11px] text-amber-800'>
+                          Kart ile ödeme henüz alınmadı. Gönderiyi oluşturmak için tahsilatı
+                          tamamlayın.
+                        </p>
+                      )}
+                      <Button
+                        type='button'
+                        size='sm'
+                        variant={draft.cardPayment ? 'outline' : 'default'}
+                        className='gap-1.5'
+                        disabled={draft.priceTry == null}
+                        onClick={() => setPaymentOpen(true)}
+                      >
+                        <CreditCard className='size-3.5' />
+                        {draft.cardPayment ? 'Ödemeyi yenile' : 'Kredi kartı ile öde'}
+                      </Button>
+                      {draft.priceTry == null ? (
+                        <p className='text-[11px] text-muted-foreground'>
+                          Ödeme alabilmek için önce fiyat girin.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <div className='space-y-1'>
                     <Label className='text-xs text-muted-foreground'>Not</Label>
                     <Textarea
@@ -575,6 +640,21 @@ export function CreateShipmentContent() {
             />
           </div>
         </div>
+
+        <CardPaymentDialog
+          open={paymentOpen}
+          onOpenChange={setPaymentOpen}
+          requestId={draft.quoteRequestId ?? 'shipment-draft'}
+          offerId={draft.quoteId}
+          amountTry={draft.priceTry ?? 0}
+          reference={draft.quoteRequestId ? 'Seçilen teklif' : 'Yeni gönderi'}
+          serviceLabel={
+            draft.providerName && draft.serviceName
+              ? `${draft.providerName} · ${draft.serviceName}`
+              : null
+          }
+          onPaid={handleCardPaid}
+        />
       </div>
     </>
   )

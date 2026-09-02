@@ -21,7 +21,7 @@ import { ARF_ROUTES } from '../../../../_shared/routes'
 import { getSession } from '../../../../(auth)/_api/auth-client'
 import { quoteRepository } from '../../_data/quote-repository'
 import {
-  COURIER_SPEED_LABELS,
+  SERVICE_TIMING_LABELS,
   LOGISTICS_SUBTYPE_LABELS,
   OPERATION_TYPE_LABELS,
 } from '../../_lib/price-calculation-labels'
@@ -32,6 +32,8 @@ import {
 import { calcPiecesTotals, type SearchQuote } from '../../_types/price-calculation'
 import { usePriceDraftHydrated } from '../../_hooks/use-price-draft-hydrated'
 import { QuoteResultsList } from './quote-results-list'
+import { QuoteSpecialistBanner } from '../../_components/quote-network-notice'
+import { needsLogisticsSpecialist } from '../../_lib/quote-specialist'
 import {
   ResultsFiltersPanel,
   type ResultsFiltersState,
@@ -214,8 +216,8 @@ export function ResultsContent() {
                     {LOGISTICS_SUBTYPE_LABELS[draft.logisticsSubtype]}
                   </Badge>
                 ) : null}
-                {draft.operationType === 'courier' && draft.courierSpeed ? (
-                  <Badge variant='outline'>{COURIER_SPEED_LABELS[draft.courierSpeed]}</Badge>
+                {draft.courierSpeed ? (
+                  <Badge variant='outline'>{SERVICE_TIMING_LABELS[draft.courierSpeed]}</Badge>
                 ) : null}
                 <Badge variant='outline'>{packageSummary}</Badge>
               </div>
@@ -286,7 +288,20 @@ export function ResultsContent() {
                 </CardContent>
               </Card>
             ) : (
-              <QuoteResultsList quotes={filteredQuotes} onSelect={handleSelect} />
+              <>
+                {needsLogisticsSpecialist({
+                  operationType: draft.operationType,
+                  logisticsSubtype: draft.logisticsSubtype,
+                  vehicleType: draft.vehicleType,
+                  bodyType: draft.bodyType,
+                  loadType: draft.loadType,
+                  totalDesi: pieceTotals.desi,
+                  weightKg: draft.weightKg,
+                }) ? (
+                  <QuoteSpecialistBanner />
+                ) : null}
+                <QuoteResultsList quotes={filteredQuotes} onSelect={handleSelect} />
+              </>
             )}
           </div>
         </div>

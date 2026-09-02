@@ -178,7 +178,7 @@ export function StepPayment() {
 
               <div className='mt-4 flex items-end justify-between border-t border-[var(--gl-border)] pt-3'>
                 <span className='text-sm text-[var(--gl-muted)]'>
-                  {preAuthOnly ? 'Eşleşince ödenecek' : 'Ödenecek tutar'}
+                  {preAuthOnly ? 'Onay sonrası ödenecek' : 'Ödenecek tutar'}
                 </span>
                 <span className='text-2xl font-bold text-[var(--gl-ink)]'>{formatTry(amount)}</span>
               </div>
@@ -186,7 +186,7 @@ export function StepPayment() {
               <p className='mt-3 flex items-start gap-2 text-xs leading-relaxed text-[var(--gl-muted)]'>
                 <ShieldCheck className='mt-0.5 size-3.5 shrink-0 text-[var(--gl-petrol)]' aria-hidden />
                 {preAuthOnly
-                  ? 'Eşleşme bulunduğunda onayın istenir, onaylamazsan ücret alınmaz.'
+                  ? 'Talep alındığında onayın istenir; onaylamazsan ücret alınmaz.'
                   : 'Tutara KDV dahildir. Taşıma başlamadan 24 saat önce ücretsiz iptal edebilirsin.'}
               </p>
             </div>

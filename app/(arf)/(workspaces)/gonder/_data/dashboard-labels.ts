@@ -8,7 +8,7 @@ export const dashboardLabels: Record<string, string> = {
   'quick.connectChannel.title': 'Satış Kanalını Bağla',
   'quick.connectChannel.description': 'Siparişleriniz otomatik aktarılsın',
   'quick.priceCalculation.title': 'Fiyat Hesapla',
-  'quick.priceCalculation.description': 'Taşıyıcı fiyatlarını karşılaştırın',
+  'quick.priceCalculation.description': 'Talebiniz için taşıma seçeneklerini görün',
   'quick.excelBulk.title': 'Excel ile toplu oluştur',
   'quick.excelBulk.description': 'Toplu siparişleri şablonla yükleyin',
   'perf.title': 'Performans özeti',

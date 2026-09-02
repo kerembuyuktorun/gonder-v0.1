@@ -30,6 +30,8 @@ export type OrderCreateFormState = {
   referans_no: string
   siparis_tipi: CreateOrderType | ''
   rota_tipi: RouteType | ''
+  /** Teslimat zamanı: Express · Aynı gün / Ertesi gün · Planlı */
+  teslimat_hizi: 'express' | 'same_day' | 'scheduled' | ''
   alim_tarih: string
   alim_baslangic: string
   alim_bitis: string

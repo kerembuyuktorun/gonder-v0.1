@@ -1,20 +1,21 @@
-import { ClipboardList, GitCompare, Radar } from 'lucide-react'
+import { ClipboardList, Radar, Search } from 'lucide-react'
 
 const STEPS = [
   {
     icon: ClipboardList,
-    title: 'Gönderini tanımla',
+    title: 'Talebini oluştur',
     description: 'Paketini, yükünü ve güzergâhını belirt.',
   },
   {
-    icon: GitCompare,
-    title: 'Seçeneğini belirle',
-    description: 'Mevcut fiyatları karşılaştır veya özel teklif iste.',
+    icon: Search,
+    title: 'Gönder seçenekleri bulsun',
+    description:
+      'Anlaşmalı firmalar, taşıma ağı ve gerektiğinde lojistik uzmanı üzerinden uygun alternatifler oluşur.',
   },
   {
     icon: Radar,
-    title: 'Süreci takip et',
-    description: 'Gönderinin ilerleyişini tek panelden izle.',
+    title: 'Teklifi seç, süreci takip et',
+    description: 'İlk tekliflerini hemen değerlendirebilir, gönderinin ilerleyişini tek panelden izleyebilirsin.',
   },
 ]
 
@@ -24,7 +25,9 @@ export function HowItWorks() {
       <div className='gl-container'>
         <div className='mx-auto max-w-2xl text-center'>
           <h2 className='text-3xl font-bold sm:text-4xl'>Nasıl çalışır?</h2>
-          <p className='mt-3 text-[var(--gl-muted)]'>Üç adımda taşıma seçeneğine ulaş.</p>
+          <p className='mt-3 text-[var(--gl-muted)]'>
+            Talebini oluştur, Gönder uygun taşıma seçeneklerini senin için bulsun.
+          </p>
         </div>
 
         <ol className='mt-12 grid gap-6 sm:grid-cols-3'>

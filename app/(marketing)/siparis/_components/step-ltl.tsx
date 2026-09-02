@@ -9,6 +9,7 @@ import { LoadArt } from './order-art'
 import { NumberField, QuantityStepper, SelectField, TextField, ToggleRow } from './inputs'
 import { SelectionCard } from './selection-card'
 import { ExtrasBlock } from './extras-block'
+import { SpeedTimingBlock } from './speed-timing-block'
 import { StepHeader, StepNav } from './step-shell'
 import { useWizard } from './wizard-context'
 
@@ -150,6 +151,8 @@ export function StepLtl() {
               onChange={(v) => set({ description: v })}
             />
 
+            <SpeedTimingBlock />
+
             <ExtrasBlock />
           </div>
 
@@ -181,7 +184,7 @@ export function StepLtl() {
 
             <p className='mt-4 flex items-start gap-2 text-xs leading-relaxed text-[var(--gl-muted)]'>
               <Info className='mt-0.5 size-3.5 shrink-0' aria-hidden />
-              Sonraki adımda esnek tarih ve dönüş yükü seçenekleriyle daha uygun navlunları göreceksin.
+              Sonraki adımda anlaşmalı firmalar ve taşıma ağı üzerinden oluşan seçenekleri hemen değerlendirebilirsin.
             </p>
           </aside>
         </div>

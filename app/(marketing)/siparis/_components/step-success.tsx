@@ -34,7 +34,7 @@ export function StepSuccess() {
       </h2>
       <p className='mx-auto mt-2 max-w-md text-sm leading-relaxed text-[var(--gl-muted)]'>
         {preAuthOnly
-          ? 'Bu hatta dönüş yükü çıkar çıkmaz sana bildirim göndereceğiz. Onayladığında araç planlanır.'
+          ? 'Talebin Gönder ağı ve gerektiğinde lojistik uzmanı tarafından değerlendirilmeye alındı. Mevcut seçeneklerin varsa bunları kullanmaya devam edebilirsin.'
           : `${draft.origin?.city} – ${draft.destination?.city} taşıman planlamaya alındı. Detaylar e-posta ve SMS ile paylaşılacak.`}
       </p>
 

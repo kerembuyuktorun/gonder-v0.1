@@ -20,7 +20,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ARF_ROUTES } from '../../../../_shared/routes'
 import {
-  COURIER_SPEED_LABELS,
+  SERVICE_TIMING_HINTS,
+  SERVICE_TIMING_LABELS,
   LOGISTICS_SUBTYPE_LABELS,
 } from '../../_lib/price-calculation-labels'
 import {
@@ -49,14 +50,30 @@ const OPERATION_OPTIONS: Array<{
   { id: 'logistics', title: 'Lojistik', icon: Truck },
 ]
 
-const COURIER_OPTIONS: Array<{
+const TIMING_OPTIONS: Array<{
   id: CourierSpeed
   title: string
+  description: string
   icon: typeof Zap
 }> = [
-  { id: 'express', title: COURIER_SPEED_LABELS.express, icon: Zap },
-  { id: 'same_day', title: COURIER_SPEED_LABELS.same_day, icon: Send },
-  { id: 'scheduled', title: COURIER_SPEED_LABELS.scheduled, icon: CalendarClock },
+  {
+    id: 'express',
+    title: SERVICE_TIMING_LABELS.express,
+    description: SERVICE_TIMING_HINTS.express,
+    icon: Zap,
+  },
+  {
+    id: 'same_day',
+    title: SERVICE_TIMING_LABELS.same_day,
+    description: SERVICE_TIMING_HINTS.same_day,
+    icon: Send,
+  },
+  {
+    id: 'scheduled',
+    title: SERVICE_TIMING_LABELS.scheduled,
+    description: SERVICE_TIMING_HINTS.scheduled,
+    icon: CalendarClock,
+  },
 ]
 
 const VEHICLE_TYPES = ['Kamyonet', 'Kamyon', 'Tır']
@@ -225,37 +242,40 @@ export function PriceCalculationContent() {
               </Card>
             ) : null}
 
-            {draft.operationType && draft.operationType !== 'logistics' ? (
-              <>
-                <PieceListEditor
-                  pieces={draft.pieces}
-                  onAdd={addPiece}
-                  onRemove={removePiece}
-                  invalid={attempted}
-                  showLogisticsHint={totals.desi > 30}
-                  onSwitchToLogistics={() => setOperationType('logistics')}
-                />
-
-                {draft.operationType === 'courier' ? (
-                  <Card className='gap-0 py-0 shadow-sm'>
-                    <CardHeader className='space-y-0 px-3 pt-3 pb-1.5'>
-                      <CardTitle className='text-sm font-semibold'>Kurye hızı</CardTitle>
-                    </CardHeader>
-                    <CardContent className='grid gap-2 px-3 pb-3 pt-0 sm:grid-cols-3'>
-                      {COURIER_OPTIONS.map((option) => (
-                        <SelectionTile
-                          key={option.id}
-                          title={option.title}
-                          icon={option.icon}
-                          compact
-                          selected={draft.courierSpeed === option.id}
-                          onClick={() => setCourierSpeed(option.id)}
-                        />
-                      ))}
-                    </CardContent>
-                  </Card>
+            {draft.operationType ? (
+              <Card className='gap-0 py-0 shadow-sm'>
+                <CardHeader className='space-y-0 px-3 pt-3 pb-1.5'>
+                  <CardTitle className='text-sm font-semibold'>Teslimat zamanı</CardTitle>
+                </CardHeader>
+                <CardContent className='grid gap-2 px-3 pb-3 pt-0 sm:grid-cols-3'>
+                  {TIMING_OPTIONS.map((option) => (
+                    <SelectionTile
+                      key={option.id}
+                      title={option.title}
+                      description={option.description}
+                      icon={option.icon}
+                      selected={draft.courierSpeed === option.id}
+                      onClick={() => setCourierSpeed(option.id)}
+                    />
+                  ))}
+                </CardContent>
+                {attempted && !draft.courierSpeed ? (
+                  <p className='px-3 pb-2.5 text-[11px] text-destructive'>
+                    Teslimat zamanını seçin
+                  </p>
                 ) : null}
-              </>
+              </Card>
+            ) : null}
+
+            {draft.operationType && draft.operationType !== 'logistics' ? (
+              <PieceListEditor
+                pieces={draft.pieces}
+                onAdd={addPiece}
+                onRemove={removePiece}
+                invalid={attempted}
+                showLogisticsHint={totals.desi > 30}
+                onSwitchToLogistics={() => setOperationType('logistics')}
+              />
             ) : null}
 
             <div className='sticky bottom-3 z-10 flex justify-end rounded-xl border bg-background/95 p-2 shadow-sm backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none'>

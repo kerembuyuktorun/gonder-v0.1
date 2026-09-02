@@ -250,7 +250,7 @@ export function QuotesContent() {
     <DataWorkspace
       breadcrumbs={[{ label: 'Gönder' }, { label: 'Teklifler' }]}
       title='Teklifler'
-      description='Farklı taşıyıcılardan gelen teklif taleplerini izleyin ve karşılaştırın.'
+      description='Talebiniz için oluşan taşıma seçeneklerini izleyin ve teklif seçin.'
       headerActions={
         <Button size='sm' asChild>
           <Link href={ARF_ROUTES.gonder.priceCalculation}>Yeni fiyat hesapla</Link>

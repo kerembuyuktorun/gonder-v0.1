@@ -27,8 +27,8 @@ export function LandingHero() {
           </h1>
 
           <p className='mx-auto mt-5 max-w-xl text-base leading-relaxed text-[var(--gl-muted)] sm:text-lg'>
-            Kargo, parsiyel yük ve komple araç. Yükünü tarif et, taşıma seçeneklerini karşılaştır,
-            süreci tek panelden takip et.
+            Kargo, parsiyel yük ve komple araç. Talebini oluştur, Gönder uygun taşıma seçeneklerini
+            senin için bulsun.
           </p>
 
           <div className='mt-9 sm:mt-10'>

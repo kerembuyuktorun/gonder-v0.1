@@ -144,7 +144,9 @@ export type SearchQuote = {
   score?: number
   priceTry: number | null
   priceState: QuotePriceState
-  badges?: Array<'recommended' | 'fastest'>
+  badges?: Array<'recommended' | 'fastest' | 'best_price'>
+  quoteSource: 'instant' | 'network' | 'specialist'
+  vehicleLabel?: string
   hasInstantPrice: boolean
   hasPickupService: boolean
   serviceType: string

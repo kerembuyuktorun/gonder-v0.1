@@ -24,7 +24,7 @@ const FAQ = [
   },
   {
     q: 'Her gönderi için anında fiyat alabilir miyim?',
-    a: 'Birçok hat için anlık fiyat sunuyoruz. Bazı güzergâh veya özel yüklerde anında fiyat yerine özel teklif talebi oluşturman gerekir; form bilgilerini korur.',
+    a: 'Birçok standart gönderide anlık teklif sunulur. İlk tekliflerinizi hemen değerlendirebilirsiniz. Gönder ağı talebinizi işlemeye devam ederken farklı bir taşıyıcı veya fiyat alternatifi de oluşabilir. FTL, LTL ve standart dışı yüklerde lojistik uzmanı da sürece dahil olabilir.',
   },
   {
     q: 'Gönderimi nasıl takip ederim?',

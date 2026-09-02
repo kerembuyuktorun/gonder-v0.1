@@ -2,6 +2,21 @@ export type ServiceType = 'kargo' | 'lojistik'
 
 export type LogisticsMode = 'ftl' | 'ltl'
 
+/** Teslimat zamanı — kargo ve lojistikte ortak */
+export type DeliverySpeed = 'express' | 'same_day' | 'scheduled'
+
+export const DELIVERY_SPEED_LABELS: Record<DeliverySpeed, string> = {
+  express: 'Express',
+  same_day: 'Aynı gün / Ertesi gün',
+  scheduled: 'Planlı',
+}
+
+export const DELIVERY_SPEED_HINTS: Record<DeliverySpeed, string> = {
+  express: 'Öncelikli hat, en kısa teslim',
+  same_day: 'Bugün veya ertesi iş günü teslim',
+  scheduled: 'Tarih planlayarak gönder',
+}
+
 export type PlaceResult = {
   id: string
   /** Kısa başlık: "Kadıköy Mahallesi" */
@@ -73,6 +88,7 @@ export type OrderDraft = {
   destination: PlaceResult | null
   service: ServiceType | null
   logisticsMode: LogisticsMode | null
+  deliverySpeed: DeliverySpeed
   cargo: CargoDetails
   ftl: FtlDetails
   ltl: LtlDetails
@@ -81,6 +97,7 @@ export type OrderDraft = {
 }
 
 export type OfferPlan = 'instant' | 'flexible' | 'backload' | 'express' | 'economy'
+export type OfferQuoteSource = 'instant' | 'network' | 'specialist'
 
 export type Offer = {
   id: string
@@ -93,6 +110,8 @@ export type Offer = {
   comparePrice?: number
   etaLabel: string
   perks: string[]
+  quoteSource: OfferQuoteSource
+  serviceLabel: string
   /** Anında onay yerine eşleşme beklenen planlar */
   requiresMatching?: boolean
   badge?: string
@@ -116,6 +135,7 @@ export function createInitialOrder(): OrderDraft {
     destination: null,
     service: null,
     logisticsMode: null,
+    deliverySpeed: 'express',
     cargo: {
       preset: null,
       widthCm: 30,

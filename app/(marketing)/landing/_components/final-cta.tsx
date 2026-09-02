@@ -21,7 +21,7 @@ export function FinalCta() {
               Bir paket de olsa, bir araç dolusu da.
             </h2>
             <p className='mx-auto mt-3 max-w-md text-[var(--gl-muted)]'>
-              Gönderi bilgilerini gir, taşıma seçeneklerini gör.
+              Talebini oluştur, Gönder uygun taşıma seçeneklerini senin için bulsun.
             </p>
             <button type='button' className='gl-btn-primary mt-8' onClick={() => startOrder()}>
               Teklif Al

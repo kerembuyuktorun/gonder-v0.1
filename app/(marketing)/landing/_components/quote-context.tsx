@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { toOrderQuery, type ParsedPrompt } from '../_lib/parse-prompt'
+import { LANDING_MODULES } from '../_lib/modules'
 
 export type TransportMode = 'kargo' | 'lojistik'
 
@@ -17,6 +18,11 @@ type QuoteContextValue = {
   assistantSeed: { text: string; nonce: number } | null
   sendToAssistant: (text: string) => void
   scrollToAssistant: () => void
+  /** Modüller bölümünde açık olan sekme */
+  activeModule: string
+  setActiveModule: (id: string) => void
+  /** Menüden bir modüle atlar ve sekmesini açar */
+  showModule: (id: string) => void
 }
 
 const QuoteContext = createContext<QuoteContextValue | null>(null)
@@ -26,6 +32,7 @@ const ORDER_PATH = '/siparis'
 export function QuoteProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const [assistantSeed, setAssistantSeed] = useState<{ text: string; nonce: number } | null>(null)
+  const [activeModule, setActiveModule] = useState(LANDING_MODULES[0].id)
 
   const startOrder = useCallback(
     (service?: TransportMode) => {
@@ -53,6 +60,13 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
     document.getElementById('asistan')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [])
 
+  const showModule = useCallback((id: string) => {
+    setActiveModule(id)
+    requestAnimationFrame(() => {
+      document.getElementById('moduller')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [])
+
   const sendToAssistant = useCallback(
     (text: string) => {
       setAssistantSeed({ text, nonce: Date.now() })
@@ -69,8 +83,20 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
       assistantSeed,
       sendToAssistant,
       scrollToAssistant,
+      activeModule,
+      setActiveModule,
+      showModule,
     }),
-    [assistantSeed, scrollToAssistant, sendToAssistant, startOrder, startOrderFromPrompt, startOrderWithRoute]
+    [
+      activeModule,
+      assistantSeed,
+      scrollToAssistant,
+      sendToAssistant,
+      showModule,
+      startOrder,
+      startOrderFromPrompt,
+      startOrderWithRoute,
+    ]
   )
 
   return <QuoteContext.Provider value={value}>{children}</QuoteContext.Provider>

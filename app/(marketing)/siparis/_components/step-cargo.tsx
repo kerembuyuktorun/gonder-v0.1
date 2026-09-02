@@ -8,6 +8,7 @@ import { formatTry } from '../_lib/order-types'
 import { PackageArt } from './order-art'
 import { NumberField, QuantityStepper, TextField, ToggleRow } from './inputs'
 import { SelectionCard } from './selection-card'
+import { SpeedTimingBlock } from './speed-timing-block'
 import { StepHeader, StepNav } from './step-shell'
 import { useWizard } from './wizard-context'
 
@@ -183,6 +184,10 @@ export function StepCargo() {
             Kesin tutarı sonraki adımda seçeceğin teklif belirler.
           </p>
         </aside>
+      </div>
+
+      <div className='mt-8'>
+        <SpeedTimingBlock />
       </div>
 
       <StepNav

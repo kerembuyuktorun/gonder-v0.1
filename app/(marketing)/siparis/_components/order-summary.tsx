@@ -10,7 +10,7 @@ import {
   PACKAGE_PRESETS,
 } from '../_lib/catalog'
 import { calcDesi } from '../_lib/pricing'
-import type { OrderDraft } from '../_lib/order-types'
+import { DELIVERY_SPEED_LABELS, type OrderDraft } from '../_lib/order-types'
 import { useWizard, type StepId } from './wizard-context'
 
 type SummaryRow = { label: string; value: string }
@@ -23,7 +23,10 @@ function formatDate(value: string): string {
 }
 
 export function buildSummaryRows(draft: OrderDraft): SummaryRow[] {
-  const rows: SummaryRow[] = [{ label: 'Yükleme tarihi', value: formatDate(draft.extras.loadingDate) }]
+  const rows: SummaryRow[] = [
+    { label: 'Yükleme tarihi', value: formatDate(draft.extras.loadingDate) },
+    { label: 'Teslimat zamanı', value: DELIVERY_SPEED_LABELS[draft.deliverySpeed] },
+  ]
 
   if (draft.service === 'kargo') {
     const { cargo } = draft

@@ -17,7 +17,7 @@ const sourceSans = Source_Sans_3({
 export const metadata: Metadata = {
   title: 'Gönder — Kargodan komple araca, taşımanın kolay yolu',
   description:
-    'Paketini veya yükünü tanımla, taşıma seçeneklerini karşılaştır. Gönderilerini tek yerden yönet. Arf altyapısıyla.',
+    'Paketini veya yükünü tarif et, Gönder uygun taşıma seçeneklerini senin için bulsun. Gönderilerini tek yerden yönet. Arf altyapısıyla.',
 }
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {

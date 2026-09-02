@@ -8,6 +8,7 @@ import { BodyArt, VehicleArt } from './order-art'
 import { QuantityStepper } from './inputs'
 import { SelectionCard } from './selection-card'
 import { ExtrasBlock } from './extras-block'
+import { SpeedTimingBlock } from './speed-timing-block'
 import { StepHeader, StepNav } from './step-shell'
 import { useWizard } from './wizard-context'
 
@@ -173,6 +174,10 @@ export function StepFtl() {
         <Plus className='size-4' aria-hidden />
         Farklı araç/kasa ekle
       </button>
+
+      <div className='mt-8'>
+        <SpeedTimingBlock />
+      </div>
 
       <div className='mt-8'>
         <ExtrasBlock />

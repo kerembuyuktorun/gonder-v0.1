@@ -1,6 +1,7 @@
 'use client'
 
 import type { Dispatch, SetStateAction } from 'react'
+import { CalendarClock, Send, Zap } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -27,6 +28,22 @@ import {
 import { Field } from './form-section'
 import { MultiSelectBox } from './multi-select-box'
 import { DatePickerButton, TimeWindowField } from './time-window-field'
+
+const TESLIMAT_HIZI_OPTIONS: Array<{
+  value: NonNullable<OrderCreateFormState['teslimat_hizi']>
+  label: string
+  hint: string
+  icon: typeof Zap
+}> = [
+  { value: 'express', label: 'Express', hint: 'Öncelikli, en kısa teslim', icon: Zap },
+  {
+    value: 'same_day',
+    label: 'Aynı gün / Ertesi gün',
+    hint: 'Bugün veya ertesi iş günü',
+    icon: Send,
+  },
+  { value: 'scheduled', label: 'Planlı', hint: 'Tarih planlayarak gönder', icon: CalendarClock },
+]
 
 function updateField<K extends keyof OrderCreateFormState>(
   setForm: Dispatch<SetStateAction<OrderCreateFormState>>,
@@ -243,6 +260,46 @@ export function StepBasics({
           </Select>
         </Field>
       </div>
+
+      <Field
+        label='Teslimat zamanı'
+        required
+        error={fieldError('teslimat_hizi')}
+        hint='Tüm sipariş tiplerinde Express, aynı gün/ertesi gün veya planlı teslim seçilir.'
+      >
+        <div className='grid gap-2 sm:grid-cols-3'>
+          {TESLIMAT_HIZI_OPTIONS.map((option) => {
+            const Icon = option.icon
+            const selected = form.teslimat_hizi === option.value
+            return (
+              <button
+                key={option.value}
+                type='button'
+                onClick={() => updateField(setForm, 'teslimat_hizi', option.value)}
+                className={cn(
+                  'flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors',
+                  selected
+                    ? 'border-lime-500 bg-lime-50'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                )}
+              >
+                <span
+                  className={cn(
+                    'mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg',
+                    selected ? 'bg-lime-400 text-black' : 'bg-slate-100 text-slate-500'
+                  )}
+                >
+                  <Icon className='size-3.5' />
+                </span>
+                <span className='min-w-0'>
+                  <span className='block text-sm font-semibold'>{option.label}</span>
+                  <span className='block text-[11px] text-slate-500'>{option.hint}</span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </Field>
 
       <div
         className={cn(

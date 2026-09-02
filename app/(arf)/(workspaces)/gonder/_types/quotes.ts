@@ -1,3 +1,5 @@
+import type { QuotePaymentSummary } from './payment'
+
 export type QuoteRequestStatus =
   | 'draft'
   | 'submitted'
@@ -6,6 +8,7 @@ export type QuoteRequestStatus =
   | 'ready'
   | 'selected'
   | 'payment_pending'
+  | 'paid'
   | 'converted'
   | 'expired'
   | 'cancelled'
@@ -28,6 +31,10 @@ export type QuoteRequestView =
   | 'converted'
   | 'closed'
 
+export type QuoteSource = 'instant' | 'network' | 'specialist'
+
+export type QuoteHighlight = 'recommended' | 'fastest' | 'best_price'
+
 export type QuoteOffer = {
   id: string
   requestId: string
@@ -39,7 +46,10 @@ export type QuoteOffer = {
   score?: number
   priceTry: number | null
   status: QuoteOfferStatus
-  badges?: Array<'recommended' | 'fastest'>
+  badges?: QuoteHighlight[]
+  quoteSource: QuoteSource
+  /** Araç / hizmet tipi (ör. Tır · Tenteli, LTL Parsiyel) */
+  vehicleLabel?: string
   hasInstantPrice: boolean
   hasPickupService: boolean
   serviceType: string
@@ -61,6 +71,8 @@ export type QuoteRequest = {
   updatedAt: string
   selectedQuoteId: string | null
   shipmentId: string | null
+  /** Kart ile ödeme tamamlandıysa tahsilat özeti */
+  payment: QuotePaymentSummary | null
   offers: QuoteOffer[]
 }
 
@@ -72,6 +84,7 @@ export const QUOTE_REQUEST_STATUS_LABELS: Record<QuoteRequestStatus, string> = {
   ready: 'Hazır',
   selected: 'Seçildi',
   payment_pending: 'Ödeme bekliyor',
+  paid: 'Ödendi',
   converted: 'Gönderiye dönüştü',
   expired: 'Süresi doldu',
   cancelled: 'İptal',
@@ -91,8 +104,8 @@ export const QUOTE_OFFER_STATUS_LABELS: Record<QuoteOfferStatus, string> = {
 export const QUOTE_REQUEST_VIEW_STATUSES: Record<QuoteRequestView, QuoteRequestStatus[] | null> = {
   all: null,
   open: ['draft', 'submitted', 'collecting', 'partially_received', 'ready'],
-  action_required: ['ready', 'selected', 'payment_pending', 'partially_received'],
-  ready: ['ready', 'selected', 'payment_pending', 'partially_received'],
+  action_required: ['ready', 'selected', 'payment_pending', 'paid', 'partially_received'],
+  ready: ['ready', 'selected', 'payment_pending', 'paid', 'partially_received'],
   converted: ['converted'],
   closed: ['expired', 'cancelled', 'rejected'],
 }
@@ -105,6 +118,7 @@ export const QUOTE_REQUEST_STATUS_BADGE: Record<QuoteRequestStatus, string> = {
   ready: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700',
   selected: 'border-violet-500/20 bg-violet-500/10 text-violet-700',
   payment_pending: 'border-amber-500/20 bg-amber-500/10 text-amber-700',
+  paid: 'border-teal-500/20 bg-teal-500/10 text-teal-700',
   converted: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700',
   expired: 'border-slate-400/30 bg-slate-500/10 text-slate-700',
   cancelled: 'border-rose-500/20 bg-rose-500/10 text-rose-700',
@@ -115,5 +129,12 @@ export const ACTIONABLE_QUOTE_REQUEST_STATUSES: QuoteRequestStatus[] = [
   'ready',
   'selected',
   'payment_pending',
+  'paid',
   'partially_received',
+]
+
+/** Seçilen teklif için kart tahsilatı beklenen durumlar */
+export const PAYABLE_QUOTE_REQUEST_STATUSES: QuoteRequestStatus[] = [
+  'selected',
+  'payment_pending',
 ]

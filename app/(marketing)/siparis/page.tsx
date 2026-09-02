@@ -7,7 +7,7 @@ import type { LogisticsMode, PlaceResult, ServiceType } from './_lib/order-types
 export const metadata: Metadata = {
   title: 'Sipariş Oluştur — Gönder',
   description:
-    'Çıkış ve varış adresini seç, kargo veya lojistik hizmetini belirle, teklifini karşılaştır ve siparişini tamamla.',
+    'Çıkış ve varış adresini seç, kargo veya lojistik talebini oluştur, Gönder uygun taşıma seçeneklerini bulsun.',
 }
 
 /** Landing'den gelen şehir adını demo adres veritabanındaki bir noktaya bağlar. */

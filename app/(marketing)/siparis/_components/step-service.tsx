@@ -23,7 +23,7 @@ const OPTIONS: Array<{
     id: 'lojistik',
     title: 'Lojistik',
     tagline: 'Palet, parsiyel ve komple araç',
-    bullets: ['Komple (FTL) ve parsiyel (LTL)', 'Araç ve kasa tipi seçimi', 'Esnek tarihte daha uygun navlun'],
+    bullets: ['Komple (FTL) ve parsiyel (LTL)', 'Araç ve kasa tipi seçimi', 'Gerektiğinde lojistik uzmanı desteği'],
     icon: Truck,
   },
 ]

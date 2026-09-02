@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  COURIER_SPEED_LABELS,
+  SERVICE_TIMING_LABELS,
   LOGISTICS_SUBTYPE_LABELS,
   OPERATION_TYPE_LABELS,
 } from '../_lib/price-calculation-labels'
@@ -60,11 +60,11 @@ export function PriceDraftSummaryPanel({ draft }: Props) {
               value={LOGISTICS_SUBTYPE_LABELS[draft.logisticsSubtype]}
             />
           ) : null}
-          {draft.operationType === 'courier' && draft.courierSpeed ? (
+          {draft.courierSpeed ? (
             <SummaryRow
               icon={Box}
-              label='Kurye hızı'
-              value={COURIER_SPEED_LABELS[draft.courierSpeed]}
+              label='Teslimat zamanı'
+              value={SERVICE_TIMING_LABELS[draft.courierSpeed]}
             />
           ) : null}
           {draft.pieces.length > 0 ? (

@@ -5,31 +5,43 @@ import {
   Bell,
   Boxes,
   FileText,
-  GitCompare,
   LayoutDashboard,
   Plug,
+  Search,
 } from 'lucide-react'
 
 const FEATURES = [
   {
     id: 'compare',
-    icon: GitCompare,
-    title: 'Taşıma seçeneklerini karşılaştır',
-    description: 'Fiyatı, süreyi ve hizmet kapsamını birlikte değerlendir.',
+    icon: Search,
+    title: 'Talebini oluştur, seçenekler gelsin',
+    description:
+      'Gönder anlaşmalı firmalar ve taşıma ağı üzerinden uygun seçenekleri oluşturur. Fiyat, süre ve hizmet tipini birlikte görürsün.',
     align: 'left' as const,
     mock: (
       <div className='space-y-2 p-4'>
         {[
-          { name: 'Hızlı Kargo · Standart', price: '₺142', days: '2–3 gün', badge: 'En düşük' },
-          { name: 'Express Line · Hızlı', price: '₺192', days: '1–2 gün', badge: 'En erken' },
+          { initials: 'AP', bg: '#195b55', name: 'ARF Parcel', source: 'Anlık Teklif', price: '₺189', days: '1–2 gün', badge: 'Önerilen' },
+          { initials: 'EG', bg: '#2f6b3a', name: 'EkoGönder', source: 'Gönder Eşleşmesi', price: '₺118', days: '3–5 gün', badge: 'En Uygun' },
         ].map((o) => (
           <div
             key={o.name}
-            className='flex items-center justify-between rounded-lg border border-[var(--gl-border)] bg-white p-3 text-sm'
+            className='flex items-center justify-between gap-3 rounded-lg border border-[var(--gl-border)] bg-white p-3 text-sm'
           >
-            <div>
-              <p className='font-medium'>{o.name}</p>
-              <p className='text-xs text-[var(--gl-muted)]'>{o.days}</p>
+            <div className='flex min-w-0 items-center gap-2.5'>
+              <span
+                className='flex size-8 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white'
+                style={{ background: o.bg }}
+                aria-hidden
+              >
+                {o.initials}
+              </span>
+              <div className='min-w-0'>
+                <p className='font-medium'>{o.name}</p>
+                <p className='text-xs text-[var(--gl-muted)]'>
+                  {o.days} · {o.source}
+                </p>
+              </div>
             </div>
             <div className='text-right'>
               <p className='font-semibold text-[var(--gl-accent)]'>{o.price}</p>

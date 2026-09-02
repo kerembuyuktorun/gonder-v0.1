@@ -1,43 +1,71 @@
-import type { PriceCalculationDraft, SearchQuote } from '../_types/price-calculation'
+import type { CourierSpeed, PriceCalculationDraft, SearchQuote } from '../_types/price-calculation'
 import { calcPiecesTotals } from '../_types/price-calculation'
+import { SERVICE_TIMING_LABELS } from '../_lib/price-calculation-labels'
+import { inferQuoteSource } from '../_lib/quote-offer-labels'
 
 export interface QuoteRepository {
   search(draft: PriceCalculationDraft): Promise<SearchQuote[]>
+}
+
+function timingFactor(speed: CourierSpeed | null): number {
+  if (speed === 'same_day') return 1.35
+  if (speed === 'scheduled') return 0.88
+  return 1.12
+}
+
+function timingEta(speed: CourierSpeed | null, fallback: string): string {
+  if (speed === 'same_day') return 'Aynı gün / ertesi gün'
+  if (speed === 'scheduled') return 'Planlı teslim'
+  if (speed === 'express') return 'Express teslim'
+  return fallback
+}
+
+function logisticsVehicleLabel(draft: PriceCalculationDraft, isFtl: boolean): string {
+  const parts = [draft.vehicleType, draft.bodyType].filter(Boolean)
+  if (parts.length > 0) return parts.join(' · ')
+  return isFtl ? 'FTL / Komple araç' : 'LTL / Parsiyel'
 }
 
 function baseQuotes(draft: PriceCalculationDraft): SearchQuote[] {
   const totals = calcPiecesTotals(draft.pieces)
   const desi = totals.desi > 0 ? totals.desi : draft.weightKg ?? 100
   const distanceFactor = draft.origin?.city === draft.destination?.city ? 0.75 : 1.15
+  const speed = timingFactor(draft.courierSpeed)
+  const timingLabel = draft.courierSpeed
+    ? SERVICE_TIMING_LABELS[draft.courierSpeed]
+    : SERVICE_TIMING_LABELS.express
 
   if (draft.operationType === 'parcel') {
     return [
       {
         id: 'q-parcel-arf-express',
         providerName: 'ARF Parcel',
-        serviceName: 'Express Kapıdan Kapıya',
-        etaLabel: '1-2 iş günü',
-        pickupLabel: 'Aynı gün alma',
+        serviceName: `${timingLabel} Kapıdan Kapıya`,
+        etaLabel: timingEta(draft.courierSpeed, '1-2 iş günü'),
+        pickupLabel: draft.courierSpeed === 'scheduled' ? 'Planlı alma' : 'Aynı gün alma',
         insuranceLabel: 'Sigorta dahil',
         score: 4.8,
-        priceTry: Math.round(89 * distanceFactor + desi * 4.2),
+        priceTry: Math.round((89 * distanceFactor + desi * 4.2) * speed),
         priceState: 'ready',
-        badges: ['recommended'],
+        badges: ['recommended', 'fastest'],
+        quoteSource: inferQuoteSource({ hasInstantPrice: true, quoteSource: 'instant' }),
+        vehicleLabel: 'Koli / Paket',
         hasInstantPrice: true,
         hasPickupService: true,
-        serviceType: 'express',
+        serviceType: draft.courierSpeed ?? 'express',
       },
       {
         id: 'q-parcel-hizli',
         providerName: 'HızlıKargo',
-        serviceName: 'Standart',
-        etaLabel: '2-3 iş günü',
-        pickupLabel: 'Ertesi gün alma',
+        serviceName: timingLabel,
+        etaLabel: timingEta(draft.courierSpeed, '2-3 iş günü'),
+        pickupLabel: draft.courierSpeed === 'scheduled' ? 'Randevulu alma' : 'Ertesi gün alma',
         insuranceLabel: 'Opsiyonel sigorta',
         score: 4.5,
-        priceTry: Math.round(64 * distanceFactor + desi * 3.1),
+        priceTry: Math.round((64 * distanceFactor + desi * 3.1) * speed),
         priceState: 'ready',
-        badges: ['fastest'],
+        quoteSource: 'network',
+        vehicleLabel: 'Koli / Paket',
         hasInstantPrice: true,
         hasPickupService: true,
         serviceType: 'standard',
@@ -46,11 +74,14 @@ function baseQuotes(draft: PriceCalculationDraft): SearchQuote[] {
         id: 'q-parcel-eko',
         providerName: 'EkoGönder',
         serviceName: 'Ekonomik',
-        etaLabel: '3-5 iş günü',
+        etaLabel: draft.courierSpeed === 'same_day' ? 'Ertesi gün' : '3-5 iş günü',
         pickupLabel: 'Şube teslim',
         score: 4.1,
-        priceTry: Math.round(49 * distanceFactor + desi * 2.4),
+        priceTry: Math.round((49 * distanceFactor + desi * 2.4) * speed),
         priceState: 'ready',
+        badges: ['best_price'],
+        quoteSource: 'network',
+        vehicleLabel: 'Koli / Paket',
         hasInstantPrice: true,
         hasPickupService: false,
         serviceType: 'economy',
@@ -59,25 +90,30 @@ function baseQuotes(draft: PriceCalculationDraft): SearchQuote[] {
   }
 
   if (draft.operationType === 'courier') {
-    const speedFactor =
-      draft.courierSpeed === 'same_day' ? 1.45 : draft.courierSpeed === 'scheduled' ? 0.9 : 1.2
     return [
       {
         id: 'q-courier-city',
         providerName: 'CityKurye',
         serviceName:
           draft.courierSpeed === 'same_day'
-            ? 'Aynı Gün Teslim'
+            ? 'Aynı Gün / Ertesi Gün Teslim'
             : draft.courierSpeed === 'scheduled'
               ? 'Planlı Teslim'
               : 'Express Kurye',
-        etaLabel: draft.courierSpeed === 'same_day' ? '2-6 saat' : 'Aynı gün',
-        pickupLabel: '30 dk içinde alma',
+        etaLabel:
+          draft.courierSpeed === 'same_day'
+            ? '2-6 saat / ertesi gün'
+            : draft.courierSpeed === 'scheduled'
+              ? 'Planlanan saatte'
+              : 'Aynı gün',
+        pickupLabel: draft.courierSpeed === 'scheduled' ? 'Randevulu alma' : '30 dk içinde alma',
         insuranceLabel: 'Temel sigorta',
         score: 4.7,
-        priceTry: Math.round(120 * distanceFactor * speedFactor + desi * 5),
+        priceTry: Math.round(120 * distanceFactor * speed + desi * 5),
         priceState: 'ready',
         badges: ['recommended', 'fastest'],
+        quoteSource: 'instant',
+        vehicleLabel: 'Kurye',
         hasInstantPrice: true,
         hasPickupService: true,
         serviceType: draft.courierSpeed ?? 'express',
@@ -86,11 +122,14 @@ function baseQuotes(draft: PriceCalculationDraft): SearchQuote[] {
         id: 'q-courier-moto',
         providerName: 'MotoJet',
         serviceName: 'Motokurye',
-        etaLabel: '1-3 saat',
-        pickupLabel: 'Anında alma',
+        etaLabel: draft.courierSpeed === 'scheduled' ? 'Planlanan saatte' : '1-3 saat',
+        pickupLabel: draft.courierSpeed === 'scheduled' ? 'Randevulu alma' : 'Anında alma',
         score: 4.4,
-        priceTry: Math.round(95 * distanceFactor * speedFactor + desi * 4.2),
+        priceTry: Math.round(95 * distanceFactor * speed + desi * 4.2),
         priceState: 'ready',
+        badges: ['best_price'],
+        quoteSource: 'network',
+        vehicleLabel: 'Motokurye',
         hasInstantPrice: true,
         hasPickupService: true,
         serviceType: 'moto',
@@ -98,33 +137,53 @@ function baseQuotes(draft: PriceCalculationDraft): SearchQuote[] {
     ]
   }
 
-  // logistics
   const isFtl = draft.logisticsSubtype === 'ftl'
+  const vehicleLabel = logisticsVehicleLabel(draft, isFtl)
   return [
     {
       id: 'q-log-instant',
       providerName: 'LojistikPro',
-      serviceName: isFtl ? 'FTL Komple Taşıma' : 'LTL Parsiyel',
-      etaLabel: isFtl ? '1-2 gün' : '2-4 gün',
-      pickupLabel: 'Planlı alma',
+      serviceName: `${isFtl ? 'FTL Komple' : 'LTL Parsiyel'} · ${timingLabel}`,
+      etaLabel: timingEta(draft.courierSpeed, isFtl ? '1-2 gün' : '2-4 gün'),
+      pickupLabel: draft.courierSpeed === 'scheduled' ? 'Planlı alma' : 'Aynı gün / ertesi gün alma',
       insuranceLabel: 'Yük sigortası',
       score: 4.6,
-      priceTry: Math.round((isFtl ? 4200 : 980) * distanceFactor),
+      priceTry: Math.round((isFtl ? 4200 : 980) * distanceFactor * speed),
       priceState: 'ready',
-      badges: ['recommended'],
+      badges: ['recommended', 'fastest'],
+      quoteSource: 'instant',
+      vehicleLabel,
       hasInstantPrice: true,
       hasPickupService: true,
       serviceType: isFtl ? 'ftl' : 'ltl',
     },
     {
-      id: 'q-log-preparing',
+      id: 'q-log-network',
+      providerName: 'Gönder Navlun Ağı',
+      serviceName: isFtl ? 'Hat eşleşmesi · Komple' : 'Hat eşleşmesi · Parsiyel',
+      etaLabel: timingEta(draft.courierSpeed, isFtl ? '2-3 gün' : '3-5 gün'),
+      pickupLabel: 'Eşleşme sonrası planlanır',
+      score: 4.4,
+      priceTry: Math.round((isFtl ? 3650 : 840) * distanceFactor * speed),
+      priceState: 'ready',
+      badges: ['best_price'],
+      quoteSource: 'network',
+      vehicleLabel,
+      hasInstantPrice: false,
+      hasPickupService: true,
+      serviceType: isFtl ? 'ftl' : 'ltl',
+    },
+    {
+      id: 'q-log-specialist',
       providerName: 'Anadolu Filo',
-      serviceName: isFtl ? 'FTL Teklif' : 'LTL Teklif',
-      etaLabel: 'Teklif hazırlanıyor',
-      pickupLabel: 'Onay sonrası planlanır',
+      serviceName: isFtl ? 'Uzman değerlendirmesi · FTL' : 'Uzman değerlendirmesi · LTL',
+      etaLabel: 'Değerlendiriliyor',
+      pickupLabel: 'Uzman onayı sonrası planlanır',
       score: 4.3,
       priceTry: null,
       priceState: 'preparing',
+      quoteSource: 'specialist',
+      vehicleLabel,
       hasInstantPrice: false,
       hasPickupService: true,
       serviceType: isFtl ? 'ftl' : 'ltl',
