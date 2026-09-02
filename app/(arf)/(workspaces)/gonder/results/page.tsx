@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation'
-import { ARF_ROUTES } from '../../../_shared/routes'
+import { ResultsContent } from './_components/results-content'
 
-export default function ResultsRedirectPage() {
-  redirect(ARF_ROUTES.gonder.quotes.open)
+export default function ResultsPage() {
+  return <ResultsContent />
 }

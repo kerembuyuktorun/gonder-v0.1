@@ -166,7 +166,6 @@ export function RouteMap({
             'Süre hesaplanacak'
           )}
         </span>
-        <span className='ml-auto text-[10px] text-[var(--gl-muted)]'>Demo harita · örnek veri</span>
       </div>
     </div>
   )

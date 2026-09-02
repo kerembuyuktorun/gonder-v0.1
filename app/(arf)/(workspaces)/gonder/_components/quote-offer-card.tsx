@@ -64,7 +64,12 @@ export function QuoteOfferCard({
   const disabled = selectDisabled || preparing || priceTry == null || !onSelect
 
   return (
-    <Card className={cn('gap-0 overflow-hidden py-0 shadow-sm', selected && 'ring-2 ring-primary/40')}>
+    <Card
+      className={cn(
+        'gap-0 overflow-hidden py-0 shadow-sm',
+        selected && 'border-2 border-primary ring-2 ring-primary/20'
+      )}
+    >
       <CardContent className='flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between'>
         <div className='flex min-w-0 flex-1 items-start gap-3'>
           <CarrierLogo name={providerName} />

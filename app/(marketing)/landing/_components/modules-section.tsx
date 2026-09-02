@@ -12,7 +12,7 @@ export function ModulesSection() {
   return (
     <section
       id='moduller'
-      className='scroll-mt-20 overflow-hidden border-t border-[var(--gl-border)] bg-[var(--gl-bg-soft)] pt-[clamp(3.5rem,8vw,6rem)]'
+      className='scroll-mt-20 overflow-hidden border-t border-[var(--gl-border)] bg-[#e4e9e8] pt-[clamp(3.5rem,8vw,6rem)]'
     >
       <div className='gl-container'>
         <div className='mx-auto max-w-2xl text-center'>

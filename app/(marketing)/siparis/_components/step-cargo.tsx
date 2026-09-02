@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import { Info, Ruler, ShieldCheck, Sparkles } from 'lucide-react'
 import { PACKAGE_PRESETS } from '../_lib/catalog'
 import { buildBreakdown, calcDesi } from '../_lib/pricing'
-import { formatTry } from '../_lib/order-types'
+import { EstimateCard } from './estimate-card'
 import { PackageArt } from './order-art'
 import { NumberField, QuantityStepper, TextField, ToggleRow } from './inputs'
 import { SelectionCard } from './selection-card'
@@ -154,7 +154,7 @@ export function StepCargo() {
         </div>
 
         <aside className='h-fit rounded-2xl border border-[var(--gl-border)] bg-[var(--gl-subtle)] p-5 lg:sticky lg:top-24'>
-          <p className='gl-eyebrow'>Anlık hesap</p>
+          <p className='gl-eyebrow'>Tahmini hesap</p>
 
           <dl className='mt-3 space-y-2 text-sm'>
             <div className='flex items-center justify-between'>
@@ -171,13 +171,11 @@ export function StepCargo() {
             </div>
           </dl>
 
-          {breakdown ? (
-            <div className='mt-4 rounded-xl bg-white p-4'>
-              <p className='text-xs text-[var(--gl-muted)]'>Tahmini tutar (KDV dahil)</p>
-              <p className='mt-1 text-2xl font-bold text-[var(--gl-ink)]'>{formatTry(breakdown.total)}</p>
-              <p className='mt-1 text-xs text-[var(--gl-muted)]'>{breakdown.distanceKm} km güzergâh üzerinden</p>
-            </div>
-          ) : null}
+          <EstimateCard
+            total={breakdown?.total ?? null}
+            signature={`${cargo.preset}-${cargo.widthCm}-${cargo.lengthCm}-${cargo.heightCm}-${cargo.weightKg}-${cargo.quantity}-${draft.deliverySpeed}-${draft.extras.fragile}-${draft.extras.insurance}-${draft.extras.declaredValue}`}
+            hint={breakdown ? `${breakdown.distanceKm} km güzergâh · kesin tutar teklifte` : undefined}
+          />
 
           <p className='mt-4 flex items-start gap-2 text-xs leading-relaxed text-[var(--gl-muted)]'>
             <Info className='mt-0.5 size-3.5 shrink-0' aria-hidden />

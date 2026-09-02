@@ -69,7 +69,6 @@ export function LandingFooter() {
 
         <div className='mt-10 flex flex-col items-center justify-between gap-2 border-t border-[var(--gl-border)] pt-6 text-xs text-[var(--gl-muted)] sm:flex-row'>
           <p>© {new Date().getFullYear()} Gönder · Arf altyapısı</p>
-          <p>Örnek veri — gerçek servis bağlantısı olmayan alanlar prototiptir.</p>
         </div>
       </div>
     </footer>

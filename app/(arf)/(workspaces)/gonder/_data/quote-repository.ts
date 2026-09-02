@@ -2,9 +2,15 @@ import type { CourierSpeed, PriceCalculationDraft, SearchQuote } from '../_types
 import { calcPiecesTotals } from '../_types/price-calculation'
 import { SERVICE_TIMING_LABELS } from '../_lib/price-calculation-labels'
 import { inferQuoteSource } from '../_lib/quote-offer-labels'
+import { searchQuotesFromOrder } from '../_lib/siparis-draft-map'
 
 export interface QuoteRepository {
   search(draft: PriceCalculationDraft): Promise<SearchQuote[]>
+}
+
+function logisticsCourierSpeed(draft: PriceCalculationDraft): CourierSpeed | null {
+  if (draft.operationType === 'logistics' && draft.courierSpeed === 'express') return 'scheduled'
+  return draft.courierSpeed
 }
 
 function timingFactor(speed: CourierSpeed | null): number {
@@ -139,16 +145,21 @@ function baseQuotes(draft: PriceCalculationDraft): SearchQuote[] {
 
   const isFtl = draft.logisticsSubtype === 'ftl'
   const vehicleLabel = logisticsVehicleLabel(draft, isFtl)
+  const logisticsSpeed = logisticsCourierSpeed(draft)
+  const logisticsFactor = timingFactor(logisticsSpeed)
+  const logisticsTimingLabel = logisticsSpeed
+    ? SERVICE_TIMING_LABELS[logisticsSpeed]
+    : SERVICE_TIMING_LABELS.scheduled
   return [
     {
       id: 'q-log-instant',
       providerName: 'LojistikPro',
-      serviceName: `${isFtl ? 'FTL Komple' : 'LTL Parsiyel'} · ${timingLabel}`,
-      etaLabel: timingEta(draft.courierSpeed, isFtl ? '1-2 gün' : '2-4 gün'),
-      pickupLabel: draft.courierSpeed === 'scheduled' ? 'Planlı alma' : 'Aynı gün / ertesi gün alma',
+      serviceName: `${isFtl ? 'FTL Komple' : 'LTL Parsiyel'} · ${logisticsTimingLabel}`,
+      etaLabel: timingEta(logisticsSpeed, isFtl ? '1-2 gün' : '2-4 gün'),
+      pickupLabel: logisticsSpeed === 'scheduled' ? 'Planlı alma' : 'Aynı gün / ertesi gün alma',
       insuranceLabel: 'Yük sigortası',
       score: 4.6,
-      priceTry: Math.round((isFtl ? 4200 : 980) * distanceFactor * speed),
+      priceTry: Math.round((isFtl ? 4200 : 980) * distanceFactor * logisticsFactor),
       priceState: 'ready',
       badges: ['recommended', 'fastest'],
       quoteSource: 'instant',
@@ -161,10 +172,10 @@ function baseQuotes(draft: PriceCalculationDraft): SearchQuote[] {
       id: 'q-log-network',
       providerName: 'Gönder Navlun Ağı',
       serviceName: isFtl ? 'Hat eşleşmesi · Komple' : 'Hat eşleşmesi · Parsiyel',
-      etaLabel: timingEta(draft.courierSpeed, isFtl ? '2-3 gün' : '3-5 gün'),
+      etaLabel: timingEta(logisticsSpeed, isFtl ? '2-3 gün' : '3-5 gün'),
       pickupLabel: 'Eşleşme sonrası planlanır',
       score: 4.4,
-      priceTry: Math.round((isFtl ? 3650 : 840) * distanceFactor * speed),
+      priceTry: Math.round((isFtl ? 3650 : 840) * distanceFactor * logisticsFactor),
       priceState: 'ready',
       badges: ['best_price'],
       quoteSource: 'network',
@@ -177,11 +188,12 @@ function baseQuotes(draft: PriceCalculationDraft): SearchQuote[] {
       id: 'q-log-specialist',
       providerName: 'Anadolu Filo',
       serviceName: isFtl ? 'Uzman değerlendirmesi · FTL' : 'Uzman değerlendirmesi · LTL',
-      etaLabel: 'Değerlendiriliyor',
-      pickupLabel: 'Uzman onayı sonrası planlanır',
+      etaLabel: timingEta(logisticsSpeed, isFtl ? '2-3 gün' : '3-5 gün'),
+      pickupLabel: 'Uzman değerlendirmesi sonrası planlanır',
+      insuranceLabel: 'Yük sigortası',
       score: 4.3,
-      priceTry: null,
-      priceState: 'preparing',
+      priceTry: Math.round((isFtl ? 3900 : 910) * distanceFactor * logisticsFactor),
+      priceState: 'ready',
       quoteSource: 'specialist',
       vehicleLabel,
       hasInstantPrice: false,
@@ -194,6 +206,10 @@ function baseQuotes(draft: PriceCalculationDraft): SearchQuote[] {
 export class MockQuoteRepository implements QuoteRepository {
   async search(draft: PriceCalculationDraft): Promise<SearchQuote[]> {
     await new Promise((resolve) => setTimeout(resolve, 220))
+    if (draft.siparis) {
+      const siparisQuotes = searchQuotesFromOrder(draft.siparis)
+      if (siparisQuotes.length > 0) return siparisQuotes
+    }
     return baseQuotes(draft)
   }
 }

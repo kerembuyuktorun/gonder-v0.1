@@ -35,7 +35,7 @@ export function StepService() {
     <div>
       <StepHeader
         title='Nasıl taşıyalım?'
-        description='Gönderinin boyutuna göre uygun hizmeti seç. Sonraki adımda detayları isteyeceğiz.'
+        description='Yükün boyutuna göre uygun hizmeti öneririz. İstersen değiştirebilirsin.'
       />
 
       <div className='grid gap-4 sm:grid-cols-2'>
@@ -46,7 +46,12 @@ export function StepService() {
             <button
               key={option.id}
               type='button'
-              onClick={() => patch({ service: option.id, logisticsMode: null })}
+              onClick={() =>
+                patch({
+                  service: option.id,
+                  logisticsMode: option.id === 'lojistik' ? draft.logisticsMode : null,
+                })
+              }
               aria-pressed={selected}
               className={`relative rounded-2xl border-2 p-5 text-left transition-all ${
                 selected

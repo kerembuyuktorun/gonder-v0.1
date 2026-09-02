@@ -46,7 +46,7 @@ export function StepNav({
   helper?: ReactNode
 }) {
   return (
-    <div className='mt-8 flex flex-col-reverse gap-3 border-t border-[var(--gl-border)] pt-6 sm:flex-row sm:items-center sm:justify-between'>
+    <div className='sticky bottom-0 z-10 mt-8 flex flex-col-reverse gap-3 border-t border-[var(--gl-border)] bg-white/95 pt-6 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between'>
       {hideBack ? (
         <span className='hidden sm:block' />
       ) : (

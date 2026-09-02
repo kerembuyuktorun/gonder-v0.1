@@ -17,6 +17,18 @@ export const DELIVERY_SPEED_HINTS: Record<DeliverySpeed, string> = {
   scheduled: 'Tarih planlayarak gönder',
 }
 
+export const CARGO_DELIVERY_SPEEDS: DeliverySpeed[] = ['express', 'same_day', 'scheduled']
+export const LOGISTICS_DELIVERY_SPEEDS: DeliverySpeed[] = ['same_day', 'scheduled']
+
+export function defaultDeliverySpeed(service: ServiceType | null): DeliverySpeed {
+  return service === 'lojistik' ? 'scheduled' : 'express'
+}
+
+export function coerceDeliverySpeed(service: ServiceType | null, speed: DeliverySpeed): DeliverySpeed {
+  if (service === 'lojistik' && speed === 'express') return 'scheduled'
+  return speed
+}
+
 export type PlaceResult = {
   id: string
   /** Kısa başlık: "Kadıköy Mahallesi" */
@@ -176,4 +188,8 @@ export function formatTry(value: number): string {
     currency: 'TRY',
     maximumFractionDigits: 0,
   }).format(value)
+}
+
+export function formatTryRange(min: number, max: number): string {
+  return `${formatTry(min)} – ${formatTry(max)}`
 }

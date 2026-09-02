@@ -10,7 +10,7 @@ import { StepHeader, StepNav } from './step-shell'
 import { useWizard } from './wizard-context'
 
 export function StepOffers() {
-  const { draft, next, back, selectedOffer, setSelectedOffer } = useWizard()
+  const { draft, next, back, selectedOffer, setSelectedOffer, offersNextLabel } = useWizard()
   const [loading, setLoading] = useState(true)
 
   const breakdown = useMemo(() => buildBreakdown(draft), [draft])
@@ -18,7 +18,7 @@ export function StepOffers() {
 
   useEffect(() => {
     setLoading(true)
-    const timer = setTimeout(() => setLoading(false), 1100)
+    const timer = setTimeout(() => setLoading(false), 1650)
     return () => clearTimeout(timer)
   }, [])
 
@@ -135,7 +135,7 @@ export function StepOffers() {
               <div className='flex items-center justify-between border-t border-[var(--gl-border)] pt-2.5'>
                 <dt className='text-sm font-semibold text-[var(--gl-ink)]'>Toplam</dt>
                 <dd className='text-lg font-bold tabular-nums text-[var(--gl-ink)]'>
-                  {selectedOffer ? formatTry(selectedOffer.price) : formatTry(breakdown.total)}
+                  <DelayedAmount value={selectedOffer ? selectedOffer.price : breakdown.total} />
                 </dd>
               </div>
             </dl>
@@ -146,7 +146,7 @@ export function StepOffers() {
       <StepNav
         onBack={back}
         onNext={next}
-        nextLabel='Teklifi Seç'
+        nextLabel={offersNextLabel}
         nextDisabled={loading || !selectedOffer}
         helper={selectedOffer ? `${selectedOffer.carrier} · ${selectedOffer.etaLabel}` : undefined}
       />
@@ -164,6 +164,32 @@ const SOURCE_CLASS: Record<OfferQuoteSource, string> = {
   instant: 'bg-sky-50 text-sky-800',
   network: 'bg-violet-50 text-violet-800',
   specialist: 'bg-amber-50 text-amber-800',
+}
+
+function DelayedAmount({ value }: { value: number }) {
+  const [busy, setBusy] = useState(true)
+  const [shown, setShown] = useState<number | null>(null)
+
+  useEffect(() => {
+    setBusy(true)
+    const timer = window.setTimeout(() => {
+      setShown(value)
+      setBusy(false)
+    }, 520)
+    return () => window.clearTimeout(timer)
+  }, [value])
+
+  if (busy || shown == null) {
+    return (
+      <span className='inline-flex items-center gap-1.5 text-sm font-medium text-[var(--gl-petrol)]'>
+        <Loader2 className='size-3.5 animate-spin' aria-hidden />
+        <span className='sr-only'>Hesaplanıyor</span>
+        <span className='h-5 w-16 animate-pulse rounded bg-[var(--gl-subtle)]' aria-hidden />
+      </span>
+    )
+  }
+
+  return <span className='gl-fade-in'>{formatTry(shown)}</span>
 }
 
 function OfferCard({
@@ -222,7 +248,9 @@ function OfferCard({
       </div>
 
       <div className='flex shrink-0 flex-col items-start gap-2 sm:items-end'>
-        <p className='text-xl font-bold text-[var(--gl-ink)]'>{formatTry(offer.price)}</p>
+        <p className='text-xl font-bold text-[var(--gl-ink)]'>
+          <DelayedAmount value={offer.price} />
+        </p>
         <p className='text-xs text-[var(--gl-muted)]'>{offer.etaLabel}</p>
         <span
           className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${

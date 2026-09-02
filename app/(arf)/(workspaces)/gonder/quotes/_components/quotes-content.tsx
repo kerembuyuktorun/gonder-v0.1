@@ -225,7 +225,7 @@ export function QuotesContent() {
                         priority: 'secondary' as const,
                         variant: 'secondary' as const,
                         onClick: () => {
-                          toast.message('Yeniden talep için fiyat hesaplamaya yönlendiriliyor')
+                          toast.message('Yeniden talep için teklif al adımına yönlendiriliyor')
                           window.location.href = ARF_ROUTES.gonder.priceCalculation
                         },
                       },
@@ -253,7 +253,7 @@ export function QuotesContent() {
       description='Talebiniz için oluşan taşıma seçeneklerini izleyin ve teklif seçin.'
       headerActions={
         <Button size='sm' asChild>
-          <Link href={ARF_ROUTES.gonder.priceCalculation}>Yeni fiyat hesapla</Link>
+          <Link href={ARF_ROUTES.gonder.priceCalculation}>Teklif al</Link>
         </Button>
       }
       tabs={tabs}

@@ -1,58 +1,51 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AppHeader } from '@hascanb/arf-ui-kit/layout-kit'
-import { Bike, Cloud, CreditCard, Package, Truck } from 'lucide-react'
+import { Cloud } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { ARF_ROUTES } from '../../../../../_shared/routes'
-import { CardPaymentDialog } from '../../../_components/card-payment-dialog'
-import { PartyAddressCard } from '../../../_components/party-address-card'
-import { PieceListEditor } from '../../../_components/piece-list-editor'
-import { QuotePaymentReceipt } from '../../../_components/quote-payment-receipt'
-import { SelectionTile } from '../../../_components/selection-tile'
+import { SiparisPanelPayment } from '../../../_components/siparis-panel-payment'
+import {
+  SiparisPanelScope,
+  SiparisPanelWizard,
+  type WizardSnapshot,
+} from '../../../_components/siparis-panel-wizard'
 import { ordersRepository } from '../../../_data/orders-repository'
 import { quoteRepository } from '../../../_data/quote-repository'
 import { quoteRequestsRepository } from '../../../_data/quote-requests-repository'
 import { shipmentsListRepository } from '../../../_data/shipments-list-repository'
 import { useCreateShipmentHydrated } from '../../../_hooks/use-create-shipment-hydrated'
 import { usePriceDraftHydrated } from '../../../_hooks/use-price-draft-hydrated'
-import { SERVICE_TIMING_LABELS } from '../../../_lib/price-calculation-labels'
+import {
+  clampSiparisStep,
+  createInitialOrder,
+  isOrderReadyForOffers,
+  numericStepFromSiparis,
+  orderToPricePatch,
+  orderToShipmentPatch,
+  reconstructOrderFromPriceDraft,
+  reconstructOrderFromShipmentDraft,
+  resolvePlaceFromCity,
+  type Offer,
+  type OrderDraft,
+} from '../../../_lib/siparis-draft-map'
 import { useCreateShipmentStore } from '../../../_stores/create-shipment-draft-store'
 import { usePriceDraftStore } from '../../../_stores/price-calculation-draft-store'
 import {
   canSubmitCreateShipment,
   getCreateShipmentMissingFields,
 } from '../../../_types/create-shipment'
-import { toQuotePaymentSummary, type CardPayment } from '../../../_types/payment'
 import {
-  calcPiecesTotals,
-  createPieceId,
   toAddressDraftFromLocation,
   type OperationType,
 } from '../../../_types/price-calculation'
 import { resolveShipmentServiceType } from '../../../_types/shipments'
-import { CreateShipmentSummaryPanel } from './create-shipment-summary-panel'
-
-const OPERATION_OPTIONS: Array<{ id: OperationType; title: string; icon: typeof Package }> = [
-  { id: 'parcel', title: 'Kargo / Parcel', icon: Package },
-  { id: 'courier', title: 'Kurye', icon: Bike },
-  { id: 'logistics', title: 'Lojistik', icon: Truck },
-]
-
-const PAYMENT_OPTIONS = [
-  { id: 'invoice' as const, label: 'Fatura / vadeli' },
-  { id: 'wallet' as const, label: 'Cüzdan' },
-  { id: 'card' as const, label: 'Kart' },
-]
 
 export function CreateShipmentContent() {
   const router = useRouter()
@@ -60,60 +53,19 @@ export function CreateShipmentContent() {
   const hydrated = useCreateShipmentHydrated()
   const priceHydrated = usePriceDraftHydrated()
   const draft = useCreateShipmentStore((s) => s.draft)
-  const {
-    setSource,
-    setOperationType,
-    setOrigin,
-    setDestination,
-    addPiece,
-    removePiece,
-    setCourierSpeed,
-    setQuoteSummary,
-    setPaymentMethod,
-    setCardPayment,
-    setNote,
-    hydrateFromSources,
-    resetDraft,
-  } = useCreateShipmentStore()
+  const { hydrateFromSources, resetDraft } = useCreateShipmentStore()
 
-  const [attempted, setAttempted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [bootstrapped, setBootstrapped] = useState(false)
   const [autosaveFlash, setAutosaveFlash] = useState(false)
-  const [paymentOpen, setPaymentOpen] = useState(false)
-
-  const totals = useMemo(() => calcPiecesTotals(draft.pieces), [draft.pieces])
-  const hasOperation = Boolean(draft.operationType)
-  const hasAddresses = Boolean(
-    draft.origin?.label?.trim() && draft.destination?.label?.trim()
-  )
-  const showPackages = hasOperation
-  const showService = hasOperation && (hasAddresses || draft.pieces.length > 0)
-  const showNotes = hasOperation
-  const priceChangedAfterPayment = Boolean(
-    draft.cardPayment && draft.priceTry !== draft.cardPayment.amountTry
-  )
+  const [wizardKey, setWizardKey] = useState(0)
 
   useEffect(() => {
     if (!hydrated || !bootstrapped) return
     setAutosaveFlash(true)
     const timer = window.setTimeout(() => setAutosaveFlash(false), 1200)
     return () => window.clearTimeout(timer)
-  }, [
-    bootstrapped,
-    draft.operationType,
-    draft.origin,
-    draft.destination,
-    draft.pieces,
-    draft.providerName,
-    draft.serviceName,
-    draft.priceTry,
-    draft.paymentMethod,
-    draft.cardPayment,
-    draft.note,
-    draft.courierSpeed,
-    hydrated,
-  ])
+  }, [bootstrapped, draft.siparis, draft.selectedOffer, draft.paymentMethod, draft.note, hydrated])
 
   useEffect(() => {
     if (!hydrated || !priceHydrated || bootstrapped) return
@@ -123,41 +75,39 @@ export function CreateShipmentContent() {
     const templateId = searchParams.get('templateId')
     const repeat = searchParams.get('repeat')
     const priceDraft = usePriceDraftStore.getState().draft
+    const current = useCreateShipmentStore.getState().draft
 
     async function bootstrap() {
       if (orderId) {
         const order = await ordersRepository.getById(orderId)
         if (order) {
+          const siparis: OrderDraft = {
+            ...createInitialOrder(),
+            service: 'kargo',
+            origin: resolvePlaceFromCity(order.originCity, `${order.originCity} çıkış`),
+            destination: resolvePlaceFromCity(
+              order.destinationCity,
+              `${order.destinationCity} varış · ${order.customerName}`
+            ),
+            cargo: {
+              preset: 'custom',
+              widthCm: 30,
+              lengthCm: 40,
+              heightCm: 20,
+              quantity: Math.max(1, order.pieceCount),
+              weightKg: 2,
+              contentNote: '',
+            },
+          }
           hydrateFromSources({
             source: 'order',
             orderId: order.id,
-            operationType: 'parcel',
-            origin: {
-              label: `${order.originCity} çıkış`,
-              city: order.originCity,
-            },
-            destination: {
-              label: `${order.destinationCity} varış · ${order.customerName}`,
-              city: order.destinationCity,
-            },
-            pieces:
-              draft.pieces.length > 0
-                ? draft.pieces
-                : [
-                    {
-                      id: createPieceId(),
-                      type: 'Paket',
-                      widthCm: 30,
-                      lengthCm: 40,
-                      heightCm: 20,
-                      quantity: Math.max(1, order.pieceCount),
-                      desi: 8,
-                      weightKg: 2,
-                    },
-                  ],
-            providerName: draft.providerName ?? 'ARF Parcel',
-            serviceName: draft.serviceName ?? 'Standart Kapıdan Kapıya',
-            priceTry: draft.priceTry ?? Math.round(order.amountTry * 0.15),
+            ...orderToShipmentPatch(siparis, null),
+            siparis,
+            siparisStep: 'details',
+            providerName: current.providerName ?? 'ARF Parcel',
+            serviceName: current.serviceName ?? 'Standart Kapıdan Kapıya',
+            priceTry: current.priceTry ?? Math.round(order.amountTry * 0.15),
           })
           setBootstrapped(true)
           return
@@ -167,27 +117,27 @@ export function CreateShipmentContent() {
       if (repeat) {
         const shipment = await shipmentsListRepository.getById(repeat)
         if (shipment) {
+          const siparis: OrderDraft = {
+            ...createInitialOrder(),
+            service: shipment.operationType === 'logistics' ? 'lojistik' : 'kargo',
+            origin: resolvePlaceFromCity(shipment.originCity),
+            destination: resolvePlaceFromCity(shipment.destinationCity),
+            cargo: {
+              preset: 'custom',
+              widthCm: 30,
+              lengthCm: 40,
+              heightCm: 20,
+              quantity: 1,
+              weightKg: shipment.weightKg,
+              contentNote: '',
+            },
+          }
           hydrateFromSources({
             source: 'repeat',
             repeatShipmentId: shipment.id,
-            operationType: shipment.operationType,
-            origin: { label: shipment.originCity, city: shipment.originCity },
-            destination: {
-              label: shipment.destinationCity,
-              city: shipment.destinationCity,
-            },
-            pieces: [
-              {
-                id: createPieceId(),
-                type: 'Paket',
-                widthCm: 30,
-                lengthCm: 40,
-                heightCm: 20,
-                quantity: 1,
-                desi: shipment.desi,
-                weightKg: shipment.weightKg,
-              },
-            ],
+            ...orderToShipmentPatch(siparis, null),
+            siparis,
+            siparisStep: 'details',
             providerName: shipment.carrier,
             serviceName: shipment.serviceLabel,
             priceTry: shipment.amountTry,
@@ -202,6 +152,8 @@ export function CreateShipmentContent() {
           source: 'template',
           templateId,
           operationType: 'parcel',
+          siparis: { ...createInitialOrder(), service: 'kargo' },
+          siparisStep: 'route',
           providerName: 'ARF Parcel',
           serviceName: 'Şablon Express',
           priceTry: 149,
@@ -211,16 +163,18 @@ export function CreateShipmentContent() {
       }
 
       const effectiveQuoteId = quoteId || priceDraft.selectedQuoteId
-      if (effectiveQuoteId || priceDraft.mode === 'shipment' || priceDraft.origin) {
-        let providerName = 'ARF Parcel'
-        let serviceName = 'Express Kapıdan Kapıya'
-        let priceTry = 189
+      if (effectiveQuoteId || priceDraft.mode === 'shipment' || priceDraft.origin || priceDraft.siparis) {
+        const siparis = reconstructOrderFromPriceDraft(priceDraft)
+        let offer: Offer | null = priceDraft.selectedOffer
+        let providerName = offer?.carrier ?? 'ARF Parcel'
+        let serviceName = offer?.title ?? 'Express Kapıdan Kapıya'
+        let priceTry = offer?.price ?? 189
 
         if (priceDraft.origin && priceDraft.destination && isPriceLikeReady(priceDraft)) {
           const quotes = await quoteRepository.search(priceDraft)
           const selected =
             quotes.find((quote) => quote.id === effectiveQuoteId) ?? quotes[0] ?? null
-          if (selected) {
+          if (selected && !offer) {
             providerName = selected.providerName
             serviceName = selected.serviceName
             priceTry = selected.priceTry ?? priceTry
@@ -228,23 +182,43 @@ export function CreateShipmentContent() {
         }
 
         hydrateFromSources({
-          source: effectiveQuoteId || priceDraft.selectedQuoteId ? 'quote' : 'manual',
+          source: effectiveQuoteId || priceDraft.selectedQuoteId ? 'quote' : current.source,
           quoteId: effectiveQuoteId,
-          operationType: priceDraft.operationType ?? 'parcel',
-          origin: priceDraft.origin
-            ? toAddressDraftFromLocation(priceDraft.origin)
-            : null,
-          destination: priceDraft.destination
-            ? toAddressDraftFromLocation(priceDraft.destination)
-            : null,
-          pieces: priceDraft.pieces.length ? priceDraft.pieces : draft.pieces,
-          courierSpeed: priceDraft.courierSpeed,
+          ...orderToShipmentPatch(siparis, offer),
+          siparis,
+          siparisStep: offer
+            ? 'payment'
+            : isOrderReadyForOffers(siparis)
+              ? 'offers'
+              : siparis.origin && siparis.destination
+                ? 'details'
+                : 'route',
+          selectedOffer: offer,
           providerName,
           serviceName,
           priceTry,
+          origin: priceDraft.origin
+            ? toAddressDraftFromLocation(priceDraft.origin)
+            : siparis.origin
+              ? {
+                  label: siparis.origin.subtitle,
+                  city: siparis.origin.city,
+                  district: siparis.origin.district,
+                  lat: siparis.origin.lat,
+                  lng: siparis.origin.lng,
+                  placeId: siparis.origin.id,
+                }
+              : current.origin,
         })
         setBootstrapped(true)
         return
+      }
+
+      if (!current.siparis) {
+        hydrateFromSources({
+          siparis: reconstructOrderFromShipmentDraft(current),
+          siparisStep: current.siparisStep || 'route',
+        })
       }
 
       setBootstrapped(true)
@@ -253,62 +227,67 @@ export function CreateShipmentContent() {
     void bootstrap()
   }, [
     bootstrapped,
-    draft.pieces,
-    draft.priceTry,
-    draft.providerName,
-    draft.serviceName,
     hydrateFromSources,
     hydrated,
     priceHydrated,
     searchParams,
   ])
 
-  async function handleCardPaid(payment: CardPayment) {
-    const summary = toQuotePaymentSummary(payment)
-    setCardPayment(summary)
-    if (draft.quoteRequestId) {
-      try {
-        await quoteRequestsRepository.attachPayment(draft.quoteRequestId, summary)
-      } catch {
-        // Teklif kaydı güncellenemese de taslaktaki tahsilat geçerli kalır.
-      }
-    }
-    toast.success(`Ödeme alındı · ${payment.reference}`)
-  }
+  const persistSnapshot = useCallback((snapshot: WizardSnapshot) => {
+    const { draft: order, step, selectedOffer } = snapshot
+    useCreateShipmentStore.getState().patchDraft({
+      ...orderToShipmentPatch(order, selectedOffer),
+      siparis: order,
+      siparisStep: step,
+      selectedOffer,
+      step: numericStepFromSiparis(step),
+      quoteId: selectedOffer?.id ?? useCreateShipmentStore.getState().draft.quoteId,
+    })
+    usePriceDraftStore.getState().patchDraft({
+      ...orderToPricePatch(order),
+      siparisStep: step,
+      selectedOffer,
+      selectedQuoteId: selectedOffer?.id ?? null,
+      mode: 'shipment',
+    })
+  }, [])
 
   async function handleSubmit() {
-    setAttempted(true)
-    if (!canSubmitCreateShipment(draft)) {
-      const missing = getCreateShipmentMissingFields(draft)
+    const current = useCreateShipmentStore.getState().draft
+    if (!canSubmitCreateShipment(current)) {
+      const missing = getCreateShipmentMissingFields(current)
       toast.message(`Eksik alanlar: ${missing.slice(0, 3).join(', ')}`)
       return
     }
     setSubmitting(true)
     try {
+      const totalsPieces = current.pieces
+      const desi = totalsPieces.reduce((sum, piece) => sum + piece.desi * piece.quantity, 0)
+      const weightKg = totalsPieces.reduce((sum, piece) => sum + piece.weightKg * piece.quantity, 0)
       const created = await shipmentsListRepository.create({
         reference: `GND-${Math.floor(Math.random() * 9000 + 1000)}`,
-        orderNumber: draft.orderId
-          ? (await ordersRepository.getById(draft.orderId))?.orderNumber ?? null
+        orderNumber: current.orderId
+          ? ((await ordersRepository.getById(current.orderId))?.orderNumber ?? null)
           : null,
-        carrier: draft.providerName ?? 'ARF Parcel',
-        serviceLabel: draft.serviceName ?? 'Standart',
-        serviceType: resolveShipmentServiceType(draft.operationType),
-        operationType: draft.operationType ?? 'parcel',
-        logisticsMode: draft.operationType === 'logistics' ? 'spot' : null,
-        originCity: draft.origin?.city ?? draft.origin?.label ?? '—',
-        destinationCity: draft.destination?.city ?? draft.destination?.label ?? '—',
+        carrier: current.providerName ?? 'ARF Parcel',
+        serviceLabel: current.serviceName ?? 'Standart',
+        serviceType: resolveShipmentServiceType(current.operationType),
+        operationType: current.operationType ?? 'parcel',
+        logisticsMode: current.operationType === 'logistics' ? 'spot' : null,
+        originCity: current.origin?.city ?? current.origin?.label ?? '—',
+        destinationCity: current.destination?.city ?? current.destination?.label ?? '—',
         status: 'label_ready',
-        desi: totals.desi,
-        weightKg: totals.weightKg,
-        amountTry: draft.priceTry,
+        desi,
+        weightKg,
+        amountTry: current.priceTry,
       })
 
-      if (draft.orderId) {
-        await ordersRepository.updateStatus(draft.orderId, 'shipment_created')
+      if (current.orderId) {
+        await ordersRepository.updateStatus(current.orderId, 'shipment_created')
       }
 
-      if (draft.quoteRequestId) {
-        await quoteRequestsRepository.markConverted(draft.quoteRequestId, created.id)
+      if (current.quoteRequestId) {
+        await quoteRequestsRepository.markConverted(current.quoteRequestId, created.id)
       }
 
       resetDraft()
@@ -322,7 +301,7 @@ export function CreateShipmentContent() {
     }
   }
 
-  if (!hydrated || !bootstrapped) {
+  if (!hydrated || !priceHydrated || !bootstrapped) {
     return (
       <>
         <AppHeader
@@ -335,13 +314,15 @@ export function CreateShipmentContent() {
     )
   }
 
+  const initialOrder = draft.siparis ?? reconstructOrderFromShipmentDraft(draft)
+
   return (
     <>
       <AppHeader
         breadcrumbs={[
           { label: 'Gönder' },
           { label: 'Gönderiler', href: ARF_ROUTES.gonder.shipments.list },
-          { label: 'Yeni gönderi' },
+          { label: 'Gönderi oluştur' },
         ]}
         searchPlaceholder='Gönder ara...'
         notificationsLabel='Bildirimler'
@@ -350,9 +331,11 @@ export function CreateShipmentContent() {
       <div className='flex flex-1 flex-col gap-3 p-3 sm:p-4'>
         <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
           <div className='min-w-0'>
-            <h1 className='truncate text-xl font-semibold tracking-tight'>Yeni gönderi</h1>
+            <h1 className='truncate text-xl font-semibold tracking-tight'>Gönderi oluştur</h1>
             <p className='mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground'>
-              <span>Kaynak: {sourceLabel(draft.source)}</span>
+              <span>
+                Talebini oluştur, Gönder uygun taşıma seçeneklerini bulsun. Kaynak: {sourceLabel(draft.source)}
+              </span>
               <Badge
                 variant='outline'
                 className={cn(
@@ -369,292 +352,36 @@ export function CreateShipmentContent() {
             <Button variant='outline' size='sm' asChild>
               <Link href={ARF_ROUTES.gonder.shipments.list}>Listeye dön</Link>
             </Button>
-            <Button variant='ghost' size='sm' onClick={() => resetDraft()}>
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={() => {
+                resetDraft()
+                setWizardKey((key) => key + 1)
+              }}
+            >
               Taslağı sıfırla
             </Button>
           </div>
         </div>
 
-        <div className='grid gap-3 lg:grid-cols-12'>
-          <div className='space-y-3 lg:col-span-8'>
-            <Card className='gap-0 py-0 shadow-sm'>
-              <CardHeader className='space-y-0 px-3 pt-3 pb-1.5'>
-                <CardTitle className='text-sm font-semibold'>1. Operasyon tipi</CardTitle>
-              </CardHeader>
-              <CardContent className='grid gap-2 px-3 pb-3 pt-0 sm:grid-cols-3'>
-                {OPERATION_OPTIONS.map((option) => (
-                  <SelectionTile
-                    key={option.id}
-                    title={option.title}
-                    icon={option.icon}
-                    compact
-                    selected={draft.operationType === option.id}
-                    onClick={() => {
-                      setSource(draft.source === 'manual' ? 'manual' : draft.source)
-                      setOperationType(option.id)
-                    }}
-                  />
-                ))}
-                {attempted && !draft.operationType ? (
-                  <p className='text-[11px] text-destructive sm:col-span-3'>
-                    Operasyon tipi seçin
-                  </p>
-                ) : null}
-              </CardContent>
-            </Card>
-
-            {hasOperation ? (
-              <div className='space-y-2'>
-                <h2 className='px-0.5 text-sm font-semibold'>2. Gönderici ve alıcı</h2>
-                <div className='grid gap-2 md:grid-cols-2'>
-                  <PartyAddressCard
-                    title='Gönderici'
-                    customerLabel='Gönderici müşteri'
-                    pinLabel='Sabitle'
-                    value={draft.origin}
-                    onChange={setOrigin}
-                    invalid={attempted && !draft.origin}
-                  />
-                  <PartyAddressCard
-                    title='Alıcı'
-                    customerLabel='Alıcı müşteri'
-                    pinLabel='Sabitle'
-                    value={draft.destination}
-                    onChange={setDestination}
-                    invalid={attempted && !draft.destination}
-                  />
-                </div>
-              </div>
-            ) : null}
-
-            {showPackages ? (
-              <div className='space-y-2'>
-                <h2 className='px-0.5 text-sm font-semibold'>
-                  3. {draft.operationType === 'logistics' ? 'Yük bilgisi' : 'Paket / parça'}
-                </h2>
-                <PieceListEditor
-                  pieces={draft.pieces}
-                  onAdd={addPiece}
-                  onRemove={removePiece}
-                  invalid={attempted}
-                />
-                {draft.operationType === 'logistics' ? (
-                  <p className='text-xs text-muted-foreground'>
-                    Lojistik gönderilerde parça listesi yük özeti olarak kullanılır; FTL/LTL
-                    detayları taşıyıcı teklifinde netleşir.
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-
-            {showService ? (
-              <Card className='gap-0 py-0 shadow-sm'>
-                <CardHeader className='space-y-0 px-3 pt-3 pb-1.5'>
-                  <CardTitle className='text-sm font-semibold'>
-                    4. Hizmet ve planlama
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className='space-y-3 px-3 pb-3 pt-0'>
-                  <div className='grid gap-2 sm:grid-cols-2'>
-                    <div className='space-y-1'>
-                      <Label className='text-xs text-muted-foreground'>Taşıyıcı</Label>
-                      <Input
-                        value={draft.providerName ?? ''}
-                        onChange={(e) =>
-                          setQuoteSummary({
-                            providerName: e.target.value || null,
-                            serviceName: draft.serviceName,
-                            priceTry: draft.priceTry,
-                          })
-                        }
-                        placeholder='Örn. ARF Parcel'
-                      />
-                    </div>
-                    <div className='space-y-1'>
-                      <Label className='text-xs text-muted-foreground'>Servis</Label>
-                      <Input
-                        value={draft.serviceName ?? ''}
-                        onChange={(e) =>
-                          setQuoteSummary({
-                            providerName: draft.providerName,
-                            serviceName: e.target.value || null,
-                            priceTry: draft.priceTry,
-                          })
-                        }
-                        placeholder='Örn. Express'
-                      />
-                    </div>
-                    <div className='space-y-1'>
-                      <Label className='text-xs text-muted-foreground'>Fiyat (TRY)</Label>
-                      <Input
-                        type='number'
-                        min={0}
-                        value={draft.priceTry ?? ''}
-                        onChange={(e) =>
-                          setQuoteSummary({
-                            providerName: draft.providerName,
-                            serviceName: draft.serviceName,
-                            priceTry: e.target.value ? Number(e.target.value) : null,
-                          })
-                        }
-                      />
-                    </div>
-                    <div className='space-y-1 sm:col-span-2'>
-                      <Label className='text-xs text-muted-foreground'>Teslimat zamanı</Label>
-                      <div className='flex flex-wrap gap-1.5'>
-                        {(
-                          Object.keys(SERVICE_TIMING_LABELS) as Array<
-                            keyof typeof SERVICE_TIMING_LABELS
-                          >
-                        ).map((speed) => (
-                          <button
-                            key={speed}
-                            type='button'
-                            onClick={() => setCourierSpeed(speed)}
-                            className={cn(
-                              'rounded-full border px-2.5 py-1 text-xs',
-                              draft.courierSpeed === speed
-                                ? 'border-primary bg-primary/10'
-                                : 'border-border text-muted-foreground'
-                            )}
-                          >
-                            {SERVICE_TIMING_LABELS[speed]}
-                          </button>
-                        ))}
-                      </div>
-                      {attempted && !draft.courierSpeed ? (
-                        <p className='text-[11px] text-destructive'>Teslimat zamanını seçin</p>
-                      ) : null}
-                    </div>
-                  </div>
-                  {attempted &&
-                  (!draft.providerName || !draft.serviceName || draft.priceTry == null) ? (
-                    <p className='text-[11px] text-destructive'>
-                      Taşıyıcı, servis ve fiyat girin
-                    </p>
-                  ) : null}
-                </CardContent>
-              </Card>
-            ) : null}
-
-            {showNotes ? (
-              <Card className='gap-0 py-0 shadow-sm'>
-                <CardHeader className='space-y-0 px-3 pt-3 pb-1.5'>
-                  <CardTitle className='text-sm font-semibold'>5. Notlar ve ödeme</CardTitle>
-                </CardHeader>
-                <CardContent className='space-y-3 px-3 pb-3 pt-0'>
-                  <div className='flex flex-wrap gap-2'>
-                    <Badge variant='outline'>{sourceLabel(draft.source)}</Badge>
-                    {draft.orderId ? <Badge variant='secondary'>Sipariş bağlı</Badge> : null}
-                    {draft.quoteId ? <Badge variant='secondary'>Teklif bağlı</Badge> : null}
-                  </div>
-                  <div className='space-y-1.5'>
-                    <Label className='text-xs text-muted-foreground'>Ödeme yöntemi</Label>
-                    <div className='flex flex-wrap gap-1.5'>
-                      {PAYMENT_OPTIONS.map((option) => (
-                        <button
-                          key={option.id}
-                          type='button'
-                          onClick={() => setPaymentMethod(option.id)}
-                          className={cn(
-                            'rounded-full border px-2.5 py-1 text-xs',
-                            draft.paymentMethod === option.id
-                              ? 'border-primary bg-primary/10'
-                              : 'border-border text-muted-foreground'
-                          )}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {draft.paymentMethod === 'card' ? (
-                    <div className='space-y-2'>
-                      {draft.cardPayment ? (
-                        <>
-                          <QuotePaymentReceipt payment={draft.cardPayment} compact />
-                          {priceChangedAfterPayment ? (
-                            <p className='text-[11px] text-amber-800'>
-                              Fiyat ödeme sonrasında değişti. Farkı tahsil etmek için ödemeyi
-                              yenileyin.
-                            </p>
-                          ) : null}
-                        </>
-                      ) : (
-                        <p className='text-[11px] text-amber-800'>
-                          Kart ile ödeme henüz alınmadı. Gönderiyi oluşturmak için tahsilatı
-                          tamamlayın.
-                        </p>
-                      )}
-                      <Button
-                        type='button'
-                        size='sm'
-                        variant={draft.cardPayment ? 'outline' : 'default'}
-                        className='gap-1.5'
-                        disabled={draft.priceTry == null}
-                        onClick={() => setPaymentOpen(true)}
-                      >
-                        <CreditCard className='size-3.5' />
-                        {draft.cardPayment ? 'Ödemeyi yenile' : 'Kredi kartı ile öde'}
-                      </Button>
-                      {draft.priceTry == null ? (
-                        <p className='text-[11px] text-muted-foreground'>
-                          Ödeme alabilmek için önce fiyat girin.
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : null}
-                  <div className='space-y-1'>
-                    <Label className='text-xs text-muted-foreground'>Not</Label>
-                    <Textarea
-                      value={draft.note}
-                      onChange={(e) => setNote(e.target.value)}
-                      placeholder='Opsiyonel operasyon notu'
-                      rows={3}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            ) : null}
-
-            {/* Mobile CTA — desktop uses sticky summary */}
-            <div className='lg:hidden'>
-              <Button
-                type='button'
-                className='w-full'
-                disabled={submitting}
-                onClick={() => void handleSubmit()}
-              >
-                {submitting ? 'Oluşturuluyor…' : 'Gönderiyi oluştur'}
-              </Button>
-            </div>
-          </div>
-
-          <div className='hidden lg:col-span-4 lg:block'>
-            <CreateShipmentSummaryPanel
-              draft={draft}
-              sourceLabel={sourceLabel(draft.source)}
-              submitting={submitting}
-              onSubmit={() => void handleSubmit()}
-            />
-          </div>
-        </div>
-
-        <CardPaymentDialog
-          open={paymentOpen}
-          onOpenChange={setPaymentOpen}
-          requestId={draft.quoteRequestId ?? 'shipment-draft'}
-          offerId={draft.quoteId}
-          amountTry={draft.priceTry ?? 0}
-          reference={draft.quoteRequestId ? 'Seçilen teklif' : 'Yeni gönderi'}
-          serviceLabel={
-            draft.providerName && draft.serviceName
-              ? `${draft.providerName} · ${draft.serviceName}`
-              : null
-          }
-          onPaid={handleCardPaid}
-        />
+        <SiparisPanelScope>
+          <SiparisPanelWizard
+            key={wizardKey}
+            variant='shipment'
+            initialDraft={initialOrder}
+            initialStep={clampSiparisStep(draft.siparisStep, 'route', 'shipment')}
+            initialOffer={draft.selectedOffer}
+            offersNextLabel='Teklifi Seç'
+            onChange={persistSnapshot}
+            payment={
+              <SiparisPanelPayment
+                submitting={submitting}
+                onSubmit={() => void handleSubmit()}
+              />
+            }
+          />
+        </SiparisPanelScope>
       </div>
     </>
   )

@@ -1,3 +1,8 @@
+import type {
+  Offer,
+  OrderDraft,
+} from '../../../../(marketing)/siparis/_lib/order-types'
+
 export type OperationType = 'parcel' | 'courier' | 'logistics'
 export type LogisticsSubtype = 'ftl' | 'ltl'
 export type CourierSpeed = 'express' | 'same_day' | 'scheduled'
@@ -49,6 +54,10 @@ export type PriceCalculationDraft = {
   pieces: DraftPiece[]
   courierSpeed: CourierSpeed | null
   selectedQuoteId: string | null
+  /** Landing sipariş sihirbazı taslağı — panel UI kaynağı */
+  siparis: OrderDraft | null
+  siparisStep: string
+  selectedOffer: Offer | null
 }
 
 export type AddressSuggestion = {
@@ -199,4 +208,7 @@ export const EMPTY_PRICE_DRAFT: PriceCalculationDraft = {
   pieces: [],
   courierSpeed: 'express',
   selectedQuoteId: null,
+  siparis: null,
+  siparisStep: 'route',
+  selectedOffer: null,
 }

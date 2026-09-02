@@ -1,7 +1,7 @@
 import { findBody, findVehicle } from './catalog'
 import { roadDistanceKm } from './address-search'
 import type { DeliverySpeed, Offer, OrderDraft } from './order-types'
-import { DELIVERY_SPEED_LABELS } from './order-types'
+import { DELIVERY_SPEED_LABELS, coerceDeliverySpeed } from './order-types'
 
 export type PriceLine = {
   label: string
@@ -30,6 +30,15 @@ function round(value: number): number {
   return Math.round(value / 5) * 5
 }
 
+/** Teklif öncesi gösterilen geniş aralık — kesin tutar teklif adımında netleşir. */
+export function estimateRange(total: number): { min: number; max: number } {
+  const spread = Math.max(45, round(total * 0.12))
+  return {
+    min: Math.max(25, round(total - spread)),
+    max: round(total + spread * 1.15),
+  }
+}
+
 export function calcDesi(widthCm: number, lengthCm: number, heightCm: number, quantity: number): number {
   return Math.round(((widthCm * lengthCm * heightCm) / 3000) * quantity * 100) / 100
 }
@@ -37,7 +46,7 @@ export function calcDesi(widthCm: number, lengthCm: number, heightCm: number, qu
 function extrasLines(draft: OrderDraft, base: number): PriceLine[] {
   const lines: PriceLine[] = []
   const { extras } = draft
-  const speed = draft.deliverySpeed
+  const speed = coerceDeliverySpeed(draft.service, draft.deliverySpeed)
   if (speed && speed !== 'express') {
     const factor = deliverySpeedFactor(speed)
     const delta = round(base * (factor - 1))
@@ -48,7 +57,7 @@ function extrasLines(draft: OrderDraft, base: number): PriceLine[] {
         amount: delta,
       })
     }
-  } else if (speed === 'express') {
+  } else if (speed === 'express' && draft.service !== 'lojistik') {
     const delta = round(base * (deliverySpeedFactor('express') - 1))
     if (delta !== 0) {
       lines.push({
@@ -211,6 +220,7 @@ export function buildOffers(draft: OrderDraft, breakdown: PriceBreakdown): Offer
 
   const isFtl = draft.logisticsMode === 'ftl'
   const serviceLabel = isFtl ? 'FTL / Komple araç' : 'LTL / Parsiyel'
+  const logisticsSpeed = coerceDeliverySpeed('lojistik', speed)
 
   return [
     {
@@ -222,7 +232,12 @@ export function buildOffers(draft: OrderDraft, breakdown: PriceBreakdown): Offer
         : 'Parsiyel yük için anlık oluşan taşıma seçeneği.',
       carrier: 'LojistikPro',
       price: base,
-      etaLabel: speed === 'same_day' ? 'Aynı gün / ertesi gün' : speed === 'scheduled' ? 'Planlı teslim' : `${days} gün içinde teslim`,
+      etaLabel:
+        logisticsSpeed === 'same_day'
+          ? 'Aynı gün / ertesi gün'
+          : logisticsSpeed === 'scheduled'
+            ? 'Planlı teslim'
+            : `${days} gün içinde teslim`,
       perks: ['Belirttiğin tarihte yükleme', 'Araç tahsisi', 'Tam takip'],
       quoteSource: 'instant',
       serviceLabel,

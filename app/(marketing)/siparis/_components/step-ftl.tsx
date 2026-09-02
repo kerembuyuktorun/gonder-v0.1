@@ -1,10 +1,13 @@
 'use client'
 
-import { useState } from 'react'
-import { ChevronDown, Layers, Pencil, Plus, Trash2, Truck } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Layers, Plus, Sparkles, Trash2, Truck } from 'lucide-react'
 import { BODY_TYPES, VEHICLE_TYPES, findBody, findVehicle } from '../_lib/catalog'
+import { inferFtlConfig } from '../_lib/infer-load'
 import { createEmptyVehicleRow, type VehicleRow } from '../_lib/order-types'
+import { buildBreakdown } from '../_lib/pricing'
 import { BodyArt, VehicleArt } from './order-art'
+import { EstimateCard } from './estimate-card'
 import { QuantityStepper } from './inputs'
 import { SelectionCard } from './selection-card'
 import { ExtrasBlock } from './extras-block'
@@ -16,155 +19,221 @@ function rowIsComplete(row: VehicleRow) {
   return Boolean(row.vehicleTypeId && row.bodyTypeId && row.count > 0)
 }
 
+function defaultAiRow(signal: {
+  quantity?: number
+  weightKg?: number
+  description?: string
+}): VehicleRow {
+  const ai = inferFtlConfig({
+    quantity: signal.quantity,
+    weightKg: signal.weightKg,
+    text: signal.description,
+  })
+  return {
+    id: `veh-${ai.vehicleTypeId}`,
+    vehicleTypeId: ai.vehicleTypeId,
+    bodyTypeId: ai.bodyTypeId,
+    count: 1,
+  }
+}
+
 export function StepFtl() {
   const { draft, setDraft, next, back } = useWizard()
   const rows = draft.ftl.rows
-  const [openRowId, setOpenRowId] = useState<string | null>(rows[0]?.id ?? null)
+  const [aiSuggested, setAiSuggested] = useState(() =>
+    rows.some((row) => row.vehicleTypeId && row.bodyTypeId)
+  )
 
-  const updateRow = (id: string, partial: Partial<VehicleRow>) => {
-    setDraft((prev) => ({
-      ...prev,
-      ftl: { rows: prev.ftl.rows.map((row) => (row.id === id ? { ...row, ...partial } : row)) },
-    }))
+  const selectedVehicleIds = rows
+    .map((row) => row.vehicleTypeId)
+    .filter((id): id is string => Boolean(id))
+  const primaryBodyId = rows.find((row) => row.bodyTypeId)?.bodyTypeId ?? 'tenteli'
+
+  const setRows = (nextRows: VehicleRow[], suggested = false) => {
+    setDraft((prev) => ({ ...prev, ftl: { rows: nextRows } }))
+    setAiSuggested(suggested)
   }
 
-  const addRow = () => {
-    const row = createEmptyVehicleRow()
-    setDraft((prev) => ({ ...prev, ftl: { rows: [...prev.ftl.rows, row] } }))
-    setOpenRowId(row.id)
+  const applyAi = () => {
+    setRows(
+      [
+        defaultAiRow({
+          quantity: draft.ltl.loadKind === 'palet' ? draft.ltl.quantity : undefined,
+          weightKg: draft.ltl.loadKind
+            ? draft.ltl.weightKg * (draft.ltl.quantity || 1)
+            : undefined,
+          description: draft.ltl.description,
+        }),
+      ],
+      true
+    )
+  }
+
+  useEffect(() => {
+    if (rows.some((row) => row.vehicleTypeId && row.bodyTypeId)) return
+    applyAi()
+    // İlk açılışta boş satırı AI önerisiyle doldur
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const toggleVehicle = (id: string) => {
+    const exists = selectedVehicleIds.includes(id)
+    const nextIds = exists ? selectedVehicleIds.filter((item) => item !== id) : [...selectedVehicleIds, id]
+    if (nextIds.length === 0) {
+      applyAi()
+      return
+    }
+    const nextRows = nextIds.map((vehicleTypeId) => {
+      const existing = rows.find((row) => row.vehicleTypeId === vehicleTypeId)
+      return (
+        existing ?? {
+          id: `veh-${vehicleTypeId}`,
+          vehicleTypeId,
+          bodyTypeId: primaryBodyId,
+          count: 1,
+        }
+      )
+    })
+    setRows(nextRows)
+  }
+
+  const selectBody = (id: string) => {
+    const nextRows = (rows.length > 0 ? rows : [createEmptyVehicleRow()]).map((row) => ({
+      ...row,
+      bodyTypeId: id,
+      vehicleTypeId: row.vehicleTypeId,
+    }))
+    setRows(nextRows)
+  }
+
+  const updateCount = (id: string, count: number) => {
+    setRows(rows.map((row) => (row.id === id ? { ...row, count } : row)))
   }
 
   const removeRow = (id: string) => {
-    setDraft((prev) => ({ ...prev, ftl: { rows: prev.ftl.rows.filter((row) => row.id !== id) } }))
-    setOpenRowId((current) => (current === id ? null : current))
+    const nextRows = rows.filter((row) => row.id !== id)
+    if (nextRows.length === 0) {
+      applyAi()
+      return
+    }
+    setRows(nextRows)
+  }
+
+  const addRow = () => {
+    const unused = VEHICLE_TYPES.find((item) => !selectedVehicleIds.includes(item.id))
+    if (unused) {
+      toggleVehicle(unused.id)
+      return
+    }
+    const row = createEmptyVehicleRow()
+    setRows([...rows, { ...row, bodyTypeId: primaryBodyId }])
   }
 
   const allComplete = rows.length > 0 && rows.every(rowIsComplete)
   const totalVehicles = rows.reduce((sum, row) => sum + (rowIsComplete(row) ? row.count : 0), 0)
+  const breakdown = useMemo(() => (allComplete ? buildBreakdown(draft) : null), [allComplete, draft])
+  const vehicleSignature = rows.map((row) => `${row.vehicleTypeId}-${row.bodyTypeId}-${row.count}`).join('|')
+
+  const handleNext = () => {
+    if (!allComplete) applyAi()
+    next()
+  }
 
   return (
     <div>
       <StepHeader
-        title='Araç ve kasa tipini eşleştir'
-        description='Her araç için kasa tipini ayrı ayrı belirleyebilirsin. Birden fazla araç gerekiyorsa satır ekle.'
+        title='Araç ve kasa tipi'
+        description='Gönder AI bir öneri doldurdu. Birden fazla araç seçebilir, kasa tipini tümüne uygulayabilirsin.'
       />
 
-      <div className='space-y-4'>
-        {rows.map((row, index) => {
-          const vehicle = findVehicle(row.vehicleTypeId)
-          const body = findBody(row.bodyTypeId)
-          const open = openRowId === row.id
-          const complete = rowIsComplete(row)
+      <div className='mb-5 flex flex-col gap-3 rounded-2xl border border-[var(--gl-petrol)]/30 bg-[var(--gl-petrol-soft)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between'>
+        <p className='text-sm font-medium text-[var(--gl-ink)]'>
+          {aiSuggested ? 'AI önerisi — değiştirebilirsin' : 'Seçimini değiştirdin. İstersen AI yeniden önerir.'}
+        </p>
+        <button
+          type='button'
+          onClick={applyAi}
+          className='inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--gl-petrol)] px-3 py-1.5 text-xs font-semibold text-white'
+        >
+          <Sparkles className='size-3.5' aria-hidden />
+          Gönder AI seçsin
+        </button>
+      </div>
 
-          return (
-            <div
-              key={row.id}
-              className={`overflow-hidden rounded-2xl border-2 transition-colors ${
-                open ? 'border-[var(--gl-petrol)]' : 'border-[var(--gl-border)]'
-              }`}
-            >
-              <div className='flex items-center gap-3 bg-white p-4'>
-                <span
-                  className={`flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${
-                    complete ? 'bg-[var(--gl-petrol)] text-white' : 'bg-[var(--gl-subtle)] text-[var(--gl-muted)]'
-                  }`}
-                >
-                  {index + 1}
-                </span>
+      <div>
+        <p className='flex items-center gap-2 text-sm font-semibold text-[var(--gl-ink)]'>
+          <Truck className='size-4 text-[var(--gl-petrol)]' aria-hidden />
+          Araç tipi
+          <span className='text-xs font-normal text-[var(--gl-muted)]'>Birden fazla seçebilirsin</span>
+        </p>
+        <div className='mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-5'>
+          {VEHICLE_TYPES.map((option) => (
+            <SelectionCard
+              key={option.id}
+              selected={selectedVehicleIds.includes(option.id)}
+              onSelect={() => toggleVehicle(option.id)}
+              title={option.label}
+              hint={option.capacity}
+              art={<VehicleArt variant={option.id} />}
+            />
+          ))}
+        </div>
+      </div>
 
-                <div className='min-w-0 flex-1'>
-                  <p className='truncate text-sm font-semibold text-[var(--gl-ink)]'>
-                    {vehicle ? vehicle.label : 'Araç tipi seçilmedi'}
-                    {body ? ` · ${body.label}` : ''}
-                  </p>
-                  <p className='truncate text-xs text-[var(--gl-muted)]'>
-                    {complete ? `${row.count} araç · ${vehicle?.capacity}` : 'Araç ve kasa tipini seç'}
-                  </p>
-                </div>
+      <div className='mt-6'>
+        <p className='flex items-center gap-2 text-sm font-semibold text-[var(--gl-ink)]'>
+          <Layers className='size-4 text-[var(--gl-petrol)]' aria-hidden />
+          Kasa tipi
+          <span className='text-xs font-normal text-[var(--gl-muted)]'>Seçilen tüm araçlara uygulanır</span>
+        </p>
+        <div className='mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-6'>
+          {BODY_TYPES.map((option) => (
+            <SelectionCard
+              key={option.id}
+              selected={primaryBodyId === option.id}
+              onSelect={() => selectBody(option.id)}
+              title={option.label}
+              hint={option.hint}
+              art={<BodyArt variant={option.id} />}
+            />
+          ))}
+        </div>
+      </div>
 
+      {rows.length > 0 ? (
+        <ul className='mt-6 space-y-2'>
+          {rows.map((row) => {
+            const vehicle = findVehicle(row.vehicleTypeId)
+            const body = findBody(row.bodyTypeId)
+            return (
+              <li
+                key={row.id}
+                className='flex flex-col gap-3 rounded-xl border border-[var(--gl-border)] bg-white px-3 py-3 sm:flex-row sm:items-center'
+              >
+                <p className='min-w-0 flex-1 text-sm font-medium text-[var(--gl-ink)]'>
+                  {vehicle?.label ?? 'Araç'} · {body?.label ?? 'Kasa'}
+                </p>
+                <QuantityStepper
+                  label='Adet'
+                  value={row.count}
+                  onChange={(value) => updateCount(row.id, value)}
+                  max={40}
+                />
                 {rows.length > 1 ? (
                   <button
                     type='button'
                     onClick={() => removeRow(row.id)}
-                    aria-label={`${index + 1}. aracı kaldır`}
-                    className='shrink-0 rounded-lg p-2 text-[var(--gl-muted)] transition-colors hover:bg-[var(--gl-accent-soft)] hover:text-[var(--gl-accent)]'
+                    aria-label='Bu aracı kaldır'
+                    className='inline-flex items-center justify-center rounded-lg p-2 text-[var(--gl-muted)] hover:bg-[var(--gl-accent-soft)] hover:text-[var(--gl-accent)]'
                   >
                     <Trash2 className='size-4' aria-hidden />
                   </button>
                 ) : null}
-
-                <button
-                  type='button'
-                  onClick={() => setOpenRowId(open ? null : row.id)}
-                  aria-expanded={open}
-                  className='inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-[var(--gl-petrol)] transition-colors hover:bg-[var(--gl-petrol-soft)]'
-                >
-                  {open ? (
-                    <>
-                      Kapat
-                      <ChevronDown className='size-4' aria-hidden />
-                    </>
-                  ) : (
-                    <>
-                      <Pencil className='size-3.5' aria-hidden />
-                      Düzenle
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {open ? (
-                <div className='space-y-6 border-t border-[var(--gl-border)] bg-[var(--gl-bg-soft)] p-4 sm:p-5'>
-                  <div>
-                    <p className='flex items-center gap-2 text-sm font-semibold text-[var(--gl-ink)]'>
-                      <Truck className='size-4 text-[var(--gl-petrol)]' aria-hidden />
-                      Araç tipi
-                    </p>
-                    <div className='mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-5'>
-                      {VEHICLE_TYPES.map((option) => (
-                        <SelectionCard
-                          key={option.id}
-                          selected={row.vehicleTypeId === option.id}
-                          onSelect={() => updateRow(row.id, { vehicleTypeId: option.id })}
-                          title={option.label}
-                          hint={option.capacity}
-                          art={<VehicleArt variant={option.id} />}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className='flex items-center gap-2 text-sm font-semibold text-[var(--gl-ink)]'>
-                      <Layers className='size-4 text-[var(--gl-petrol)]' aria-hidden />
-                      Kasa tipi
-                    </p>
-                    <div className='mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-6'>
-                      {BODY_TYPES.map((option) => (
-                        <SelectionCard
-                          key={option.id}
-                          selected={row.bodyTypeId === option.id}
-                          onSelect={() => updateRow(row.id, { bodyTypeId: option.id })}
-                          title={option.label}
-                          hint={option.hint}
-                          art={<BodyArt variant={option.id} />}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <QuantityStepper
-                    label='Bu konfigürasyondan kaç araç?'
-                    value={row.count}
-                    onChange={(v) => updateRow(row.id, { count: v })}
-                    max={40}
-                  />
-                </div>
-              ) : null}
-            </div>
-          )
-        })}
-      </div>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
 
       <button
         type='button'
@@ -183,12 +252,23 @@ export function StepFtl() {
         <ExtrasBlock />
       </div>
 
+      {allComplete ? (
+        <aside className='mt-6 max-w-sm rounded-2xl border border-[var(--gl-border)] bg-[var(--gl-subtle)] p-5'>
+          <p className='gl-eyebrow'>Tahmini hesap</p>
+          <EstimateCard
+            total={breakdown?.total ?? null}
+            signature={`${vehicleSignature}-${draft.deliverySpeed}-${draft.extras.forklift}-${draft.extras.temperatureControl}-${draft.extras.fragile}-${draft.extras.insurance}`}
+            label='Tahmini navlun aralığı (KDV dahil)'
+            hint={breakdown ? `${breakdown.distanceKm} km · kesin tutar teklifte` : undefined}
+          />
+        </aside>
+      ) : null}
+
       <StepNav
         onBack={back}
-        onNext={next}
+        onNext={handleNext}
         nextLabel='Teklifleri Gör'
-        nextDisabled={!allComplete}
-        helper={allComplete ? `Toplam ${totalVehicles} araç` : 'Her satır için araç ve kasa tipi seç'}
+        helper={allComplete ? `Toplam ${totalVehicles} araç` : 'AI önerisiyle devam edebilirsin'}
       />
     </div>
   )

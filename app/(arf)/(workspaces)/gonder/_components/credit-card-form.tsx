@@ -73,7 +73,7 @@ export function CreditCardForm({
         >
           <div
             className={cn(
-              'absolute inset-0 flex flex-col justify-between rounded-2xl bg-gradient-to-br p-4 text-white shadow-lg [backface-visibility:hidden]',
+              '@container absolute inset-0 flex flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br p-4 text-white shadow-lg [backface-visibility:hidden]',
               BRAND_GRADIENTS[brand]
             )}
           >
@@ -83,8 +83,12 @@ export function CreditCardForm({
                 {brand === 'unknown' ? 'ARF Pay' : CARD_BRAND_LABELS[brand]}
               </span>
             </div>
-            <p className='font-mono text-lg tracking-[0.18em] tabular-nums sm:text-xl'>
-              {formatCardNumber(value.number) || '•••• •••• •••• ••••'}
+            <p className='flex w-full min-w-0 flex-nowrap items-center justify-start gap-x-[0.38em] font-mono text-[min(1rem,calc(100cqi/16.5))] leading-none tracking-[0.05em] tabular-nums'>
+              {(formatCardNumber(value.number) || '•••• •••• •••• ••••').split(/\s+/).map((group, index) => (
+                <span key={`${group}-${index}`} className='shrink-0'>
+                  {group}
+                </span>
+              ))}
             </p>
             <div className='flex items-end justify-between gap-3 text-xs'>
               <div className='min-w-0'>

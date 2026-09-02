@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { CreditCard, Loader2, Lock, ShieldCheck } from 'lucide-react'
+import { CreditCard, Info, Loader2, Lock, ShieldCheck } from 'lucide-react'
 import { formatTry } from '../_lib/order-types'
 import { buildBreakdown } from '../_lib/pricing'
 import { OrderSummary } from './order-summary'
@@ -101,14 +101,16 @@ export function StepPayment() {
                 onChange={(v) => setContact({ email: v })}
               />
             </div>
+            <p className='mt-4 flex items-start gap-2 text-xs leading-relaxed text-[var(--gl-muted)]'>
+              <Info className='mt-0.5 size-3.5 shrink-0' aria-hidden />
+              Bu e-postaya kayıtlı hesabınız varsa gönderi oraya düşer. Yoksa e-postanıza otomatik
+              hesap oluşturulur; gelen link ile girip gönderiyi takip edebilirsiniz.
+            </p>
           </section>
 
           <section className='rounded-2xl border border-[var(--gl-border)] bg-white p-5'>
             <div className='flex flex-wrap items-center justify-between gap-2'>
               <p className='gl-eyebrow'>Kart bilgileri</p>
-              <span className='inline-flex items-center gap-1.5 rounded-full bg-[var(--gl-yellow-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--gl-ink)]'>
-                Demo ödeme · gerçek tahsilat yapılmaz
-              </span>
             </div>
 
             <div className='mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start'>
@@ -147,10 +149,14 @@ export function StepPayment() {
                 />
               </div>
 
-              <div className='hidden w-64 rounded-2xl bg-[var(--gl-ink)] p-5 text-white lg:block'>
+              <div className='hidden w-64 min-w-0 @container rounded-2xl bg-[var(--gl-ink)] p-5 text-white lg:block'>
                 <CreditCard className='size-7 opacity-70' aria-hidden />
-                <p className='mt-6 font-mono text-base tracking-[0.14em]'>
-                  {card.number || '•••• •••• •••• ••••'}
+                <p className='mt-6 flex w-full min-w-0 flex-nowrap items-center justify-start gap-x-[0.38em] font-mono text-[min(15px,calc(100cqi/14.5))] leading-none tracking-[0.05em] tabular-nums'>
+                  {(card.number || '•••• •••• •••• ••••').split(/\s+/).map((group, index) => (
+                    <span key={`${group}-${index}`} className='shrink-0'>
+                      {group}
+                    </span>
+                  ))}
                 </p>
                 <div className='mt-5 flex items-end justify-between text-[11px] uppercase tracking-wider opacity-80'>
                   <span className='truncate pr-3'>{card.holder || 'AD SOYAD'}</span>
@@ -161,8 +167,7 @@ export function StepPayment() {
 
             <p className='mt-4 flex items-start gap-2 text-xs leading-relaxed text-[var(--gl-muted)]'>
               <Lock className='mt-0.5 size-3.5 shrink-0' aria-hidden />
-              Bu bir demo akıştır. Girilen kart bilgileri hiçbir yere gönderilmez ve saklanmaz. Gerçek kart bilgisi
-              girmeyin.
+              Kart bilgilerin 256-bit SSL ile şifrelenir.
             </p>
           </section>
         </div>

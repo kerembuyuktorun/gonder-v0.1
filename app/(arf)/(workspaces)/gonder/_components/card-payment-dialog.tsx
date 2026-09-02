@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   BadgeCheck,
   CheckCircle2,
+  Info,
   Lock,
   ShieldCheck,
   TriangleAlert,
@@ -334,6 +335,14 @@ export function CardPaymentDialog({
               </p>
             ) : null}
           </div>
+        ) : null}
+
+        {stage === 'form' ? (
+          <p className='flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground'>
+            <Info className='mt-0.5 size-3.5 shrink-0' aria-hidden />
+            Bu e-postaya kayıtlı hesabınız varsa gönderi oraya düşer. Yoksa e-postanıza otomatik
+            hesap oluşturulur; gelen link ile girip gönderiyi takip edebilirsiniz.
+          </p>
         ) : null}
 
         {stage === 'form' || stage === 'threeds' ? (

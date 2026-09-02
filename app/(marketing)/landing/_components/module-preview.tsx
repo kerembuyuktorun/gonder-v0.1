@@ -162,7 +162,7 @@ export function ModulePreview({ module }: { module: LandingModule }) {
 
       {/* Alt kesim: içeriğin devam ettiğini hissettirir */}
       <div
-        className='pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[var(--gl-bg-soft)] via-[var(--gl-bg-soft)]/85 to-transparent'
+        className='pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#e4e9e8] via-[#e4e9e8]/85 to-transparent'
         aria-hidden
       />
     </div>

@@ -2,8 +2,9 @@
 
 import { useRouter } from 'next/navigation'
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
-import { toOrderQuery, type ParsedPrompt } from '../_lib/parse-prompt'
+import { toOrderQuery, toQuotePrefill, type ParsedPrompt } from '../_lib/parse-prompt'
 import { LANDING_MODULES } from '../_lib/modules'
+import { saveQuotePrefill } from '../../siparis/_lib/quote-prefill'
 
 export type TransportMode = 'kargo' | 'lojistik'
 
@@ -51,6 +52,7 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
 
   const startOrderFromPrompt = useCallback(
     (parsed: ParsedPrompt) => {
+      saveQuotePrefill(toQuotePrefill(parsed))
       router.push(`${ORDER_PATH}?${toOrderQuery(parsed)}`)
     },
     [router]
@@ -67,13 +69,9 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const sendToAssistant = useCallback(
-    (text: string) => {
-      setAssistantSeed({ text, nonce: Date.now() })
-      requestAnimationFrame(scrollToAssistant)
-    },
-    [scrollToAssistant]
-  )
+  const sendToAssistant = useCallback((text: string) => {
+    setAssistantSeed({ text, nonce: Date.now() })
+  }, [])
 
   const value = useMemo(
     () => ({

@@ -133,9 +133,9 @@ export const createGonderHeaderSearchCommands: SearchCommandFactory = (push) => 
   },
   {
     id: 'price-calculation',
-    label: 'Fiyat Hesapla',
+    label: 'Teklif al',
     group: 'Hızlı İşlemler',
-    keywords: ['fiyat', 'hesap'],
+    keywords: ['fiyat', 'hesap', 'teklif'],
     onSelect: () => push(R.priceCalculation),
   },
   {

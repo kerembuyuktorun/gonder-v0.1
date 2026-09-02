@@ -13,6 +13,7 @@ import {
   type PriceCalculationDraft,
   type PriceCalculationLocation,
 } from '../_types/price-calculation'
+import { isOrderReadyForOffers } from '../_lib/siparis-draft-map'
 
 type PriceDraftStore = {
   draft: PriceCalculationDraft
@@ -42,6 +43,9 @@ function normalizeDraft(draft: Partial<PriceCalculationDraft> | undefined): Pric
     origin: normalizePriceLocation(draft?.origin),
     destination: normalizePriceLocation(draft?.destination),
     pieces: Array.isArray(draft?.pieces) ? draft.pieces : [],
+    siparis: draft?.siparis ?? null,
+    siparisStep: typeof draft?.siparisStep === 'string' ? draft.siparisStep : 'route',
+    selectedOffer: draft?.selectedOffer ?? null,
   }
 }
 
@@ -119,6 +123,10 @@ export const usePriceDraftStore = create<PriceDraftStore>()(
 )
 
 export function isPriceDraftReady(draft: PriceCalculationDraft): boolean {
+  if (draft.siparis) {
+    return isOrderReadyForOffers(draft.siparis)
+  }
+
   if (!draft.operationType) return false
   if (!draft.origin?.label?.trim() || !draft.origin.city?.trim()) return false
   if (!draft.destination?.label?.trim() || !draft.destination.city?.trim()) return false

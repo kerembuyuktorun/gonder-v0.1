@@ -1,16 +1,24 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Bot, Send, Sparkles } from 'lucide-react'
+import { Bot, Send } from 'lucide-react'
 import { useQuoteLanding } from './quote-context'
-import { buildReplies, parsePrompt, summaryLine, type ParsedPrompt } from '../_lib/parse-prompt'
+import {
+  buildReplies,
+  hasRoute,
+  mergePrompt,
+  parsePrompt,
+  summaryLine,
+  type ChatDraft,
+  type ParsedPrompt,
+} from '../_lib/parse-prompt'
 
 type ChatMessage = { role: 'user' | 'assistant'; text: string }
 
 const PROMPTS = [
   'Kargom için fiyat almak istiyorum.',
   'Parsiyel taşıma mı, komple araç mı?',
-  'Bursa’dan Ankara’ya 3 palet seramik göndereceğim.',
+  'Düzce’den Savaştepe’ye 10 palet 7 ton seramik.',
 ]
 
 const STATIC_ANSWERS: Record<string, string[]> = {
@@ -34,6 +42,7 @@ export function AssistantSection() {
   const [typing, setTyping] = useState(false)
   const logRef = useRef<HTMLDivElement>(null)
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])
+  const draftRef = useRef<ChatDraft | null>(null)
 
   useEffect(() => {
     return () => timers.current.forEach(clearTimeout)
@@ -47,10 +56,11 @@ export function AssistantSection() {
     setMessages((m) => [...m, { role: 'user', text }])
     setInput('')
     setTyping(true)
-    setSummary(null)
 
     const canned = STATIC_ANSWERS[text]
-    const parsed = canned ? null : parsePrompt(text)
+    const incoming = canned ? null : parsePrompt(text)
+    const parsed = incoming ? mergePrompt(draftRef.current, incoming) : null
+    if (parsed) draftRef.current = parsed
     const replies = canned ?? buildReplies(parsed!)
 
     replies.forEach((reply, i) => {
@@ -81,15 +91,13 @@ export function AssistantSection() {
     respond(trimmed)
   }
 
+  const ready = summary ? hasRoute(summary) : false
+
   return (
     <section id='asistan' className='gl-section scroll-mt-16 bg-[var(--gl-bg-soft)]'>
       <div className='gl-container'>
         <div className='grid items-start gap-10 lg:grid-cols-2 lg:gap-14'>
           <div className='space-y-4'>
-            <span className='inline-flex items-center gap-1.5 rounded-full bg-[var(--gl-yellow-soft)] px-3 py-1 text-xs font-semibold text-[var(--gl-ink)]'>
-              <Sparkles className='size-3.5' aria-hidden />
-              Örnek deneyim
-            </span>
             <h2 className='text-3xl font-bold sm:text-4xl'>
               Ne göndereceğini anlat. Birlikte hazırlayalım.
             </h2>
@@ -120,7 +128,7 @@ export function AssistantSection() {
               </span>
               <div>
                 <p className='text-sm font-semibold'>Gönder Asistan</p>
-                <p className='text-[10px] text-[var(--gl-muted)]'>Prototip · örnek yanıtlar</p>
+                <p className='text-[10px] text-[var(--gl-muted)]'>Yükünü tarif et, taslağı hazırlayalım</p>
               </div>
             </div>
 
@@ -148,16 +156,19 @@ export function AssistantSection() {
               ) : null}
             </div>
 
-            {summary ? (
+            {summary && ready ? (
               <div className='border-t border-[var(--gl-border)] bg-[var(--gl-subtle)]/70 p-4'>
                 <p className='gl-eyebrow'>Taşıma özeti</p>
                 <p className='mt-1.5 text-sm font-medium'>{summaryLine(summary)}</p>
+                <p className='mt-1.5 text-xs text-[var(--gl-muted)]'>
+                  Sohbette yanıtlamaya devam edebilir veya forma geçebilirsin.
+                </p>
                 <button
                   type='button'
                   className='gl-btn-primary mt-3 w-full'
                   onClick={() => startOrderFromPrompt(summary)}
                 >
-                  Sipariş Formuna Aktar
+                  Teklif formuna geç
                 </button>
               </div>
             ) : null}

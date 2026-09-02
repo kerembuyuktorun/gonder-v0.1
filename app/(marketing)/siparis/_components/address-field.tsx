@@ -164,7 +164,6 @@ export function AddressField({
                 </button>
               </li>
             ))}
-            <li className='px-2.5 pb-1 pt-2 text-[10px] text-[var(--gl-muted)]'>Adres önerileri · demo servis</li>
           </ul>
         ) : null}
 

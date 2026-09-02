@@ -1,8 +1,10 @@
-/** Örnek veri — gerçek servis bağlantısı yok. */
 export const TURKEY_CITIES = [
   'Adana',
+  'Afyonkarahisar',
   'Ankara',
   'Antalya',
+  'Aydın',
+  'Balıkesir',
   'Bursa',
   'Denizli',
   'Diyarbakır',
@@ -13,17 +15,23 @@ export const TURKEY_CITIES = [
   'Kayseri',
   'Kocaeli',
   'Konya',
+  'Manisa',
   'Mersin',
   'Samsun',
+  'Tekirdağ',
   'Trabzon',
+  'Uşak',
+  'Düzce',
 ] as const
 
 export type TurkeyCity = (typeof TURKEY_CITIES)[number]
 
-/** Harita noktaları — yüzde konum (örnek). */
+/** Harita noktaları — yüzde konum. */
 export const CITY_MAP_COORDS: Record<string, { x: number; y: number }> = {
   İstanbul: { x: 28, y: 22 },
   Bursa: { x: 24, y: 30 },
+  Balıkesir: { x: 18, y: 32 },
+  Manisa: { x: 16, y: 38 },
   Ankara: { x: 42, y: 34 },
   İzmir: { x: 12, y: 42 },
   Antalya: { x: 30, y: 58 },
@@ -38,6 +46,11 @@ export const CITY_MAP_COORDS: Record<string, { x: number; y: number }> = {
   Kayseri: { x: 50, y: 40 },
   Denizli: { x: 22, y: 46 },
   Diyarbakır: { x: 72, y: 46 },
+  Aydın: { x: 18, y: 50 },
+  Tekirdağ: { x: 22, y: 20 },
+  Uşak: { x: 22, y: 42 },
+  Afyonkarahisar: { x: 28, y: 42 },
+  Düzce: { x: 34, y: 24 },
 }
 
 export const SAMPLE_DISTRICTS: Record<string, string[]> = {
@@ -46,4 +59,7 @@ export const SAMPLE_DISTRICTS: Record<string, string[]> = {
   İzmir: ['Konak', 'Bornova', 'Karşıyaka', 'Çiğli'],
   Bursa: ['Nilüfer', 'Osmangazi', 'Yıldırım'],
   Antalya: ['Muratpaşa', 'Kepez', 'Alanya'],
+  Manisa: ['Yunusemre', 'Şehzadeler', 'Akhisar', 'Soma', 'Salihli'],
+  Balıkesir: ['Savaştepe', 'Altıeylül', 'Bandırma', 'Edremit'],
+  Düzce: ['Merkez'],
 }

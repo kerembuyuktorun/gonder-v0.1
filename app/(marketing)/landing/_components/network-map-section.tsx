@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { MapPin } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -170,10 +169,6 @@ export function NetworkMapSection() {
                   )
                 })}
               </svg>
-              <p className='absolute bottom-2.5 left-3 flex items-center gap-1.5 text-[10px] text-[var(--gl-muted)]'>
-                <MapPin className='size-3' aria-hidden />
-                Örnek harita — gerçek kapasite verisi yok
-              </p>
             </div>
 
             <p className='text-xs leading-relaxed text-[var(--gl-muted)]'>

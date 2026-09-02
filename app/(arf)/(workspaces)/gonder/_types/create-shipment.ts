@@ -1,3 +1,7 @@
+import type {
+  Offer,
+  OrderDraft,
+} from '../../../../(marketing)/siparis/_lib/order-types'
 import type { QuotePaymentSummary } from './payment'
 import type {
   AddressDraft,
@@ -37,14 +41,18 @@ export type CreateShipmentDraft = {
   /** Kart ile tahsilat tamamlandıysa ödeme özeti */
   cardPayment: QuotePaymentSummary | null
   note: string
+  /** Landing sipariş sihirbazı taslağı — panel UI kaynağı */
+  siparis: OrderDraft | null
+  siparisStep: string
+  selectedOffer: Offer | null
 }
 
 export const CREATE_SHIPMENT_STEPS: Array<{ id: CreateShipmentStep; label: string }> = [
-  { id: 1, label: 'Kaynak' },
-  { id: 2, label: 'Adresler' },
-  { id: 3, label: 'Parçalar' },
+  { id: 1, label: 'Hizmet' },
+  { id: 2, label: 'Adres' },
+  { id: 3, label: 'Detaylar' },
   { id: 4, label: 'Teklif' },
-  { id: 5, label: 'Onay' },
+  { id: 5, label: 'Ödeme' },
 ]
 
 export const EMPTY_CREATE_SHIPMENT_DRAFT: CreateShipmentDraft = {
@@ -66,6 +74,9 @@ export const EMPTY_CREATE_SHIPMENT_DRAFT: CreateShipmentDraft = {
   paymentMethod: 'invoice',
   cardPayment: null,
   note: '',
+  siparis: null,
+  siparisStep: 'route',
+  selectedOffer: null,
 }
 
 export function isCreateShipmentStepReady(
@@ -110,8 +121,8 @@ export function canSubmitCreateShipment(draft: CreateShipmentDraft): boolean {
 export function getCreateShipmentMissingFields(draft: CreateShipmentDraft): string[] {
   const missing: string[] = []
   if (!draft.operationType) missing.push('Operasyon tipi')
-  if (!draft.origin?.label?.trim()) missing.push('Gönderici adresi')
-  if (!draft.destination?.label?.trim()) missing.push('Alıcı adresi')
+  if (!draft.origin?.label?.trim()) missing.push('Çıkış adresi')
+  if (!draft.destination?.label?.trim()) missing.push('Varış adresi')
   if (
     draft.pieces.length === 0 ||
     !draft.pieces.every(
