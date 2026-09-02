@@ -1,11 +1,10 @@
-import { GonderPlaceholderPage } from '../_components/gonder-placeholder-page'
+import { Suspense } from 'react'
+import { IntegrationsListContent } from './_components/integrations-list-content'
 
-export default function IntegrationsPlaceholderPage() {
+export default function IntegrationsPage() {
   return (
-    <GonderPlaceholderPage
-      breadcrumbs={['Gönder', 'Entegrasyonlar']}
-      title='Entegrasyonlar'
-      description='Satış kanalı bağlantıları sonraki dilimde burada yönetilecek. Excel içe aktarım için Excel İçe Aktarım menüsünü kullanın.'
-    />
+    <Suspense fallback={null}>
+      <IntegrationsListContent />
+    </Suspense>
   )
 }

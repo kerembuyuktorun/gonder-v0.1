@@ -71,6 +71,8 @@ export type QuoteRequest = {
   updatedAt: string
   selectedQuoteId: string | null
   shipmentId: string | null
+  /** Gönderi listesindeki referans (GND-…) — ilişki gösterimi için */
+  shipmentReference: string | null
   /** Kart ile ödeme tamamlandıysa tahsilat özeti */
   payment: QuotePaymentSummary | null
   offers: QuoteOffer[]
@@ -103,7 +105,16 @@ export const QUOTE_OFFER_STATUS_LABELS: Record<QuoteOfferStatus, string> = {
 
 export const QUOTE_REQUEST_VIEW_STATUSES: Record<QuoteRequestView, QuoteRequestStatus[] | null> = {
   all: null,
-  open: ['draft', 'submitted', 'collecting', 'partially_received', 'ready'],
+  open: [
+    'draft',
+    'submitted',
+    'collecting',
+    'partially_received',
+    'ready',
+    'selected',
+    'payment_pending',
+    'paid',
+  ],
   action_required: ['ready', 'selected', 'payment_pending', 'paid', 'partially_received'],
   ready: ['ready', 'selected', 'payment_pending', 'paid', 'partially_received'],
   converted: ['converted'],

@@ -65,7 +65,7 @@ function bestPrice(request: QuoteRequest) {
 
 export function QuotesContent() {
   const url = useWorkspaceListUrlState({
-    defaultView: 'open',
+    defaultView: 'all',
     validViews: VIEWS,
   })
   const [searchInput, setSearchInput] = useState(url.search)
@@ -130,6 +130,22 @@ export function QuotesContent() {
             {QUOTE_REQUEST_STATUS_LABELS[row.original.status]}
           </Badge>
         ),
+      },
+      {
+        id: 'shipment',
+        header: ({ column }) => <DataTableColumnHeader column={column} title='Gönderi' />,
+        cell: ({ row }) => {
+          const { shipmentId, shipmentReference } = row.original
+          if (!shipmentId) return <span className='text-muted-foreground'>—</span>
+          return (
+            <Link
+              href={ARF_ROUTES.gonder.shipments.detail(shipmentId)}
+              className='block truncate font-medium hover:underline'
+            >
+              {shipmentReference ?? shipmentId}
+            </Link>
+          )
+        },
       },
       {
         id: 'offers',

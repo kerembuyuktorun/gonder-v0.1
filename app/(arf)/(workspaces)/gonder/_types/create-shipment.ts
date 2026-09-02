@@ -27,6 +27,8 @@ export type CreateShipmentDraft = {
   quoteId: string | null
   /** Teklif talebi (TKF) kimliği — ödeme ve dönüşüm kaydı için */
   quoteRequestId: string | null
+  /** Çoklu siparişten kargo: tüm bağlı sipariş id’leri */
+  linkedOrderIds: string[]
   templateId: string | null
   repeatShipmentId: string | null
   operationType: OperationType | null
@@ -61,9 +63,10 @@ export const EMPTY_CREATE_SHIPMENT_DRAFT: CreateShipmentDraft = {
   orderId: null,
   quoteId: null,
   quoteRequestId: null,
+  linkedOrderIds: [],
   templateId: null,
   repeatShipmentId: null,
-  operationType: 'parcel',
+  operationType: null,
   origin: null,
   destination: null,
   pieces: [],
@@ -112,17 +115,25 @@ export function isCreateShipmentStepReady(
 }
 
 export function canSubmitCreateShipment(draft: CreateShipmentDraft): boolean {
-  return ([1, 2, 3, 4, 5] as CreateShipmentStep[]).every((step) =>
-    isCreateShipmentStepReady(draft, step)
-  )
+  return getCreateShipmentMissingFields(draft).length === 0
 }
 
 /** Tek sayfa form için eksik alan listesi (özet paneli) */
 export function getCreateShipmentMissingFields(draft: CreateShipmentDraft): string[] {
   const missing: string[] = []
-  if (!draft.operationType) missing.push('Operasyon tipi')
+  if (!draft.operationType) missing.push('Hizmet tipi')
   if (!draft.origin?.label?.trim()) missing.push('Çıkış adresi')
   if (!draft.destination?.label?.trim()) missing.push('Varış adresi')
+  const originKey = (draft.origin?.placeId || draft.origin?.label || '').trim().toLocaleLowerCase('tr-TR')
+  const destKey = (draft.destination?.placeId || draft.destination?.label || '').trim().toLocaleLowerCase('tr-TR')
+  if (
+    draft.origin?.label?.trim() &&
+    draft.destination?.label?.trim() &&
+    originKey.length > 0 &&
+    originKey === destKey
+  ) {
+    missing.push('Farklı varış adresi')
+  }
   if (
     draft.pieces.length === 0 ||
     !draft.pieces.every(
@@ -136,10 +147,8 @@ export function getCreateShipmentMissingFields(draft: CreateShipmentDraft): stri
   ) {
     missing.push('Paket / yük bilgisi')
   }
-  if (!draft.providerName?.trim()) missing.push('Taşıyıcı')
-  if (!draft.serviceName?.trim()) missing.push('Servis')
-  if (draft.priceTry == null) missing.push('Fiyat')
   if (!draft.courierSpeed) missing.push('Teslimat zamanı')
+  if (draft.priceTry == null) missing.push('Tahmini ücret')
   if (!draft.paymentMethod) missing.push('Ödeme yöntemi')
   if (draft.paymentMethod === 'card' && !draft.cardPayment) missing.push('Kart ödemesi')
   return missing

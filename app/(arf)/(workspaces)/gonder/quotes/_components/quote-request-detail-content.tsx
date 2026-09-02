@@ -93,8 +93,13 @@ export function QuoteRequestDetailContent() {
     setMode('shipment')
     patchShipmentDraft(
       data?.payment
-        ? { quoteRequestId: data.id, paymentMethod: 'card', cardPayment: data.payment }
-        : { quoteRequestId: data?.id ?? null }
+        ? {
+            quoteRequestId: data.id,
+            quoteId: offer.id,
+            paymentMethod: 'card',
+            cardPayment: data.payment,
+          }
+        : { quoteRequestId: data?.id ?? null, quoteId: offer.id }
     )
     router.push(`${ARF_ROUTES.gonder.shipments.create}?quoteId=${offer.id}`)
   }
@@ -153,6 +158,14 @@ export function QuoteRequestDetailContent() {
                     {data.offers.filter((o) => o.status !== 'pending').length}/{data.offers.length}{' '}
                     teklif alındı
                   </span>
+                  {data.shipmentId ? (
+                    <Link
+                      href={ARF_ROUTES.gonder.shipments.detail(data.shipmentId)}
+                      className='font-medium text-foreground hover:underline'
+                    >
+                      Gönderi: {data.shipmentReference ?? data.shipmentId}
+                    </Link>
+                  ) : null}
                 </div>
               </CardHeader>
             </Card>

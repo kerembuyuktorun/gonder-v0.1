@@ -38,8 +38,9 @@ function defaultAiRow(signal: {
 }
 
 export function StepFtl() {
-  const { draft, setDraft, next, back } = useWizard()
+  const { draft, setDraft, next, back, variant } = useWizard()
   const rows = draft.ftl.rows
+  const panelPage = variant === 'shipment'
   const [aiSuggested, setAiSuggested] = useState(() =>
     rows.some((row) => row.vehicleTypeId && row.bodyTypeId)
   )
@@ -259,7 +260,11 @@ export function StepFtl() {
             total={breakdown?.total ?? null}
             signature={`${vehicleSignature}-${draft.deliverySpeed}-${draft.extras.forklift}-${draft.extras.temperatureControl}-${draft.extras.fragile}-${draft.extras.insurance}`}
             label='Tahmini navlun aralığı (KDV dahil)'
-            hint={breakdown ? `${breakdown.distanceKm} km · kesin tutar teklifte` : undefined}
+            hint={
+              breakdown
+                ? `${breakdown.distanceKm} km${panelPage ? '' : ' · kesin tutar teklifte'}`
+                : undefined
+            }
           />
         </aside>
       ) : null}

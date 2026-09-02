@@ -1,11 +1,5 @@
-import { GonderPlaceholderPage } from '../../_components/gonder-placeholder-page'
+import { FinanceWalletContent } from '../_components/finance-wallet-content'
 
 export default function FinanceWalletPage() {
-  return (
-    <GonderPlaceholderPage
-      breadcrumbs={['Gönder', 'Finans', 'Cüzdan']}
-      title='Cüzdan'
-      description='Cüzdan bakiyesi, yükleme ve hareket özeti sonraki dilimde burada yönetilecek.'
-    />
-  )
+  return <FinanceWalletContent />
 }

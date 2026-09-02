@@ -1,11 +1,5 @@
-import { GonderPlaceholderPage } from '../../../_components/gonder-placeholder-page'
+import { FinanceWalletTopUpContent } from '../../_components/finance-wallet-top-up-content'
 
 export default function FinanceWalletTopUpPage() {
-  return (
-    <GonderPlaceholderPage
-      breadcrumbs={['Gönder', 'Finans', 'Cüzdan', 'Yükleme']}
-      title='Cüzdan yükleme'
-      description='Mock kart / havale yükleme formu sonraki dilimde burada olacak.'
-    />
-  )
+  return <FinanceWalletTopUpContent />
 }

@@ -28,7 +28,7 @@ import {
   RowQuickActions,
   type ActiveFilterChip,
 } from '../../_components/data-workspace'
-import { shipmentsListRepository } from '../../_data/shipments-list-repository'
+import { shipmentsListRepository, SHIPMENTS_LIST_KEY } from '../../_data/shipments-list-repository'
 import { useWorkspaceListUrlState } from '../../_hooks/use-workspace-list-url-state'
 import {
   LOGISTICS_MODE_LABELS,
@@ -63,8 +63,6 @@ const VIEW_LABELS: Record<ShipmentView, string> = {
   issues: 'Sorunlu',
   cancelled: 'İptal',
 }
-
-const SHIPMENTS_KEY = ['gonder', 'shipments-list'] as const
 
 const resolveUpdater = <T,>(updater: Updater<T>, previous: T): T =>
   typeof updater === 'function' ? (updater as (old: T) => T)(previous) : updater
@@ -110,8 +108,9 @@ export function ShipmentsListContent() {
   )
 
   const { data, isLoading } = useQuery({
-    queryKey: [...SHIPMENTS_KEY, listQuery],
+    queryKey: [...SHIPMENTS_LIST_KEY, listQuery],
     queryFn: () => shipmentsListRepository.list(listQuery),
+    staleTime: 0,
   })
 
   const items = data?.items ?? []
@@ -143,6 +142,22 @@ export function ShipmentsListContent() {
         accessorKey: 'orderNumber',
         header: ({ column }) => <DataTableColumnHeader column={column} title='Sipariş' />,
         cell: ({ row }) => row.original.orderNumber ?? '—',
+      },
+      {
+        id: 'quote',
+        header: ({ column }) => <DataTableColumnHeader column={column} title='Teklif' />,
+        cell: ({ row }) => {
+          const { quoteId, quoteReference } = row.original
+          if (!quoteId) return <span className='text-muted-foreground'>—</span>
+          return (
+            <Link
+              href={ARF_ROUTES.gonder.quotes.detail(quoteId)}
+              className='block truncate font-medium hover:underline'
+            >
+              {quoteReference ?? quoteId}
+            </Link>
+          )
+        },
       },
       {
         id: 'route',
@@ -252,7 +267,7 @@ export function ShipmentsListContent() {
                             .updateStatus(item.id, 'picked_up')
                             .then(async () => {
                               toast.success('Gönderi alındı olarak işaretlendi')
-                              await queryClient.invalidateQueries({ queryKey: SHIPMENTS_KEY })
+                              await queryClient.invalidateQueries({ queryKey: SHIPMENTS_LIST_KEY })
                             })
                         },
                       },
@@ -290,7 +305,7 @@ export function ShipmentsListContent() {
                             .updateStatus(item.id, 'delivered')
                             .then(async () => {
                               toast.success('Teslim edildi olarak işaretlendi')
-                              await queryClient.invalidateQueries({ queryKey: SHIPMENTS_KEY })
+                              await queryClient.invalidateQueries({ queryKey: SHIPMENTS_LIST_KEY })
                             })
                         },
                       },

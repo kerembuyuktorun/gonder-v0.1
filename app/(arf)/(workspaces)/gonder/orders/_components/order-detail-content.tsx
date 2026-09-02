@@ -31,6 +31,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ARF_ROUTES } from '../../../../_shared/routes'
 import { getOrderChannelById } from '../../_data/order-channels'
+import { startCargoQuoteFromOrderIds } from '../../_lib/start-cargo-from-orders'
 import { ordersRepository } from '../../_data/orders-repository'
 import { ORDERS_KEY, useOrder } from '../../_hooks/use-orders'
 import { tRowAction } from '../../_i18n/row-actions'
@@ -211,10 +212,10 @@ export function OrderDetailContent({ orderId }: Props) {
     }
   }
 
-  function createShipment() {
+  async function createShipment() {
     if (!data) return
-    toast.success('Gönderi oluşturma akışına yönlendiriliyor')
-    window.location.href = `${ARF_ROUTES.gonder.shipments.create}?orderId=${data.id}`
+    const started = await startCargoQuoteFromOrderIds([data.id], (href) => router.push(href))
+    if (started) await invalidateOrders()
   }
 
   const lineTotal = useMemo(

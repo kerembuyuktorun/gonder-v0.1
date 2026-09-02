@@ -73,6 +73,7 @@ export const ARF_ROUTES = {
     },
     integrations: {
       root: `${GONDER_BASE}/integrations`,
+      channel: (channelId: string) => `${GONDER_BASE}/integrations/${channelId}`,
       /** Excel içe aktarım workspace — bulk-create */
       excel: `${GONDER_BASE}/bulk-create`,
     },

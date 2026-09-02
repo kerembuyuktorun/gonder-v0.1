@@ -32,6 +32,9 @@ export type GonderShipmentListItem = {
   id: string
   reference: string
   orderNumber: string | null
+  /** Bağlı teklif talebi (TKF) */
+  quoteId: string | null
+  quoteReference: string | null
   carrier: string
   /** Pazarlama / teklif hizmet adı (Express, Aynı Gün vb.) */
   serviceLabel: string

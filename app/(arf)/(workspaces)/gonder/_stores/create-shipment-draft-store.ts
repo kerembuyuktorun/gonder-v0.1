@@ -49,6 +49,7 @@ function normalizeDraft(draft: Partial<CreateShipmentDraft> | undefined): Create
     siparis: draft?.siparis ?? null,
     siparisStep: typeof draft?.siparisStep === 'string' ? draft.siparisStep : 'route',
     selectedOffer: draft?.selectedOffer ?? null,
+    linkedOrderIds: Array.isArray(draft?.linkedOrderIds) ? draft.linkedOrderIds : [],
   }
 }
 

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { formatTry } from '../../../../(marketing)/siparis/_lib/order-types'
 import { buildBreakdown } from '../../../../(marketing)/siparis/_lib/pricing'
+import { EstimateCard } from '../../../../(marketing)/siparis/_components/estimate-card'
 import { OrderSummary } from '../../../../(marketing)/siparis/_components/order-summary'
 import { StepHeader, StepNav } from '../../../../(marketing)/siparis/_components/step-shell'
 import { useWizard } from '../../../../(marketing)/siparis/_components/wizard-context'
@@ -29,7 +30,7 @@ export function SiparisPanelPayment({
   submitting: boolean
   onSubmit: () => void
 }) {
-  const { draft, back, selectedOffer } = useWizard()
+  const { draft, back, selectedOffer, hideStepChrome } = useWizard()
   const paymentMethod = useCreateShipmentStore((s) => s.draft.paymentMethod)
   const cardPayment = useCreateShipmentStore((s) => s.draft.cardPayment)
   const quoteRequestId = useCreateShipmentStore((s) => s.draft.quoteRequestId)
@@ -66,7 +67,7 @@ export function SiparisPanelPayment({
     <div>
       <StepHeader
         title='Ödemeyi onayla'
-        description='Seçtiğin teklifi kontrol et, ardından paneldeki ödeme yöntemiyle gönderiyi oluştur.'
+        description='Özeti kontrol et, paneldeki ödeme yöntemini seç ve gönderiyi oluştur.'
       />
 
       <div className='grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]'>
@@ -139,34 +140,60 @@ export function SiparisPanelPayment({
         </div>
 
         <aside className='space-y-4 lg:sticky lg:top-24 lg:h-fit'>
-          <OrderSummary />
-          <div className='rounded-2xl border border-[var(--gl-border)] bg-white p-4'>
+          <OrderSummary editable={!hideStepChrome} />
+          <div className='rounded-2xl border border-[var(--gl-border)] bg-[var(--gl-subtle)] p-4'>
             <p className='gl-eyebrow'>Tahsilat</p>
-            <p className='mt-2 text-2xl font-bold tabular-nums text-[var(--gl-ink)]'>
-              {formatTry(amount)}
-            </p>
-            <p className='mt-1 text-xs text-[var(--gl-muted)]'>
-              {selectedOffer
-                ? `${selectedOffer.carrier} · ${selectedOffer.etaLabel}`
-                : 'Teklif seçildikten sonra tutar netleşir'}
-            </p>
+            {selectedOffer ? (
+              <>
+                <p className='mt-2 text-2xl font-bold tabular-nums text-[var(--gl-ink)]'>
+                  {formatTry(amount)}
+                </p>
+                <p className='mt-1 text-xs text-[var(--gl-muted)]'>
+                  {selectedOffer.carrier} · {selectedOffer.etaLabel}
+                </p>
+              </>
+            ) : (
+              <EstimateCard
+                total={amount > 0 ? amount : null}
+                signature={`${draft.service}-${draft.logisticsMode}-${draft.deliverySpeed}-${amount}`}
+                hint='Kesin tutar operasyon sırasında netleşir'
+              />
+            )}
           </div>
         </aside>
       </div>
 
-      <StepNav
-        onBack={back}
-        onNext={onSubmit}
-        nextLabel={submitting ? 'Oluşturuluyor…' : 'Gönderiyi oluştur'}
-        nextDisabled={!canSubmit}
-        helper={
-          paymentMethod === 'card' && !cardPayment
-            ? 'Önce kart tahsilatını tamamla'
-            : selectedOffer
-              ? `${selectedOffer.carrier} · ${formatTry(amount)}`
-              : undefined
-        }
-      />
+      {hideStepChrome ? (
+        <div className='sticky bottom-0 z-10 mt-8 flex flex-col gap-3 border-t border-[var(--gl-border)] bg-white/95 pt-6 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-end'>
+          {paymentMethod === 'card' && !cardPayment ? (
+            <span className='text-xs text-[var(--gl-muted)]'>Önce kart tahsilatını tamamla</span>
+          ) : amount > 0 ? (
+            <span className='text-xs text-[var(--gl-muted)]'>{formatTry(amount)}</span>
+          ) : null}
+          <button
+            type='button'
+            onClick={onSubmit}
+            disabled={!canSubmit}
+            className='inline-flex items-center justify-center gap-2 rounded-full bg-[var(--gl-accent)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--gl-accent-hover)] disabled:cursor-not-allowed disabled:bg-[var(--gl-border-strong)] disabled:text-white'
+          >
+            {submitting ? 'Oluşturuluyor…' : 'Gönderiyi oluştur'}
+          </button>
+        </div>
+      ) : (
+        <StepNav
+          onBack={back}
+          onNext={onSubmit}
+          nextLabel={submitting ? 'Oluşturuluyor…' : 'Gönderiyi oluştur'}
+          nextDisabled={!canSubmit}
+          helper={
+            paymentMethod === 'card' && !cardPayment
+              ? 'Önce kart tahsilatını tamamla'
+              : selectedOffer
+                ? `${selectedOffer.carrier} · ${formatTry(amount)}`
+                : undefined
+          }
+        />
+      )}
 
       <CardPaymentDialog
         open={paymentOpen}

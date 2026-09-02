@@ -1,11 +1,10 @@
-import { GonderPlaceholderPage } from '../../../_components/gonder-placeholder-page'
+import { FinanceInvoiceDetailContent } from '../../_components/finance-invoice-detail-content'
 
-export default function FinanceInvoiceDetailPage() {
-  return (
-    <GonderPlaceholderPage
-      breadcrumbs={['Gönder', 'Finans', 'Faturalar', 'Detay']}
-      title='Fatura detayı'
-      description='Fatura / makbuz detayı sonraki dilimde burada açılacak.'
-    />
-  )
+type Props = {
+  params: Promise<{ id: string }>
+}
+
+export default async function FinanceInvoiceDetailPage({ params }: Props) {
+  const { id } = await params
+  return <FinanceInvoiceDetailContent invoiceId={id} />
 }

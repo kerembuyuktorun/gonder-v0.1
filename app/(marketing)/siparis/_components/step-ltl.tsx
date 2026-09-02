@@ -15,8 +15,9 @@ import { StepHeader, StepNav } from './step-shell'
 import { useWizard } from './wizard-context'
 
 export function StepLtl() {
-  const { draft, setDraft, next, back } = useWizard()
+  const { draft, setDraft, next, back, variant } = useWizard()
   const { ltl } = draft
+  const panelPage = variant === 'shipment'
 
   const set = (partial: Partial<typeof ltl>) => {
     setDraft((prev) => ({ ...prev, ltl: { ...prev.ltl, ...partial } }))
@@ -179,13 +180,19 @@ export function StepLtl() {
               total={breakdown?.total ?? null}
               signature={`${ltl.loadKind}-${ltl.palletTypeId}-${ltl.widthCm}-${ltl.lengthCm}-${ltl.heightCm}-${ltl.weightKg}-${ltl.quantity}-${ltl.stackable}-${draft.deliverySpeed}-${draft.extras.forklift}-${draft.extras.temperatureControl}-${draft.extras.fragile}-${draft.extras.insurance}`}
               label='Tahmini navlun aralığı (KDV dahil)'
-              hint={breakdown ? `${breakdown.distanceKm} km güzergâh · kesin tutar teklifte` : undefined}
+              hint={
+                breakdown
+                  ? `${breakdown.distanceKm} km güzergâh${panelPage ? '' : ' · kesin tutar teklifte'}`
+                  : undefined
+              }
             />
 
-            <p className='mt-4 flex items-start gap-2 text-xs leading-relaxed text-[var(--gl-muted)]'>
-              <Info className='mt-0.5 size-3.5 shrink-0' aria-hidden />
-              Sonraki adımda anlaşmalı firmalar ve taşıma ağı üzerinden oluşan seçenekleri hemen değerlendirebilirsin.
-            </p>
+            {panelPage ? null : (
+              <p className='mt-4 flex items-start gap-2 text-xs leading-relaxed text-[var(--gl-muted)]'>
+                <Info className='mt-0.5 size-3.5 shrink-0' aria-hidden />
+                Sonraki adımda anlaşmalı firmalar ve taşıma ağı üzerinden oluşan seçenekleri hemen değerlendirebilirsin.
+              </p>
+            )}
           </aside>
         </div>
       ) : null}

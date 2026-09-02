@@ -1,11 +1,10 @@
-import { GonderPlaceholderPage } from '../../../_components/gonder-placeholder-page'
+import { FinanceTransactionDetailContent } from '../../_components/finance-transaction-detail-content'
 
-export default function FinanceTransactionDetailPage() {
-  return (
-    <GonderPlaceholderPage
-      breadcrumbs={['Gönder', 'Finans', 'Hareketler', 'Detay']}
-      title='Hareket detayı'
-      description='Tekil finans hareketi detayı sonraki dilimde burada açılacak.'
-    />
-  )
+type Props = {
+  params: Promise<{ id: string }>
+}
+
+export default async function FinanceTransactionDetailPage({ params }: Props) {
+  const { id } = await params
+  return <FinanceTransactionDetailContent transactionId={id} />
 }

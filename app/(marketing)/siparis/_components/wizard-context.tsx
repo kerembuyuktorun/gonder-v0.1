@@ -58,6 +58,7 @@ type WizardValue = {
   setOrderRef: Dispatch<SetStateAction<string | null>>
   variant: WizardVariant
   offersNextLabel: string
+  hideStepChrome: boolean
 }
 
 const WizardContext = createContext<WizardValue | null>(null)
@@ -101,6 +102,8 @@ export function WizardProvider({
   initialStep,
   initialOffer = null,
   offersNextLabel = 'Teklifi Seç',
+  hideStepChrome = false,
+  applyLandingPrefill = true,
   onChange,
   onLastNext,
 }: {
@@ -114,6 +117,8 @@ export function WizardProvider({
   initialStep?: StepId
   initialOffer?: Offer | null
   offersNextLabel?: string
+  hideStepChrome?: boolean
+  applyLandingPrefill?: boolean
   onChange?: (snapshot: WizardSnapshot) => void
   onLastNext?: (snapshot: WizardSnapshot) => void
 }) {
@@ -157,11 +162,12 @@ export function WizardProvider({
   }, [])
 
   useEffect(() => {
+    if (!applyLandingPrefill) return
     const stored = readQuotePrefill()
     if (!stored) return
     setDraft((prev) => applyQuotePrefill(prev, stored))
     clearQuotePrefill()
-  }, [])
+  }, [applyLandingPrefill])
 
   const goTo = useCallback((target: StepId) => {
     setStep(target)
@@ -216,11 +222,13 @@ export function WizardProvider({
       setOrderRef,
       variant,
       offersNextLabel,
+      hideStepChrome,
     }),
     [
       back,
       draft,
       goTo,
+      hideStepChrome,
       next,
       offersNextLabel,
       orderRef,

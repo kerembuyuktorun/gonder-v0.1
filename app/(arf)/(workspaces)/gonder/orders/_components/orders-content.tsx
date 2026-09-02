@@ -30,6 +30,7 @@ import {
   type ActiveFilterChip,
 } from '../../_components/data-workspace'
 import { getOrderChannelById } from '../../_data/order-channels'
+import { startCargoQuoteFromOrderIds } from '../../_lib/start-cargo-from-orders'
 import { ordersRepository } from '../../_data/orders-repository'
 import { ORDERS_KEY } from '../../_hooks/use-orders'
 import { useWorkspaceListUrlState } from '../../_hooks/use-workspace-list-url-state'
@@ -158,13 +159,21 @@ export function OrdersContent() {
     await queryClient.invalidateQueries({ queryKey: ORDERS_KEY })
   }
 
-  function createShipment(order: GonderOrder) {
-    toast.success('Gönderi oluşturma akışına yönlendiriliyor')
-    window.location.href = `${ARF_ROUTES.gonder.shipments.create}?orderId=${order.id}`
-  }
-
   function inspectOrder(order: GonderOrder) {
     router.push(ARF_ROUTES.gonder.orders.detail(order.id))
+  }
+
+  async function createShipment(order: GonderOrder) {
+    const started = await startCargoQuoteFromOrderIds([order.id], (href) => router.push(href))
+    if (started) await queryClient.invalidateQueries({ queryKey: ORDERS_KEY })
+  }
+
+  async function bulkCreateCargo() {
+    const started = await startCargoQuoteFromOrderIds(selectedIds, (href) => router.push(href))
+    if (started) {
+      setRowSelection({})
+      await queryClient.invalidateQueries({ queryKey: ORDERS_KEY })
+    }
   }
 
   const columns = useMemo<ColumnDef<GonderOrder>[]>(
@@ -289,7 +298,7 @@ export function OrdersContent() {
                         icon: PackagePlus,
                         priority: 'primary' as const,
                         variant: 'primary' as const,
-                        onClick: () => createShipment(item),
+                        onClick: () => void createShipment(item),
                       },
                     ]
                   : []),
@@ -398,6 +407,9 @@ export function OrdersContent() {
         bulkActions={
           isBoard ? null : (
             <>
+              <Button size='sm' onClick={() => void bulkCreateCargo()}>
+                Kargo oluştur
+              </Button>
               <Button size='sm' variant='outline' onClick={() => void bulkApprove()}>
                 Seçilenleri onayla
               </Button>

@@ -1,11 +1,10 @@
-import { GonderPlaceholderPage } from '../../../../_components/gonder-placeholder-page'
+import { FinanceWalletHistoryDetailContent } from '../../../_components/finance-wallet-history-detail-content'
 
-export default function FinanceWalletHistoryDetailPage() {
-  return (
-    <GonderPlaceholderPage
-      breadcrumbs={['Gönder', 'Finans', 'Cüzdan', 'Geçmiş', 'Detay']}
-      title='Cüzdan hareket detayı'
-      description='Tekil cüzdan ledger kaydı sonraki dilimde burada açılacak.'
-    />
-  )
+type Props = {
+  params: Promise<{ id: string }>
+}
+
+export default async function FinanceWalletHistoryDetailPage({ params }: Props) {
+  const { id } = await params
+  return <FinanceWalletHistoryDetailContent entryId={id} />
 }

@@ -1,17 +1,20 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   financeRepository,
   type FinanceListQuery,
 } from '../_data/finance-repository'
+import type { FinanceSettlementChannel, FinanceSummaryPeriod } from '../_types/finance'
+
+const WALLET_QUERY_KEY = ['gonder', 'wallet'] as const
 
 export const FINANCE_QUERY_KEY = ['gonder', 'finance'] as const
 
-export function useFinanceSummary() {
+export function useFinanceSummary(period: FinanceSummaryPeriod = '30d') {
   return useQuery({
-    queryKey: [...FINANCE_QUERY_KEY, 'summary'],
-    queryFn: () => financeRepository.getSummary(),
+    queryKey: [...FINANCE_QUERY_KEY, 'summary', period],
+    queryFn: () => financeRepository.getSummary(period),
   })
 }
 
@@ -65,5 +68,19 @@ export function useFinanceInvoice(id: string | undefined) {
     queryKey: [...FINANCE_QUERY_KEY, 'invoice', id],
     queryFn: () => financeRepository.getInvoiceById(id!),
     enabled: Boolean(id),
+  })
+}
+
+export function usePayUpcoming() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, channel }: { id: string; channel: FinanceSettlementChannel }) =>
+      financeRepository.payUpcoming(id, channel),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: FINANCE_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: WALLET_QUERY_KEY }),
+      ])
+    },
   })
 }

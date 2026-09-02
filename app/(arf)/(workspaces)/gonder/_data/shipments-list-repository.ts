@@ -31,17 +31,43 @@ export type ShipmentsListResult = {
   operationCounts: Record<ShipmentOperationTab, number>
 }
 
+export const SHIPMENTS_LIST_KEY = ['gonder', 'shipments-list'] as const
+
+export type CreateShipmentListInput = Omit<
+  GonderShipmentListItem,
+  'id' | 'createdAt' | 'updatedAt' | 'quoteId' | 'quoteReference'
+> & {
+  id?: string
+  quoteId?: string | null
+  quoteReference?: string | null
+}
+
 export interface ShipmentsListRepository {
   list(query?: ShipmentsListQuery): Promise<ShipmentsListResult>
   getById(id: string): Promise<GonderShipmentListItem | null>
   getDetail(id: string): Promise<GonderShipmentDetail | null>
   updateStatus(id: string, status: ShipmentListStatus): Promise<GonderShipmentListItem>
-  create(
-    input: Omit<GonderShipmentListItem, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }
-  ): Promise<GonderShipmentListItem>
+  create(input: CreateShipmentListInput): Promise<GonderShipmentListItem>
 }
 
-const seed: GonderShipmentListItem[] = [
+const QUOTE_LINKS: Record<string, { quoteId: string; quoteReference: string }> = {
+  'sh-1001': { quoteId: 'qr-1001', quoteReference: 'TKF-1001' },
+  'sh-1003': { quoteId: 'qr-1003', quoteReference: 'TKF-1003' },
+  'sh-1008': { quoteId: 'qr-1008', quoteReference: 'TKF-1008' },
+}
+
+function withQuoteLink(
+  item: Omit<GonderShipmentListItem, 'quoteId' | 'quoteReference'>
+): GonderShipmentListItem {
+  const link = QUOTE_LINKS[item.id]
+  return {
+    ...item,
+    quoteId: link?.quoteId ?? null,
+    quoteReference: link?.quoteReference ?? null,
+  }
+}
+
+const seed: Array<Omit<GonderShipmentListItem, 'quoteId' | 'quoteReference'>> = [
   {
     id: 'sh-1001',
     reference: 'GND-1001',
@@ -421,7 +447,7 @@ function matches(item: GonderShipmentListItem, query: ShipmentsListQuery = {}) {
   if (query.search?.trim()) {
     const needle = query.search.trim().toLocaleLowerCase('tr-TR')
     const hay =
-      `${item.reference} ${item.orderNumber ?? ''} ${item.carrier} ${item.serviceLabel} ${item.originCity} ${item.destinationCity}`.toLocaleLowerCase(
+      `${item.reference} ${item.orderNumber ?? ''} ${item.quoteReference ?? ''} ${item.quoteId ?? ''} ${item.carrier} ${item.serviceLabel} ${item.originCity} ${item.destinationCity}`.toLocaleLowerCase(
         'tr-TR'
       )
     if (!hay.includes(needle)) return false
@@ -770,7 +796,15 @@ function enrichDetail(item: GonderShipmentListItem): GonderShipmentDetail {
             statusLabel: orderMeta.statusLabel,
           }
         : null,
-    linkedQuote: override.linkedQuote ?? null,
+    linkedQuote:
+      override.linkedQuote ??
+      (item.quoteId
+        ? {
+            id: item.quoteId,
+            reference: item.quoteReference ?? item.quoteId,
+            providerName: item.carrier,
+          }
+        : null),
     readinessSummary: override.readinessSummary ?? readinessFor(item.status),
     issues,
     trackingEvents: override.trackingEvents ?? buildTrackingEvents(item),
@@ -797,14 +831,48 @@ function enrichDetail(item: GonderShipmentListItem): GonderShipmentDetail {
   }
 }
 
-export class MockShipmentsListRepository implements ShipmentsListRepository {
-  private items = [...seed]
+type ShipmentsGlobal = typeof globalThis & {
+  __gonderShipmentsList?: GonderShipmentListItem[]
+}
 
+const SHIPMENT_SESSION_KEY = 'gonder-shipments-list-v1'
+
+function readShipmentSession(): GonderShipmentListItem[] | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.sessionStorage.getItem(SHIPMENT_SESSION_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as GonderShipmentListItem[]
+    return Array.isArray(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function persistShipments(items: GonderShipmentListItem[]) {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage.setItem(SHIPMENT_SESSION_KEY, JSON.stringify(items))
+  } catch {
+    // Demo depolama doluysa liste bellektekini kullanmaya devam eder.
+  }
+}
+
+function shipmentItems(): GonderShipmentListItem[] {
+  const g = globalThis as ShipmentsGlobal
+  if (!g.__gonderShipmentsList) {
+    g.__gonderShipmentsList = readShipmentSession() ?? seed.map(withQuoteLink)
+  }
+  return g.__gonderShipmentsList
+}
+
+export class MockShipmentsListRepository implements ShipmentsListRepository {
   async list(query: ShipmentsListQuery = {}): Promise<ShipmentsListResult> {
     await delay(70)
-    const filtered = this.items.filter((item) => matches(item, query))
+    const items = shipmentItems()
+    const filtered = items.filter((item) => matches(item, query))
 
-    const forViewCounts = this.items.filter((item) =>
+    const forViewCounts = items.filter((item) =>
       matches(item, {
         operation: query.operation,
         logisticsMode: query.logisticsMode,
@@ -812,7 +880,7 @@ export class MockShipmentsListRepository implements ShipmentsListRepository {
         carrier: query.carrier,
       })
     )
-    const forOperationCounts = this.items.filter((item) =>
+    const forOperationCounts = items.filter((item) =>
       matches(item, {
         view: query.view,
         status: query.status,
@@ -831,41 +899,45 @@ export class MockShipmentsListRepository implements ShipmentsListRepository {
 
   async getById(id: string): Promise<GonderShipmentListItem | null> {
     await delay(40)
-    return this.items.find((item) => item.id === id) ?? null
+    return shipmentItems().find((item) => item.id === id) ?? null
   }
 
   async getDetail(id: string): Promise<GonderShipmentDetail | null> {
     await delay(60)
-    const item = this.items.find((row) => row.id === id)
+    const item = shipmentItems().find((row) => row.id === id)
     if (!item) return null
     return enrichDetail(item)
   }
 
   async updateStatus(id: string, status: ShipmentListStatus): Promise<GonderShipmentListItem> {
     await delay(50)
-    const index = this.items.findIndex((item) => item.id === id)
+    const items = shipmentItems()
+    const index = items.findIndex((item) => item.id === id)
     if (index < 0) throw new Error('Gönderi bulunamadı')
     const next = {
-      ...this.items[index]!,
+      ...items[index]!,
       status,
       updatedAt: new Date().toISOString(),
     }
-    this.items[index] = next
+    items[index] = next
+    persistShipments(items)
     return next
   }
 
-  async create(
-    input: Omit<GonderShipmentListItem, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }
-  ): Promise<GonderShipmentListItem> {
+  async create(input: CreateShipmentListInput): Promise<GonderShipmentListItem> {
     await delay(80)
     const now = new Date().toISOString()
     const created: GonderShipmentListItem = {
       ...input,
+      quoteId: input.quoteId ?? null,
+      quoteReference: input.quoteReference ?? null,
       id: input.id ?? `sh-${Date.now()}`,
       createdAt: now,
       updatedAt: now,
     }
-    this.items = [created, ...this.items]
+    const items = shipmentItems()
+    items.unshift(created)
+    persistShipments(items)
     return created
   }
 }

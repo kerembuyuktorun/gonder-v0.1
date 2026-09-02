@@ -1,10 +1,13 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { financeRepository } from '../_data/finance-repository'
 import {
   walletRepository,
   type WalletLedgerQuery,
 } from '../_data/wallet-repository'
+import type { WalletTopUpDraft } from '../_types/wallet'
+import { FINANCE_QUERY_KEY } from './use-finance'
 
 export const WALLET_QUERY_KEY = ['gonder', 'wallet'] as const
 
@@ -35,5 +38,28 @@ export function useWalletLedgerEntry(id: string | undefined) {
     queryKey: [...WALLET_QUERY_KEY, 'ledger-entry', id],
     queryFn: () => walletRepository.getLedgerEntryById(id!),
     enabled: Boolean(id),
+  })
+}
+
+export function useWalletTopUp() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (draft: WalletTopUpDraft) => {
+      const result = await walletRepository.topUp(draft)
+      if (draft.amountTry && draft.method) {
+        await financeRepository.recordWalletTopUp({
+          amountTry: draft.amountTry,
+          method: draft.method,
+          note: draft.note,
+        })
+      }
+      return result
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: WALLET_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: FINANCE_QUERY_KEY }),
+      ])
+    },
   })
 }

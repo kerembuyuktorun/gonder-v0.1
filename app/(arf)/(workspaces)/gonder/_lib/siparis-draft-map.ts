@@ -82,7 +82,7 @@ export function locationToPlace(
 
 export function isOrderReadyForOffers(draft: OrderDraft): boolean {
   if (!draft.origin || !draft.destination) return false
-  if (draft.origin.id === draft.destination.id) return false
+  if (placesAreSame(draft.origin, draft.destination)) return false
   if (!draft.service) return false
 
   if (draft.service === 'kargo') {
@@ -413,6 +413,43 @@ export function reconstructOrderFromShipmentDraft(draft: CreateShipmentDraft): O
   }
 
   return order
+}
+
+export function placesAreSame(a: PlaceResult | null, b: PlaceResult | null): boolean {
+  if (!a || !b) return false
+  if (a.id && b.id && a.id === b.id) return true
+  const sameCoords = a.lat === b.lat && a.lng === b.lng && a.lat !== 0
+  const sameLabel =
+    a.subtitle.trim().toLocaleLowerCase('tr-TR') === b.subtitle.trim().toLocaleLowerCase('tr-TR')
+  return sameCoords && sameLabel
+}
+
+/** Çıkış ve varış aynı kayıtsa varışı boşalt — varsayılan olarak aynı adresi kopyalama. */
+export function sanitizeDistinctPlaces(order: OrderDraft): OrderDraft {
+  if (!placesAreSame(order.origin, order.destination)) return order
+  return { ...order, destination: null }
+}
+
+export function shipmentEstimateFromOrder(order: OrderDraft): {
+  providerName: string
+  serviceName: string
+  priceTry: number
+} | null {
+  if (!isOrderReadyForOffers(order)) return null
+  const breakdown = buildBreakdown(order)
+  if (!breakdown) return null
+  const isLogistics = order.service === 'lojistik'
+  return {
+    providerName: isLogistics ? 'Gönder Lojistik' : 'Gönder Kargo',
+    serviceName: isLogistics
+      ? order.logisticsMode === 'ftl'
+        ? 'Komple araç'
+        : 'Parsiyel taşıma'
+      : order.deliverySpeed === 'express'
+        ? 'Express kapıdan kapıya'
+        : 'Kapıdan kapıya',
+    priceTry: breakdown.total,
+  }
 }
 
 export function clampSiparisStep(

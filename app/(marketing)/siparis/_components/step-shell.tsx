@@ -2,8 +2,12 @@
 
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { useWizard } from './wizard-context'
 
 export function StepHeader({ title, description }: { title: string; description?: string }) {
+  const { hideStepChrome } = useWizard()
+  if (hideStepChrome) return null
+
   return (
     <div className='mb-6'>
       <h2 className='text-xl font-bold text-[var(--gl-ink)] sm:text-2xl'>{title}</h2>
@@ -45,6 +49,9 @@ export function StepNav({
   hideBack?: boolean
   helper?: ReactNode
 }) {
+  const { hideStepChrome } = useWizard()
+  if (hideStepChrome) return null
+
   return (
     <div className='sticky bottom-0 z-10 mt-8 flex flex-col-reverse gap-3 border-t border-[var(--gl-border)] bg-white/95 pt-6 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between'>
       {hideBack ? (

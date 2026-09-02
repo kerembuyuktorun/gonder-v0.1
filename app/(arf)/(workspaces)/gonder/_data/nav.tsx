@@ -159,6 +159,13 @@ export const createGonderHeaderSearchCommands: SearchCommandFactory = (push) => 
     keywords: ['desi', 'ölçüm', 'fark'],
     onSelect: () => push(R.desiControl.list),
   },
+  {
+    id: 'sales-channels',
+    label: 'Satış Kanalları',
+    group: 'Gezinme',
+    keywords: ['entegrasyon', 'kanal', 'trendyol', 'shopify', 'pazaryeri'],
+    onSelect: () => push(R.integrations.root),
+  },
 ]
 
 export const gonderHeaderInitialNotifications: NonNullable<AppHeaderProps['notifications']> = [

@@ -1,11 +1,10 @@
-import { GonderPlaceholderPage } from '../../../_components/gonder-placeholder-page'
+import { FinanceUpcomingDetailContent } from '../../_components/finance-upcoming-detail-content'
 
-export default function FinanceUpcomingDetailPage() {
-  return (
-    <GonderPlaceholderPage
-      breadcrumbs={['Gönder', 'Finans', 'Yaklaşan ödemeler', 'Detay']}
-      title='Yaklaşan ödeme detayı'
-      description='Tekil yaklaşan ödeme ve ödeme akışı sonraki dilimde burada açılacak.'
-    />
-  )
+type Props = {
+  params: Promise<{ id: string }>
+}
+
+export default async function FinanceUpcomingDetailPage({ params }: Props) {
+  const { id } = await params
+  return <FinanceUpcomingDetailContent paymentId={id} />
 }

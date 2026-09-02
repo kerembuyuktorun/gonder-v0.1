@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { tDashboard } from '../_data/dashboard-labels'
 import type { DashboardQuickAction, QuickActionTone } from '../_types/dashboard'
 import { quickActionIconMap } from './dashboard-kpi-cards'
+import { DashboardWalletSummary } from './dashboard-wallet-summary'
 
 const toneStyles: Record<
   QuickActionTone,
@@ -50,7 +51,8 @@ interface Props {
 
 export function DashboardQuickActions({ actions }: Props) {
   return (
-    <div className='grid gap-3 md:grid-cols-3'>
+    <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(240px,17.5rem)_minmax(240px,17.5rem)]'>
+      <DashboardWalletSummary className='sm:col-span-2 lg:col-span-1' />
       {actions.map((action) => {
         const Icon =
           quickActionIconMap[(action.icon as keyof typeof quickActionIconMap) ?? 'plus'] ??

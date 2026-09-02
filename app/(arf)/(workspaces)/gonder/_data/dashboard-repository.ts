@@ -43,14 +43,6 @@ function buildQuickActions(integrations: DashboardSnapshot['integrations']): Das
       tone: 'brand',
     },
     hasConnectedIntegration ? EXCEL_BULK_ACTION : CONNECT_CHANNEL_ACTION,
-    {
-      id: 'price-calculation',
-      titleKey: 'quick.priceCalculation.title',
-      descriptionKey: 'quick.priceCalculation.description',
-      href: R.priceCalculation,
-      icon: 'calculator',
-      tone: 'warning',
-    },
   ]
 }
 

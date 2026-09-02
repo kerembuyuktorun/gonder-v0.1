@@ -35,7 +35,12 @@ export interface QuoteRequestsRepository {
   markPaymentPending(requestId: string): Promise<QuoteRequest>
   /** Başarılı kart tahsilatını talebe iliştirir */
   attachPayment(requestId: string, payment: QuotePaymentSummary): Promise<QuoteRequest>
-  markConverted(requestId: string, shipmentId: string): Promise<QuoteRequest>
+  markConverted(
+    requestId: string,
+    shipmentId: string,
+    shipmentReference?: string | null
+  ): Promise<QuoteRequest>
+  findByOfferOrId(id: string): Promise<QuoteRequest | null>
 }
 
 function offerFromSearchQuote(requestId: string, quote: SearchQuote): QuoteOffer {
@@ -83,6 +88,7 @@ const seed: QuoteRequest[] = [
     updatedAt: '2026-08-07T08:20:00.000Z',
     selectedQuoteId: null,
     shipmentId: null,
+    shipmentReference: null,
     payment: null,
     offers: [
       {
@@ -156,6 +162,7 @@ const seed: QuoteRequest[] = [
     updatedAt: '2026-08-07T09:10:00.000Z',
     selectedQuoteId: null,
     shipmentId: null,
+    shipmentReference: null,
     payment: null,
     offers: [
       {
@@ -209,6 +216,7 @@ const seed: QuoteRequest[] = [
     updatedAt: '2026-08-03T11:20:00.000Z',
     selectedQuoteId: 'qo-1003-a',
     shipmentId: 'sh-1003',
+    shipmentReference: 'GND-1003',
     payment: {
       paymentId: 'pay-1003',
       reference: 'ODM-40318827',
@@ -257,6 +265,7 @@ const seed: QuoteRequest[] = [
     updatedAt: '2026-08-06T12:00:00.000Z',
     selectedQuoteId: 'qo-1004-a',
     shipmentId: null,
+    shipmentReference: null,
     payment: null,
     offers: [
       {
@@ -323,7 +332,7 @@ function matches(item: QuoteRequest, query: QuoteRequestsListQuery = {}) {
   if (query.status && item.status !== query.status) return false
   if (query.search?.trim()) {
     const needle = query.search.trim().toLocaleLowerCase('tr-TR')
-    const hay = `${item.reference} ${item.originLabel} ${item.destinationLabel} ${item.offers
+    const hay = `${item.reference} ${item.originLabel} ${item.destinationLabel} ${item.shipmentId ?? ''} ${item.shipmentReference ?? ''} ${item.offers
       .map((o) => o.providerName)
       .join(' ')}`.toLocaleLowerCase('tr-TR')
     if (!hay.includes(needle)) return false
@@ -345,17 +354,57 @@ function countViews(items: QuoteRequest[]): Record<QuoteRequestView, number> {
   }
 }
 
-export class MockQuoteRequestsRepository implements QuoteRequestsRepository {
-  private items: QuoteRequest[] = [...seed]
+type QuoteRequestsGlobal = typeof globalThis & {
+  __gonderQuoteRequests?: QuoteRequest[]
+}
 
+const QUOTE_SESSION_KEY = 'gonder-quote-requests-v1'
+
+function readQuoteSession(): QuoteRequest[] | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.sessionStorage.getItem(QUOTE_SESSION_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as QuoteRequest[]
+    return Array.isArray(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function persistQuotes(items: QuoteRequest[]) {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage.setItem(QUOTE_SESSION_KEY, JSON.stringify(items))
+  } catch {
+    // Demo depolama doluysa liste bellektekini kullanmaya devam eder.
+  }
+}
+
+function quoteItems(): QuoteRequest[] {
+  const g = globalThis as QuoteRequestsGlobal
+  if (!g.__gonderQuoteRequests) {
+    g.__gonderQuoteRequests =
+      readQuoteSession() ??
+      seed.map((item) => ({
+        ...item,
+        shipmentReference: item.shipmentReference ?? null,
+        offers: item.offers.map((offer) => ({ ...offer })),
+      }))
+  }
+  return g.__gonderQuoteRequests
+}
+
+export class MockQuoteRequestsRepository implements QuoteRequestsRepository {
   async list(query: QuoteRequestsListQuery = {}): Promise<QuoteRequestsListResult> {
     await delay(70)
-    const filtered = this.items.filter((item) => matches(item, query))
+    const items = quoteItems()
+    const filtered = items.filter((item) => matches(item, query))
     return {
       items: filtered,
       total: filtered.length,
-      viewCounts: countViews(this.items),
-      actionRequiredCount: this.items.filter((item) =>
+      viewCounts: countViews(items),
+      actionRequiredCount: items.filter((item) =>
         ACTIONABLE_QUOTE_REQUEST_STATUSES.includes(item.status)
       ).length,
     }
@@ -363,12 +412,24 @@ export class MockQuoteRequestsRepository implements QuoteRequestsRepository {
 
   async getById(id: string): Promise<QuoteRequest | null> {
     await delay(40)
-    return this.items.find((item) => item.id === id) ?? null
+    return quoteItems().find((item) => item.id === id) ?? null
+  }
+
+  async findByOfferOrId(id: string): Promise<QuoteRequest | null> {
+    await delay(20)
+    return (
+      quoteItems().find(
+        (item) =>
+          item.id === id ||
+          item.selectedQuoteId === id ||
+          item.offers.some((offer) => offer.id === id)
+      ) ?? null
+    )
   }
 
   async countActionRequired(): Promise<number> {
     await delay(30)
-    return this.items.filter((item) =>
+    return quoteItems().filter((item) =>
       ACTIONABLE_QUOTE_REQUEST_STATUSES.includes(item.status)
     ).length
   }
@@ -401,18 +462,21 @@ export class MockQuoteRequestsRepository implements QuoteRequestsRepository {
       updatedAt: new Date().toISOString(),
       selectedQuoteId: null,
       shipmentId: null,
+      shipmentReference: null,
       payment: null,
       offers,
     }
-    this.items = [created, ...this.items]
+    quoteItems().unshift(created)
+    persistQuotes(quoteItems())
     return created
   }
 
   async selectOffer(requestId: string, offerId: string): Promise<QuoteRequest> {
     await delay(50)
-    const index = this.items.findIndex((item) => item.id === requestId)
+    const items = quoteItems()
+    const index = items.findIndex((item) => item.id === requestId)
     if (index < 0) throw new Error('Teklif talebi bulunamadı')
-    const current = this.items[index]!
+    const current = items[index]!
     const next: QuoteRequest = {
       ...current,
       status: 'selected',
@@ -424,15 +488,17 @@ export class MockQuoteRequestsRepository implements QuoteRequestsRepository {
         status: offer.id === offerId ? 'selected' : offer.status === 'selected' ? 'received' : offer.status,
       })),
     }
-    this.items[index] = next
+    items[index] = next
+    persistQuotes(items)
     return next
   }
 
   async markPaymentPending(requestId: string): Promise<QuoteRequest> {
     await delay(40)
-    const index = this.items.findIndex((item) => item.id === requestId)
+    const items = quoteItems()
+    const index = items.findIndex((item) => item.id === requestId)
     if (index < 0) throw new Error('Teklif talebi bulunamadı')
-    const current = this.items[index]!
+    const current = items[index]!
     if (!current.selectedQuoteId) throw new Error('Ödeme için önce bir teklif seçin')
     if (current.status === 'paid' || current.status === 'converted') return current
     const next: QuoteRequest = {
@@ -440,7 +506,8 @@ export class MockQuoteRequestsRepository implements QuoteRequestsRepository {
       status: 'payment_pending',
       updatedAt: new Date().toISOString(),
     }
-    this.items[index] = next
+    items[index] = next
+    persistQuotes(items)
     return next
   }
 
@@ -449,29 +516,38 @@ export class MockQuoteRequestsRepository implements QuoteRequestsRepository {
     payment: QuotePaymentSummary
   ): Promise<QuoteRequest> {
     await delay(40)
-    const index = this.items.findIndex((item) => item.id === requestId)
+    const items = quoteItems()
+    const index = items.findIndex((item) => item.id === requestId)
     if (index < 0) throw new Error('Teklif talebi bulunamadı')
     const next: QuoteRequest = {
-      ...this.items[index]!,
+      ...items[index]!,
       status: 'paid',
       payment,
       updatedAt: new Date().toISOString(),
     }
-    this.items[index] = next
+    items[index] = next
+    persistQuotes(items)
     return next
   }
 
-  async markConverted(requestId: string, shipmentId: string): Promise<QuoteRequest> {
+  async markConverted(
+    requestId: string,
+    shipmentId: string,
+    shipmentReference?: string | null
+  ): Promise<QuoteRequest> {
     await delay(40)
-    const index = this.items.findIndex((item) => item.id === requestId)
+    const items = quoteItems()
+    const index = items.findIndex((item) => item.id === requestId)
     if (index < 0) throw new Error('Teklif talebi bulunamadı')
     const next = {
-      ...this.items[index]!,
+      ...items[index]!,
       status: 'converted' as const,
       shipmentId,
+      shipmentReference: shipmentReference ?? items[index]!.shipmentReference,
       updatedAt: new Date().toISOString(),
     }
-    this.items[index] = next
+    items[index] = next
+    persistQuotes(items)
     return next
   }
 }

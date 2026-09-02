@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { AppHeader } from '@hascanb/arf-ui-kit/layout-kit'
 import { Cloud } from 'lucide-react'
 import { toast } from 'sonner'
@@ -10,28 +11,25 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { ARF_ROUTES } from '../../../../../_shared/routes'
-import { SiparisPanelPayment } from '../../../_components/siparis-panel-payment'
-import {
-  SiparisPanelScope,
-  SiparisPanelWizard,
-  type WizardSnapshot,
-} from '../../../_components/siparis-panel-wizard'
+import { ORDERS_KEY } from '../../../_hooks/use-orders'
+import { QUOTE_REQUESTS_KEY } from '../../../_hooks/use-quote-requests'
 import { ordersRepository } from '../../../_data/orders-repository'
 import { quoteRepository } from '../../../_data/quote-repository'
 import { quoteRequestsRepository } from '../../../_data/quote-requests-repository'
-import { shipmentsListRepository } from '../../../_data/shipments-list-repository'
+import {
+  shipmentsListRepository,
+  SHIPMENTS_LIST_KEY,
+} from '../../../_data/shipments-list-repository'
 import { useCreateShipmentHydrated } from '../../../_hooks/use-create-shipment-hydrated'
 import { usePriceDraftHydrated } from '../../../_hooks/use-price-draft-hydrated'
 import {
-  clampSiparisStep,
   createInitialOrder,
-  isOrderReadyForOffers,
-  numericStepFromSiparis,
-  orderToPricePatch,
   orderToShipmentPatch,
   reconstructOrderFromPriceDraft,
   reconstructOrderFromShipmentDraft,
   resolvePlaceFromCity,
+  sanitizeDistinctPlaces,
+  shipmentEstimateFromOrder,
   type Offer,
   type OrderDraft,
 } from '../../../_lib/siparis-draft-map'
@@ -41,15 +39,14 @@ import {
   canSubmitCreateShipment,
   getCreateShipmentMissingFields,
 } from '../../../_types/create-shipment'
-import {
-  toAddressDraftFromLocation,
-  type OperationType,
-} from '../../../_types/price-calculation'
 import { resolveShipmentServiceType } from '../../../_types/shipments'
+import { CreateShipmentPageForm } from './create-shipment-page-form'
+import type { WizardSnapshot } from '../../../_components/siparis-panel-wizard'
 
 export function CreateShipmentContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
   const hydrated = useCreateShipmentHydrated()
   const priceHydrated = usePriceDraftHydrated()
   const draft = useCreateShipmentStore((s) => s.draft)
@@ -58,7 +55,7 @@ export function CreateShipmentContent() {
   const [submitting, setSubmitting] = useState(false)
   const [bootstrapped, setBootstrapped] = useState(false)
   const [autosaveFlash, setAutosaveFlash] = useState(false)
-  const [wizardKey, setWizardKey] = useState(0)
+  const [formKey, setFormKey] = useState(0)
 
   useEffect(() => {
     if (!hydrated || !bootstrapped) return
@@ -68,20 +65,20 @@ export function CreateShipmentContent() {
   }, [bootstrapped, draft.siparis, draft.selectedOffer, draft.paymentMethod, draft.note, hydrated])
 
   useEffect(() => {
-    if (!hydrated || !priceHydrated || bootstrapped) return
+    if (!hydrated || bootstrapped) return
+    if (searchParams.get('quoteId') && !priceHydrated) return
 
     const orderId = searchParams.get('orderId')
     const quoteId = searchParams.get('quoteId')
     const templateId = searchParams.get('templateId')
     const repeat = searchParams.get('repeat')
-    const priceDraft = usePriceDraftStore.getState().draft
     const current = useCreateShipmentStore.getState().draft
 
     async function bootstrap() {
       if (orderId) {
         const order = await ordersRepository.getById(orderId)
         if (order) {
-          const siparis: OrderDraft = {
+          const siparis = sanitizeDistinctPlaces({
             ...createInitialOrder(),
             service: 'kargo',
             origin: resolvePlaceFromCity(order.originCity, `${order.originCity} çıkış`),
@@ -98,13 +95,13 @@ export function CreateShipmentContent() {
               weightKg: 2,
               contentNote: '',
             },
-          }
+          })
           hydrateFromSources({
             source: 'order',
             orderId: order.id,
             ...orderToShipmentPatch(siparis, null),
             siparis,
-            siparisStep: 'details',
+            siparisStep: 'route',
             providerName: current.providerName ?? 'ARF Parcel',
             serviceName: current.serviceName ?? 'Standart Kapıdan Kapıya',
             priceTry: current.priceTry ?? Math.round(order.amountTry * 0.15),
@@ -117,7 +114,7 @@ export function CreateShipmentContent() {
       if (repeat) {
         const shipment = await shipmentsListRepository.getById(repeat)
         if (shipment) {
-          const siparis: OrderDraft = {
+          const siparis = sanitizeDistinctPlaces({
             ...createInitialOrder(),
             service: shipment.operationType === 'logistics' ? 'lojistik' : 'kargo',
             origin: resolvePlaceFromCity(shipment.originCity),
@@ -131,13 +128,13 @@ export function CreateShipmentContent() {
               weightKg: shipment.weightKg,
               contentNote: '',
             },
-          }
+          })
           hydrateFromSources({
             source: 'repeat',
             repeatShipmentId: shipment.id,
             ...orderToShipmentPatch(siparis, null),
             siparis,
-            siparisStep: 'details',
+            siparisStep: 'route',
             providerName: shipment.carrier,
             serviceName: shipment.serviceLabel,
             priceTry: shipment.amountTry,
@@ -152,6 +149,8 @@ export function CreateShipmentContent() {
           source: 'template',
           templateId,
           operationType: 'parcel',
+          origin: null,
+          destination: null,
           siparis: { ...createInitialOrder(), service: 'kargo' },
           siparisStep: 'route',
           providerName: 'ARF Parcel',
@@ -162,136 +161,166 @@ export function CreateShipmentContent() {
         return
       }
 
-      const effectiveQuoteId = quoteId || priceDraft.selectedQuoteId
-      if (effectiveQuoteId || priceDraft.mode === 'shipment' || priceDraft.origin || priceDraft.siparis) {
-        const siparis = reconstructOrderFromPriceDraft(priceDraft)
-        let offer: Offer | null = priceDraft.selectedOffer
-        let providerName = offer?.carrier ?? 'ARF Parcel'
-        let serviceName = offer?.title ?? 'Express Kapıdan Kapıya'
-        let priceTry = offer?.price ?? 189
+      if (quoteId) {
+        const priceDraft = usePriceDraftStore.getState().draft
+        const siparis = sanitizeDistinctPlaces(
+          current.siparis?.origin
+            ? { ...createInitialOrder(), ...current.siparis }
+            : reconstructOrderFromPriceDraft(priceDraft)
+        )
+        let offer: Offer | null = current.selectedOffer ?? priceDraft.selectedOffer
+        let providerName = offer?.carrier ?? current.providerName ?? 'ARF Parcel'
+        let serviceName = offer?.title ?? current.serviceName ?? 'Express Kapıdan Kapıya'
+        let priceTry = offer?.price ?? current.priceTry ?? 189
 
-        if (priceDraft.origin && priceDraft.destination && isPriceLikeReady(priceDraft)) {
-          const quotes = await quoteRepository.search(priceDraft)
-          const selected =
-            quotes.find((quote) => quote.id === effectiveQuoteId) ?? quotes[0] ?? null
-          if (selected && !offer) {
-            providerName = selected.providerName
-            serviceName = selected.serviceName
-            priceTry = selected.priceTry ?? priceTry
-          }
+        const quotes = await quoteRepository.search(priceDraft)
+        const selected = quotes.find((quote) => quote.id === quoteId) ?? quotes[0] ?? null
+        if (selected && !offer) {
+          providerName = selected.providerName
+          serviceName = selected.serviceName
+          priceTry = selected.priceTry ?? priceTry
         }
 
+        const linkedQuote =
+          current.quoteRequestId
+            ? await quoteRequestsRepository.getById(current.quoteRequestId)
+            : await quoteRequestsRepository.findByOfferOrId(quoteId)
+
         hydrateFromSources({
-          source: effectiveQuoteId || priceDraft.selectedQuoteId ? 'quote' : current.source,
-          quoteId: effectiveQuoteId,
+          source: 'quote',
+          quoteId,
+          quoteRequestId: current.quoteRequestId ?? linkedQuote?.id ?? null,
+          linkedOrderIds: current.linkedOrderIds,
           ...orderToShipmentPatch(siparis, offer),
           siparis,
-          siparisStep: offer
-            ? 'payment'
-            : isOrderReadyForOffers(siparis)
-              ? 'offers'
-              : siparis.origin && siparis.destination
-                ? 'details'
-                : 'route',
+          siparisStep: 'route',
           selectedOffer: offer,
           providerName,
           serviceName,
           priceTry,
-          origin: priceDraft.origin
-            ? toAddressDraftFromLocation(priceDraft.origin)
-            : siparis.origin
-              ? {
-                  label: siparis.origin.subtitle,
-                  city: siparis.origin.city,
-                  district: siparis.origin.district,
-                  lat: siparis.origin.lat,
-                  lng: siparis.origin.lng,
-                  placeId: siparis.origin.id,
-                }
-              : current.origin,
         })
         setBootstrapped(true)
         return
       }
 
-      if (!current.siparis) {
-        hydrateFromSources({
-          siparis: reconstructOrderFromShipmentDraft(current),
-          siparisStep: current.siparisStep || 'route',
-        })
-      }
+      const restored = sanitizeDistinctPlaces(
+        current.siparis
+          ? { ...createInitialOrder(), ...current.siparis }
+          : reconstructOrderFromShipmentDraft({
+              ...current,
+              operationType: current.origin || current.destination ? current.operationType : null,
+            })
+      )
+      const blank = !restored.origin && !restored.destination
+      const siparis = blank ? createInitialOrder() : restored
+      hydrateFromSources({
+        siparis,
+        ...orderToShipmentPatch(siparis, current.selectedOffer),
+        siparisStep: 'route',
+      })
 
       setBootstrapped(true)
     }
 
     void bootstrap()
-  }, [
-    bootstrapped,
-    hydrateFromSources,
-    hydrated,
-    priceHydrated,
-    searchParams,
-  ])
+  }, [bootstrapped, hydrateFromSources, hydrated, priceHydrated, searchParams])
 
   const persistSnapshot = useCallback((snapshot: WizardSnapshot) => {
-    const { draft: order, step, selectedOffer } = snapshot
+    const { draft: order, selectedOffer } = snapshot
+    const estimate = selectedOffer ? null : shipmentEstimateFromOrder(order)
     useCreateShipmentStore.getState().patchDraft({
       ...orderToShipmentPatch(order, selectedOffer),
+      ...(estimate ?? {}),
       siparis: order,
-      siparisStep: step,
+      siparisStep: 'route',
       selectedOffer,
-      step: numericStepFromSiparis(step),
       quoteId: selectedOffer?.id ?? useCreateShipmentStore.getState().draft.quoteId,
-    })
-    usePriceDraftStore.getState().patchDraft({
-      ...orderToPricePatch(order),
-      siparisStep: step,
-      selectedOffer,
-      selectedQuoteId: selectedOffer?.id ?? null,
-      mode: 'shipment',
     })
   }, [])
 
   async function handleSubmit() {
     const current = useCreateShipmentStore.getState().draft
-    if (!canSubmitCreateShipment(current)) {
-      const missing = getCreateShipmentMissingFields(current)
+    const order = current.siparis ?? reconstructOrderFromShipmentDraft(current)
+    const fromOrder = orderToShipmentPatch(order, current.selectedOffer)
+    const estimate = current.selectedOffer ? null : shipmentEstimateFromOrder(order)
+    const readyDraft = {
+      ...current,
+      ...fromOrder,
+      ...(estimate ?? {}),
+      siparis: order,
+    }
+    useCreateShipmentStore.getState().patchDraft({
+      ...fromOrder,
+      ...(estimate ?? {}),
+      siparis: order,
+    })
+
+    if (!canSubmitCreateShipment(readyDraft)) {
+      const missing = getCreateShipmentMissingFields(readyDraft)
       toast.message(`Eksik alanlar: ${missing.slice(0, 3).join(', ')}`)
       return
     }
     setSubmitting(true)
     try {
-      const totalsPieces = current.pieces
+      const totalsPieces = readyDraft.pieces
       const desi = totalsPieces.reduce((sum, piece) => sum + piece.desi * piece.quantity, 0)
       const weightKg = totalsPieces.reduce((sum, piece) => sum + piece.weightKg * piece.quantity, 0)
+      const quoteRequest =
+        readyDraft.quoteRequestId
+          ? await quoteRequestsRepository.getById(readyDraft.quoteRequestId)
+          : readyDraft.quoteId
+            ? await quoteRequestsRepository.findByOfferOrId(readyDraft.quoteId)
+            : null
+
+      const linkedOrderIds =
+        Array.isArray(readyDraft.linkedOrderIds) && readyDraft.linkedOrderIds.length > 0
+          ? readyDraft.linkedOrderIds
+          : readyDraft.orderId
+            ? [readyDraft.orderId]
+            : []
+      const primaryOrder = linkedOrderIds[0]
+        ? await ordersRepository.getById(linkedOrderIds[0])
+        : readyDraft.orderId
+          ? await ordersRepository.getById(readyDraft.orderId)
+          : null
+
       const created = await shipmentsListRepository.create({
         reference: `GND-${Math.floor(Math.random() * 9000 + 1000)}`,
-        orderNumber: current.orderId
-          ? ((await ordersRepository.getById(current.orderId))?.orderNumber ?? null)
-          : null,
-        carrier: current.providerName ?? 'ARF Parcel',
-        serviceLabel: current.serviceName ?? 'Standart',
-        serviceType: resolveShipmentServiceType(current.operationType),
-        operationType: current.operationType ?? 'parcel',
-        logisticsMode: current.operationType === 'logistics' ? 'spot' : null,
-        originCity: current.origin?.city ?? current.origin?.label ?? '—',
-        destinationCity: current.destination?.city ?? current.destination?.label ?? '—',
+        orderNumber: primaryOrder?.orderNumber ?? null,
+        quoteId: quoteRequest?.id ?? null,
+        quoteReference: quoteRequest?.reference ?? null,
+        carrier: readyDraft.providerName ?? 'Gönder Kargo',
+        serviceLabel: readyDraft.serviceName ?? 'Standart',
+        serviceType: resolveShipmentServiceType(readyDraft.operationType),
+        operationType: readyDraft.operationType ?? 'parcel',
+        logisticsMode: readyDraft.operationType === 'logistics' ? 'spot' : null,
+        originCity: readyDraft.origin?.city ?? readyDraft.origin?.label ?? '—',
+        destinationCity: readyDraft.destination?.city ?? readyDraft.destination?.label ?? '—',
         status: 'label_ready',
         desi,
         weightKg,
-        amountTry: current.priceTry,
+        amountTry: readyDraft.priceTry,
       })
 
-      if (current.orderId) {
-        await ordersRepository.updateStatus(current.orderId, 'shipment_created')
+      if (linkedOrderIds.length) {
+        await ordersRepository.bulkUpdateStatus(linkedOrderIds, 'shipment_created')
       }
 
-      if (current.quoteRequestId) {
-        await quoteRequestsRepository.markConverted(current.quoteRequestId, created.id)
+      if (quoteRequest) {
+        await quoteRequestsRepository.markConverted(
+          quoteRequest.id,
+          created.id,
+          created.reference
+        )
       }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: SHIPMENTS_LIST_KEY }),
+        queryClient.invalidateQueries({ queryKey: QUOTE_REQUESTS_KEY }),
+        queryClient.invalidateQueries({ queryKey: ORDERS_KEY }),
+      ])
 
       resetDraft()
-      usePriceDraftStore.getState().setMode('quote')
       toast.success(`${created.reference} oluşturuldu`)
       router.push(ARF_ROUTES.gonder.shipments.list)
     } catch {
@@ -301,7 +330,7 @@ export function CreateShipmentContent() {
     }
   }
 
-  if (!hydrated || !priceHydrated || !bootstrapped) {
+  if (!hydrated || !bootstrapped) {
     return (
       <>
         <AppHeader
@@ -314,7 +343,9 @@ export function CreateShipmentContent() {
     )
   }
 
-  const initialOrder = draft.siparis ?? reconstructOrderFromShipmentDraft(draft)
+  const initialOrder = sanitizeDistinctPlaces(
+    draft.siparis ?? reconstructOrderFromShipmentDraft(draft)
+  )
 
   return (
     <>
@@ -333,9 +364,7 @@ export function CreateShipmentContent() {
           <div className='min-w-0'>
             <h1 className='truncate text-xl font-semibold tracking-tight'>Gönderi oluştur</h1>
             <p className='mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground'>
-              <span>
-                Talebini oluştur, Gönder uygun taşıma seçeneklerini bulsun. Kaynak: {sourceLabel(draft.source)}
-              </span>
+              <span>Adres, hizmet ve detayı tek sayfada doldur. Kaynak: {sourceLabel(draft.source)}</span>
               <Badge
                 variant='outline'
                 className={cn(
@@ -357,7 +386,7 @@ export function CreateShipmentContent() {
               size='sm'
               onClick={() => {
                 resetDraft()
-                setWizardKey((key) => key + 1)
+                setFormKey((key) => key + 1)
               }}
             >
               Taslağı sıfırla
@@ -365,23 +394,14 @@ export function CreateShipmentContent() {
           </div>
         </div>
 
-        <SiparisPanelScope>
-          <SiparisPanelWizard
-            key={wizardKey}
-            variant='shipment'
-            initialDraft={initialOrder}
-            initialStep={clampSiparisStep(draft.siparisStep, 'route', 'shipment')}
-            initialOffer={draft.selectedOffer}
-            offersNextLabel='Teklifi Seç'
-            onChange={persistSnapshot}
-            payment={
-              <SiparisPanelPayment
-                submitting={submitting}
-                onSubmit={() => void handleSubmit()}
-              />
-            }
-          />
-        </SiparisPanelScope>
+        <CreateShipmentPageForm
+          formKey={formKey}
+          initialDraft={initialOrder}
+          initialOffer={draft.selectedOffer}
+          submitting={submitting}
+          onChange={persistSnapshot}
+          onSubmit={() => void handleSubmit()}
+        />
       </div>
     </>
   )
@@ -402,14 +422,4 @@ function sourceLabel(source: string) {
     default:
       return 'Manuel'
   }
-}
-
-function isPriceLikeReady(draft: {
-  operationType: OperationType | null
-  origin: { label?: string } | null
-  destination: { label?: string } | null
-}) {
-  return Boolean(
-    draft.operationType && draft.origin?.label?.trim() && draft.destination?.label?.trim()
-  )
 }

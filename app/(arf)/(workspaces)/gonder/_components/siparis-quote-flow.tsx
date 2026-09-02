@@ -2,17 +2,22 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ARF_ROUTES } from '../../../_shared/routes'
 import { quoteRequestsRepository } from '../_data/quote-requests-repository'
+import { QUOTE_REQUESTS_KEY } from '../_hooks/use-quote-requests'
 import { usePriceDraftHydrated } from '../_hooks/use-price-draft-hydrated'
 import {
   clampSiparisStep,
   isOrderReadyForOffers,
   matchQuoteForOffer,
+  offerToQuoteSummary,
   orderToPricePatch,
+  orderToShipmentPatch,
   reconstructOrderFromPriceDraft,
 } from '../_lib/siparis-draft-map'
+import { useCreateShipmentStore } from '../_stores/create-shipment-draft-store'
 import { usePriceDraftStore } from '../_stores/price-calculation-draft-store'
 import { SiparisPanelWizard, type WizardSnapshot } from './siparis-panel-wizard'
 
@@ -48,6 +53,7 @@ export function SiparisQuoteWizard({
 }) {
   const router = useRouter()
   const pathname = usePathname()
+  const queryClient = useQueryClient()
   const draft = usePriceDraftStore((s) => s.draft)
   const [submitting, setSubmitting] = useState(false)
   const submittingRef = useRef(false)
@@ -95,19 +101,31 @@ export function SiparisQuoteWizard({
         const current = usePriceDraftStore.getState().draft
         const request = await quoteRequestsRepository.createFromPriceDraft(current)
         const matched = matchQuoteForOffer(request.offers, selectedOffer)
-        if (matched) {
-          await quoteRequestsRepository.selectOffer(request.id, matched.id)
-        }
-        toast.success(`${request.reference} oluşturuldu`)
+        const selected = matched
+          ? await quoteRequestsRepository.selectOffer(request.id, matched.id)
+          : request
+        const shipmentDraft = useCreateShipmentStore.getState().draft
+        const siparis = current.siparis ?? reconstructOrderFromPriceDraft(current)
+        useCreateShipmentStore.getState().hydrateFromSources({
+          ...orderToShipmentPatch(siparis, selectedOffer),
+          source: shipmentDraft.source === 'manual' ? 'quote' : shipmentDraft.source,
+          quoteRequestId: selected.id,
+          quoteId: selected.selectedQuoteId ?? matched?.id ?? shipmentDraft.quoteId,
+          orderId: shipmentDraft.orderId,
+          linkedOrderIds: shipmentDraft.linkedOrderIds,
+          ...offerToQuoteSummary(selectedOffer),
+        })
+        await queryClient.invalidateQueries({ queryKey: QUOTE_REQUESTS_KEY })
+        toast.success(`${selected.reference} oluşturuldu`)
         usePriceDraftStore.getState().resetDraft()
-        router.push(ARF_ROUTES.gonder.quotes.detail(request.id))
+        router.push(ARF_ROUTES.gonder.quotes.detail(selected.id))
       } catch {
         toast.error('Teklif talebi oluşturulamadı')
         submittingRef.current = false
         setSubmitting(false)
       }
     },
-    [persistSnapshot, router]
+    [persistSnapshot, queryClient, router]
   )
 
   const initialOrder = draft.siparis ?? reconstructOrderFromPriceDraft(draft)

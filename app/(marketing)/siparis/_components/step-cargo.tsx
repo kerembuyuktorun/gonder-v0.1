@@ -13,8 +13,9 @@ import { StepHeader, StepNav } from './step-shell'
 import { useWizard } from './wizard-context'
 
 export function StepCargo() {
-  const { draft, setDraft, next, back } = useWizard()
+  const { draft, setDraft, next, back, variant } = useWizard()
   const { cargo } = draft
+  const panelPage = variant === 'shipment'
 
   const setCargo = (partial: Partial<typeof cargo>) => {
     setDraft((prev) => ({ ...prev, cargo: { ...prev.cargo, ...partial } }))
@@ -174,13 +175,19 @@ export function StepCargo() {
           <EstimateCard
             total={breakdown?.total ?? null}
             signature={`${cargo.preset}-${cargo.widthCm}-${cargo.lengthCm}-${cargo.heightCm}-${cargo.weightKg}-${cargo.quantity}-${draft.deliverySpeed}-${draft.extras.fragile}-${draft.extras.insurance}-${draft.extras.declaredValue}`}
-            hint={breakdown ? `${breakdown.distanceKm} km güzergâh · kesin tutar teklifte` : undefined}
+            hint={
+              breakdown
+                ? `${breakdown.distanceKm} km güzergâh${panelPage ? '' : ' · kesin tutar teklifte'}`
+                : undefined
+            }
           />
 
-          <p className='mt-4 flex items-start gap-2 text-xs leading-relaxed text-[var(--gl-muted)]'>
-            <Info className='mt-0.5 size-3.5 shrink-0' aria-hidden />
-            Kesin tutarı sonraki adımda seçeceğin teklif belirler.
-          </p>
+          {panelPage ? null : (
+            <p className='mt-4 flex items-start gap-2 text-xs leading-relaxed text-[var(--gl-muted)]'>
+              <Info className='mt-0.5 size-3.5 shrink-0' aria-hidden />
+              Kesin tutarı sonraki adımda seçeceğin teklif belirler.
+            </p>
+          )}
         </aside>
       </div>
 
