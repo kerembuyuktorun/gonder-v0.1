@@ -1,20 +1,15 @@
-import type { KargoDraft, LogisticsDraft, QuoteDraft } from './quote-types'
 import { TURKEY_CITIES } from './turkey-cities'
 
-export type PromptPatch = {
-  mode?: QuoteDraft['mode']
-  kargo?: Partial<KargoDraft>
-  lojistik?: Partial<LogisticsDraft>
-}
-
 export type ParsedPrompt = {
-  patch: PromptPatch
+  service: 'kargo' | 'lojistik'
+  /** Lojistikte komple mi parsiyel mi */
+  subtype?: 'ftl' | 'ltl'
   origin?: string
   destination?: string
   quantity?: number
   unit?: 'palet' | 'koli'
   weightKg?: number
-  /** Cevaplanması gereken eksik alanlar */
+  /** Teklif için hâlâ gereken alanlar */
   missing: string[]
 }
 
@@ -57,79 +52,69 @@ export function parsePrompt(text: string): ParsedPrompt {
   const wantsFullTruck = /komple|tır|tir\b|kamyon|dorse|araç dolusu/.test(normalized)
   const wantsPartial = /parsiyel|palet/.test(normalized)
   const wantsParcel = /kargo|koli|paket|kutu/.test(normalized)
-
   const heavy = (weightKg ?? 0) >= 3000
 
-  let mode: QuoteDraft['mode'] = 'kargo'
-  if (wantsFullTruck || wantsPartial || heavy) mode = 'lojistik'
-  else if (wantsParcel) mode = 'kargo'
+  const service: ParsedPrompt['service'] =
+    wantsFullTruck || wantsPartial || heavy ? 'lojistik' : wantsParcel ? 'kargo' : 'kargo'
 
   const missing: string[] = []
-  if (!origin) missing.push('çıkış ili')
-  if (!destination) missing.push('varış ili')
+  if (!origin) missing.push('çıkış adresi')
+  if (!destination) missing.push('varış adresi')
 
-  if (mode === 'kargo') {
+  if (service === 'kargo') {
     if (!quantity) missing.push('parça adedi')
     if (!weightKg) missing.push('ağırlık')
-
-    const patch: PromptPatch = {
-      mode: 'kargo',
-      kargo: {
-        ...(origin ? { origin: { city: origin, district: '' } } : {}),
-        ...(destination ? { destination: { city: destination, district: '' } } : {}),
-      },
-    }
-    return { patch, origin, destination, quantity, unit, weightKg, missing }
+    return { service, origin, destination, quantity, unit, weightKg, missing }
   }
 
-  const subtype: LogisticsDraft['subtype'] = wantsFullTruck || heavy ? 'ftl' : 'ltl'
+  const subtype: 'ftl' | 'ltl' = wantsFullTruck || heavy ? 'ftl' : 'ltl'
   if (subtype === 'ltl' && !quantity) missing.push('parça adedi')
   if (!weightKg) missing.push('tahmini ağırlık')
   missing.push('yükleme tarihi')
 
-  const patch: PromptPatch = {
-    mode: 'lojistik',
-    lojistik: {
-      subtype,
-      ...(unit ? { loadUnit: unit } : {}),
-      ...(quantity ? { pieceCount: quantity } : {}),
-      ...(weightKg ? { weightKg } : {}),
-      ...(origin ? { origin: { city: origin, district: '' } } : {}),
-      ...(destination ? { destination: { city: destination, district: '' } } : {}),
-    },
-  }
+  return { service, subtype, origin, destination, quantity, unit, weightKg, missing }
+}
 
-  return { patch, origin, destination, quantity, unit, weightKg, missing }
+export function summaryLine(parsed: ParsedPrompt): string {
+  const parts: string[] = [
+    parsed.service === 'kargo'
+      ? 'Kargo'
+      : parsed.subtype === 'ftl'
+        ? 'Lojistik · Komple araç'
+        : 'Lojistik · Parsiyel',
+  ]
+
+  if (parsed.origin && parsed.destination) parts.push(`${parsed.origin} → ${parsed.destination}`)
+  else if (parsed.origin) parts.push(`Çıkış: ${parsed.origin}`)
+
+  if (parsed.quantity) parts.push(`${parsed.quantity} ${parsed.unit ?? 'parça'}`)
+  if (parsed.weightKg) parts.push(`~${parsed.weightKg.toLocaleString('tr-TR')} kg`)
+
+  return parts.join(' · ')
 }
 
 /** Ayrıştırma sonucundan okunabilir asistan yanıtları üretir. */
 export function buildReplies(parsed: ParsedPrompt): string[] {
-  const { origin, destination, quantity, unit, weightKg, patch, missing } = parsed
-  const bits: string[] = []
-
-  if (origin && destination) bits.push(`${origin} → ${destination}`)
-  else if (origin) bits.push(`Çıkış: ${origin}`)
-
-  if (quantity) bits.push(`${quantity} ${unit ?? 'parça'}`)
-  if (weightKg) bits.push(`~${weightKg.toLocaleString('tr-TR')} kg`)
-
-  const modeLabel =
-    patch.mode === 'kargo'
-      ? 'Kargo'
-      : patch.lojistik?.subtype === 'ftl'
-        ? 'Lojistik · Komple araç'
-        : 'Lojistik · Parsiyel'
-
+  const headline = summaryLine(parsed)
   const replies: string[] = [
-    bits.length > 0
-      ? `Anladım: ${modeLabel} · ${bits.join(' · ')}.`
-      : `${modeLabel} olarak ilerleyelim. Yükünü biraz daha tarif eder misin?`,
+    parsed.origin || parsed.quantity || parsed.weightKg
+      ? `Anladım: ${headline}.`
+      : `${headline} olarak ilerleyelim. Yükünü biraz daha tarif eder misin?`,
   ]
 
-  if (missing.length > 0) {
-    replies.push(`Teklif için şunlar gerekli: ${missing.slice(0, 3).join(', ')}.`)
+  if (parsed.missing.length > 0) {
+    replies.push(`Teklif için şunlar gerekli: ${parsed.missing.slice(0, 3).join(', ')}.`)
   }
 
-  replies.push('Aşağıdaki özeti düzenleyip teklif formuna aktarabilirsin.')
+  replies.push('Sipariş sayfasında bu bilgilerle devam edip teklifleri görebilirsin.')
   return replies
+}
+
+/** Sipariş sihirbazına taşınacak sorgu dizesini üretir. */
+export function toOrderQuery(parsed: ParsedPrompt): string {
+  const params = new URLSearchParams({ tip: parsed.service })
+  if (parsed.subtype) params.set('mod', parsed.subtype)
+  if (parsed.origin) params.set('from', parsed.origin)
+  if (parsed.destination) params.set('to', parsed.destination)
+  return params.toString()
 }

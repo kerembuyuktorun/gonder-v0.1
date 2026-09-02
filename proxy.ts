@@ -12,7 +12,7 @@ import {
   isDevAuthBypassEnabled,
 } from './app/api/_lib/dev-auth'
 
-const PUBLIC_PATHS = new Set(['/signin', '/forgot-password', '/landing'])
+const PUBLIC_PATHS = new Set(['/signin', '/forgot-password', '/landing', '/siparis'])
 const PUBLIC_FILE_REGEX = /\.[^/]+$/
 const SESSION_CACHE_TTL_MS = 10_000
 

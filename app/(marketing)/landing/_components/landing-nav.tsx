@@ -14,13 +14,13 @@ const NAV = [
 ]
 
 const SOLUTIONS = [
-  { label: 'Kargo', href: '#teklif-al', mode: 'kargo' as const },
-  { label: 'Parsiyel Taşıma', href: '#teklif-al', mode: 'lojistik' as const },
-  { label: 'Komple Taşıma', href: '#teklif-al', mode: 'lojistik' as const },
+  { label: 'Kargo', mode: 'kargo' as const },
+  { label: 'Parsiyel Taşıma', mode: 'lojistik' as const },
+  { label: 'Komple Taşıma', mode: 'lojistik' as const },
 ]
 
 export function LandingNav() {
-  const { scrollToQuote, setDraft, setFormStep, setResult } = useQuoteLanding()
+  const { startOrder } = useQuoteLanding()
   const [open, setOpen] = useState(false)
   const [solutionsOpen, setSolutionsOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -33,14 +33,9 @@ export function LandingNav() {
   }, [])
 
   const startQuote = (mode?: 'kargo' | 'lojistik') => {
-    if (mode) {
-      setDraft((d) => ({ ...d, mode }))
-      setFormStep(0)
-      setResult({ kind: 'idle' })
-    }
-    scrollToQuote()
     setOpen(false)
     setSolutionsOpen(false)
+    startOrder(mode)
   }
 
   return (

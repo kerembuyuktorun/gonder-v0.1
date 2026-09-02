@@ -16,6 +16,7 @@ export const ARF_ROUTES = {
   gonder: {
     root: GONDER_BASE,
     landing: '/landing',
+    createOrder: '/siparis',
     support: `${GONDER_BASE}/support`,
     dashboard: {
       root: GONDER_BASE,

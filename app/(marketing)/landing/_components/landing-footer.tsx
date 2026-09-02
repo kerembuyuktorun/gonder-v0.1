@@ -4,9 +4,9 @@ import { ARF_ROUTES } from '../../../(arf)/_shared/routes'
 
 const FOOTER_LINKS = {
   Çözümler: [
-    { label: 'Kargo', href: '#teklif-al' },
-    { label: 'Parsiyel Taşıma', href: '#teklif-al' },
-    { label: 'Komple Taşıma', href: '#teklif-al' },
+    { label: 'Kargo', href: '/siparis?tip=kargo' },
+    { label: 'Parsiyel Taşıma', href: '/siparis?tip=lojistik' },
+    { label: 'Komple Taşıma', href: '/siparis?tip=lojistik' },
     { label: 'Navlun Ağı', href: '#navlun-agi' },
   ],
   Destek: [

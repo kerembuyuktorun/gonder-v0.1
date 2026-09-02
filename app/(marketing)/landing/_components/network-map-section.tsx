@@ -35,7 +35,7 @@ function TurkeyOutline() {
 }
 
 export function NetworkMapSection() {
-  const { prefillRoute } = useQuoteLanding()
+  const { startOrderWithRoute } = useQuoteLanding()
   const [origin, setOrigin] = useState('İstanbul')
   const [dest, setDest] = useState('Ankara')
 
@@ -83,7 +83,7 @@ export function NetworkMapSection() {
               <button
                 type='button'
                 className='gl-btn-primary'
-                onClick={() => prefillRoute(origin, dest, 'lojistik')}
+                onClick={() => startOrderWithRoute(origin, dest, 'lojistik')}
               >
                 Yüküm İçin Teklif Al
               </button>
@@ -185,7 +185,7 @@ export function NetworkMapSection() {
               <button
                 type='button'
                 className='gl-btn-secondary w-full'
-                onClick={() => prefillRoute(origin, dest, 'lojistik')}
+                onClick={() => startOrderWithRoute(origin, dest, 'lojistik')}
               >
                 Bu hatta teklif al
               </button>

@@ -4,7 +4,6 @@ import { QuoteProvider } from './quote-context'
 import { LandingNav } from './landing-nav'
 import { LandingHero } from './landing-hero'
 import { TrustStrip } from './trust-strip'
-import { QuoteSection } from './quote-section'
 import { HowItWorks } from './how-it-works'
 import { FeaturesSection } from './features-section'
 import { NetworkMapSection } from './network-map-section'
@@ -22,7 +21,6 @@ export function LandingPage() {
       <main>
         <LandingHero />
         <TrustStrip />
-        <QuoteSection />
         <HowItWorks />
         <FeaturesSection />
         <NetworkMapSection />

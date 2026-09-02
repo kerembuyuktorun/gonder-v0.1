@@ -1,138 +1,76 @@
 'use client'
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type Dispatch,
-  type ReactNode,
-  type SetStateAction,
-} from 'react'
-import {
-  createInitialDraft,
-  type ContactDraft,
-  type KargoDraft,
-  type LogisticsDraft,
-  type QuoteDraft,
-  type QuoteResultState,
-} from '../_lib/quote-types'
+import { useRouter } from 'next/navigation'
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { toOrderQuery, type ParsedPrompt } from '../_lib/parse-prompt'
 
-export type QuoteDraftPatch = {
-  mode?: QuoteDraft['mode']
-  kargo?: Partial<KargoDraft>
-  lojistik?: Partial<LogisticsDraft>
-}
+export type TransportMode = 'kargo' | 'lojistik'
 
 type QuoteContextValue = {
-  draft: QuoteDraft
-  setDraft: Dispatch<SetStateAction<QuoteDraft>>
-  result: QuoteResultState
-  setResult: Dispatch<SetStateAction<QuoteResultState>>
-  contact: ContactDraft
-  setContact: Dispatch<SetStateAction<ContactDraft>>
-  formStep: number
-  setFormStep: Dispatch<SetStateAction<number>>
-  scrollToQuote: () => void
-  prefillFromAssistant: (partial: QuoteDraftPatch) => void
-  prefillRoute: (originCity: string, destCity: string, mode?: QuoteDraft['mode']) => void
+  /** Sipariş sihirbazını açar; hizmet tipi verilirse önceden seçili gelir. */
+  startOrder: (service?: TransportMode) => void
+  /** Belirli bir hat için sihirbazı adresleri dolu şekilde açar. */
+  startOrderWithRoute: (originCity: string, destCity: string, service?: TransportMode) => void
+  /** Asistanın çıkardığı bilgilerle sihirbazı açar. */
+  startOrderFromPrompt: (parsed: ParsedPrompt) => void
   /** Hero chatbox'tan asistana taşınan mesaj */
   assistantSeed: { text: string; nonce: number } | null
   sendToAssistant: (text: string) => void
+  scrollToAssistant: () => void
 }
 
 const QuoteContext = createContext<QuoteContextValue | null>(null)
 
+const ORDER_PATH = '/siparis'
+
 export function QuoteProvider({ children }: { children: ReactNode }) {
-  const [draft, setDraft] = useState<QuoteDraft>(createInitialDraft)
-  const [result, setResult] = useState<QuoteResultState>({ kind: 'idle' })
-  const [formStep, setFormStep] = useState(0)
+  const router = useRouter()
   const [assistantSeed, setAssistantSeed] = useState<{ text: string; nonce: number } | null>(null)
-  const [contact, setContact] = useState<ContactDraft>({
-    name: '',
-    company: '',
-    email: '',
-    phone: '',
-    note: '',
-  })
 
-  const scrollToQuote = useCallback(() => {
-    document.getElementById('teklif-al')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [])
-
-  const sendToAssistant = useCallback((text: string) => {
-    setAssistantSeed({ text, nonce: Date.now() })
-    requestAnimationFrame(() => {
-      document.getElementById('asistan')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-  }, [])
-
-  const prefillFromAssistant = useCallback(
-    (partial: QuoteDraftPatch) => {
-      setDraft((prev) => ({
-        ...prev,
-        ...(partial.mode ? { mode: partial.mode } : {}),
-        kargo: { ...prev.kargo, ...partial.kargo },
-        lojistik: { ...prev.lojistik, ...partial.lojistik },
-      }))
-      setFormStep(0)
-      setResult({ kind: 'idle' })
-      scrollToQuote()
+  const startOrder = useCallback(
+    (service?: TransportMode) => {
+      router.push(service ? `${ORDER_PATH}?tip=${service}` : ORDER_PATH)
     },
-    [scrollToQuote]
+    [router]
   )
 
-  const prefillRoute = useCallback(
-    (originCity: string, destCity: string, mode: QuoteDraft['mode'] = 'lojistik') => {
-      setDraft((prev) => ({
-        ...prev,
-        mode,
-        kargo: {
-          ...prev.kargo,
-          origin: { ...prev.kargo.origin, city: originCity },
-          destination: { ...prev.kargo.destination, city: destCity },
-        },
-        lojistik: {
-          ...prev.lojistik,
-          origin: { ...prev.lojistik.origin, city: originCity },
-          destination: { ...prev.lojistik.destination, city: destCity },
-        },
-      }))
-      setFormStep(2)
-      setResult({ kind: 'idle' })
-      scrollToQuote()
+  const startOrderWithRoute = useCallback(
+    (originCity: string, destCity: string, service: TransportMode = 'lojistik') => {
+      const params = new URLSearchParams({ tip: service, from: originCity, to: destCity })
+      router.push(`${ORDER_PATH}?${params.toString()}`)
     },
-    [scrollToQuote]
+    [router]
+  )
+
+  const startOrderFromPrompt = useCallback(
+    (parsed: ParsedPrompt) => {
+      router.push(`${ORDER_PATH}?${toOrderQuery(parsed)}`)
+    },
+    [router]
+  )
+
+  const scrollToAssistant = useCallback(() => {
+    document.getElementById('asistan')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
+  const sendToAssistant = useCallback(
+    (text: string) => {
+      setAssistantSeed({ text, nonce: Date.now() })
+      requestAnimationFrame(scrollToAssistant)
+    },
+    [scrollToAssistant]
   )
 
   const value = useMemo(
     () => ({
-      draft,
-      setDraft,
-      result,
-      setResult,
-      contact,
-      setContact,
-      formStep,
-      setFormStep,
-      scrollToQuote,
-      prefillFromAssistant,
-      prefillRoute,
+      startOrder,
+      startOrderWithRoute,
+      startOrderFromPrompt,
       assistantSeed,
       sendToAssistant,
+      scrollToAssistant,
     }),
-    [
-      assistantSeed,
-      contact,
-      draft,
-      formStep,
-      prefillFromAssistant,
-      prefillRoute,
-      result,
-      scrollToQuote,
-      sendToAssistant,
-    ]
+    [assistantSeed, scrollToAssistant, sendToAssistant, startOrder, startOrderFromPrompt, startOrderWithRoute]
   )
 
   return <QuoteContext.Provider value={value}>{children}</QuoteContext.Provider>

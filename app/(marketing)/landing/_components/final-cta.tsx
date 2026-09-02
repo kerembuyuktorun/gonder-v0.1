@@ -3,7 +3,7 @@
 import { useQuoteLanding } from './quote-context'
 
 export function FinalCta() {
-  const { scrollToQuote } = useQuoteLanding()
+  const { startOrder } = useQuoteLanding()
 
   return (
     <section className='gl-section pb-10'>
@@ -23,7 +23,7 @@ export function FinalCta() {
             <p className='mx-auto mt-3 max-w-md text-[var(--gl-muted)]'>
               Gönderi bilgilerini gir, taşıma seçeneklerini gör.
             </p>
-            <button type='button' className='gl-btn-primary mt-8' onClick={scrollToQuote}>
+            <button type='button' className='gl-btn-primary mt-8' onClick={() => startOrder()}>
               Teklif Al
             </button>
           </div>

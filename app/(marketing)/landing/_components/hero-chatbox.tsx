@@ -59,7 +59,7 @@ function useTypewriter(active: boolean) {
 }
 
 export function HeroChatbox() {
-  const { sendToAssistant, scrollToQuote } = useQuoteLanding()
+  const { sendToAssistant, startOrder } = useQuoteLanding()
   const [value, setValue] = useState('')
   const [focused, setFocused] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -157,7 +157,7 @@ export function HeroChatbox() {
         </span>
         <button
           type='button'
-          onClick={scrollToQuote}
+          onClick={() => startOrder()}
           className='font-semibold text-[var(--gl-ink)] underline-offset-4 hover:underline'
         >
           Formla devam et

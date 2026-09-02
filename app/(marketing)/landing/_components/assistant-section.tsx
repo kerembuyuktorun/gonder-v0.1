@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Bot, Send, Sparkles } from 'lucide-react'
-import { useQuoteLanding, type QuoteDraftPatch } from './quote-context'
-import { buildReplies, parsePrompt } from '../_lib/parse-prompt'
+import { useQuoteLanding } from './quote-context'
+import { buildReplies, parsePrompt, summaryLine, type ParsedPrompt } from '../_lib/parse-prompt'
 
 type ChatMessage = { role: 'user' | 'assistant'; text: string }
 
@@ -21,25 +21,8 @@ const STATIC_ANSWERS: Record<string, string[]> = {
   ],
 }
 
-function summaryLine(patch: QuoteDraftPatch): string {
-  if (patch.mode === 'kargo') {
-    const o = patch.kargo?.origin?.city
-    const d = patch.kargo?.destination?.city
-    return ['Kargo gönderisi', o && d ? `${o} → ${d}` : null].filter(Boolean).join(' · ')
-  }
-
-  const l = patch.lojistik
-  const parts = [`Lojistik · ${l?.subtype === 'ftl' ? 'Komple araç' : 'Parsiyel'}`]
-  if (l?.pieceCount) parts.push(`${l.pieceCount} ${l.loadUnit ?? 'parça'}`)
-  if (l?.weightKg) parts.push(`~${l.weightKg.toLocaleString('tr-TR')} kg`)
-  if (l?.origin?.city && l?.destination?.city) {
-    parts.push(`${l.origin.city} → ${l.destination.city}`)
-  }
-  return parts.join(' · ')
-}
-
 export function AssistantSection() {
-  const { prefillFromAssistant, assistantSeed } = useQuoteLanding()
+  const { startOrderFromPrompt, assistantSeed } = useQuoteLanding()
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
@@ -47,7 +30,7 @@ export function AssistantSection() {
     },
   ])
   const [input, setInput] = useState('')
-  const [summary, setSummary] = useState<QuoteDraftPatch | null>(null)
+  const [summary, setSummary] = useState<ParsedPrompt | null>(null)
   const [typing, setTyping] = useState(false)
   const logRef = useRef<HTMLDivElement>(null)
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])
@@ -76,7 +59,7 @@ export function AssistantSection() {
           setMessages((m) => [...m, { role: 'assistant', text: reply }])
           if (i === replies.length - 1) {
             setTyping(false)
-            if (parsed) setSummary(parsed.patch)
+            if (parsed) setSummary(parsed)
           }
         },
         (i + 1) * 650
@@ -172,9 +155,9 @@ export function AssistantSection() {
                 <button
                   type='button'
                   className='gl-btn-primary mt-3 w-full'
-                  onClick={() => prefillFromAssistant(summary)}
+                  onClick={() => startOrderFromPrompt(summary)}
                 >
-                  Teklif Formuna Aktar
+                  Sipariş Formuna Aktar
                 </button>
               </div>
             ) : null}
